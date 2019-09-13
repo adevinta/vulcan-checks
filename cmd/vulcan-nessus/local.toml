@@ -1,0 +1,3 @@
+[Check]
+Target = "example.com"
+Opts = "{\"debug\":true,\"policy_id\":9,\"polling_interval\":30,\"basic_auth\":false}" #full-scan

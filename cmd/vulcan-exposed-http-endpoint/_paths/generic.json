@@ -1,0 +1,14 @@
+[
+	{
+		"path": "controlpanel",
+		"reg_exp": "cpasswd"
+	},
+	{
+		"path": ".git/HEAD",
+		"reg_exp": "ref: refs/"
+	},
+	{
+		"path": "/",
+		"reg_exp": "pgweb"
+	}
+]

@@ -1,0 +1,4 @@
+[Log]
+LogLevel = "debug"
+[Check]
+Target = "example.com"

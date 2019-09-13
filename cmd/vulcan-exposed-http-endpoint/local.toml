@@ -1,0 +1,24 @@
+[Log]
+LogLevel = "debug"
+[Check]
+Target = "https://example.com"
+Opts = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \"(?s)Transfer.*Alt\"}]}"
+
+# Other examples
+
+# This example will trigger the vuln:
+# Target="https://www.google.com"
+# Opts = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \".*www.google.com.*\"}]}"
+
+
+# This example will not trigger the vuln
+# Target="https://www.google.com"
+# Opts = "{\"paths\":[{\"path\":\"/\", \"status\": 400]}"
+
+# This example will trigger the vuln
+# Target="https://www.google.com"
+# Opts = "{\"paths\":[{\"path\":\"/\"}]}"
+
+# This example will trigger the vuln
+# Target="https://www.google.com"
+# Opts = "{\"paths\":[{\"path\":\"/\", \"status\": 200}]}"

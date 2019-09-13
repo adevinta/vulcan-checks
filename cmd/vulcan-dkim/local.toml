@@ -1,0 +1,5 @@
+[Log]
+LogLevel = "debug"
+[Check]
+Target = "example.com"
+Opts = "{\"selectors\":[\"default\"]}"

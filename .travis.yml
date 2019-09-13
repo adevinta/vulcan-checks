@@ -1,0 +1,13 @@
+dist: trusty
+language: go
+go:
+- 1.12.7
+env:
+  global:
+  - CGO_ENABLED=0
+go_import_path: github.com/adevinta/vulcan-checks
+before_script:
+  - go get ./...
+script:
+  - go install -v $(go list ./... | grep -v /vendor/)
+  - go test -short -v $(go list ./... | grep -v /vendor/)

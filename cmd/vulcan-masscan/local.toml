@@ -1,0 +1,5 @@
+[Log]
+LogLevel = "DEBUG"
+[Check]
+Target = "1.1.1.1/32"
+Opts = '{"port_range":[{"start": 80, "stop": 80}]}'

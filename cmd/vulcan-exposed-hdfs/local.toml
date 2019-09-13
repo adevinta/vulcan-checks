@@ -1,0 +1,4 @@
+[Check]
+Target = "localhost"
+[Log]
+LogLevel = "DEBUG"
