@@ -134,7 +134,10 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		},
 	}
 
-	request := resty.R().SetHeader("Accept", "application/json")
+	client := resty.New()
+
+	request := client.R()
+	request.SetHeader("Accept", "application/json")
 	request.SetResult(CreateScanRequest{})
 	request.SetBody(createScanRequest)
 	request.SetContext(ctx)
@@ -147,7 +150,8 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		return errors.New("response does not match CreateScanRequest type")
 	}
 
-	request = resty.R().SetHeader("Accept", "application/json")
+	request = client.R()
+	request.SetHeader("Accept", "application/json")
 	request.SetResult(GetScanResponse{})
 	request.SetContext(ctx)
 	getScanResponse, err := request.Get(fmt.Sprintf("%s/%d?vulnerabilities&policy=default", opt.PortauthorityURL, createScanData.Image.ID))
