@@ -289,7 +289,7 @@ func getFilePath(url string) string {
 	tokens := strings.Split(url, "/")
 	fileName := tokens[len(tokens)-1]
 	if fileName == "" {
-		uuid, _ := uuid.NewV4()
+		uuid := uuid.NewV4()
 		fileName = uuid.String() + ".js"
 	}
 	return "temp/" + fileName
