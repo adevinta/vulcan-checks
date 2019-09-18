@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/adevinta/vulcan-report"
-	"github.com/go-resty/resty"
 	version "github.com/knqyf263/go-rpm-version"
+	"gopkg.in/resty.v1"
 
 	"github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
