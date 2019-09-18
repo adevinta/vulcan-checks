@@ -2,10 +2,10 @@ dist: trusty
 language: go
 go:
   - 1.13
-  - GO111MODULE=on
 env:
   global:
   - CGO_ENABLED=0
+  - GO111MODULE=on
 go_import_path: github.com/adevinta/vulcan-checks
 before_script:
   - go get ./...
