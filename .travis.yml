@@ -7,8 +7,3 @@ env:
   - CGO_ENABLED=0
   - GO111MODULE=on
 go_import_path: github.com/adevinta/vulcan-checks
-before_script:
-  - go get ./...
-script:
-  - go install -v $(go list ./... | grep -v /vendor/)
-  - go test -short -v $(go list ./... | grep -v /vendor/)
