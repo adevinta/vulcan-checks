@@ -42,7 +42,7 @@ func (r *runner) Run(ctx context.Context, target string, optJSON string, state s
 	basicAuth := opt.BasicAuth
 	r.Delete = opt.Delete
 	if pollingInterval <= 0 {
-		pollingInterval = 5
+		pollingInterval = 30
 	}
 
 	logger = logger.WithFields(log.Fields{
