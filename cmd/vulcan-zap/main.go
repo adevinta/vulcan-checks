@@ -130,7 +130,7 @@ func main() {
 			}
 			progress, err := strconv.Atoi(status)
 			if err != nil {
-				return fmt.Errorf("can not convert status value %s into an int", progress)
+				return fmt.Errorf("can not convert status value %s into an int", status)
 			}
 
 			logger.Debugf("Spider at %v progress.", progress)
@@ -189,7 +189,7 @@ func main() {
 				}
 				progress, err := strconv.Atoi(status)
 				if err != nil {
-					return fmt.Errorf("can not convert status value %s into an int", progress)
+					return fmt.Errorf("can not convert status value %s into an int", status)
 				}
 
 				state.SetProgress((1 + float32(progress)) / 200)
