@@ -72,11 +72,11 @@ func main() {
 		conn, err := net.DialTimeout("tcp", target, connTimeout)
 		if err != nil {
 			// Nothing is listening in the target port.
-			logger.WithError(err).Error("can not connect to the target port")
+			logger.WithError(err).Info("can not connect to the target port")
 			return nil
 		}
 		if err := conn.Close(); err != nil {
-			logger.WithError(err).Error("test connection to the target port was not closed correctly")
+			logger.WithError(err).Warn("test connection to the target port was not closed correctly")
 		}
 
 		output, _, err := command.Execute(
