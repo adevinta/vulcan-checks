@@ -71,7 +71,7 @@ func main() {
 		}
 		client, err := zap.NewClient(cfg)
 		if err != nil {
-			return fmt.Errorf("error configuring the zap proxy client: %v", err)
+			return fmt.Errorf("error configuring the ZAP proxy client: %v", err)
 		}
 
 		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
@@ -103,7 +103,7 @@ func main() {
 			// we can not be sure whether it was because a non existant target
 			// or because an error accessing the ZAP API. Therefore, we will
 			// terminate the check without errors.
-			logger.WithFields(logrus.Fields{"resp": resp}).Error("Scan not present in response body when calling Spider().Scan()")
+			logger.WithFields(logrus.Fields{"resp": resp}).Warn("Scan not present in response body when calling Spider().Scan()")
 			return nil
 		}
 
@@ -224,7 +224,7 @@ func main() {
 
 			v, err := processAlert(a)
 			if err != nil {
-				logger.WithError(err).Error("can not process alert")
+				logger.WithError(err).Warn("can not process alert")
 				continue
 			}
 
