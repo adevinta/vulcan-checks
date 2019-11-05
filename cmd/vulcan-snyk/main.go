@@ -87,24 +87,20 @@ func main() {
 		}
 
 		output, _, _ = command.Execute(ctx, logger, "snyk", append([]string{"test", repoPath, "--all-sub-projects", "--json"})...)
-		//logger.Infof("ls: %s", output)
 
 		r := SnykResponse{}
 		err = json.Unmarshal(output, &r)
 		if err != nil {
 			return err
 		}
-		//logger.Infof("resp: %v", r)
 
+		// Group vulnerabilities by their Snyk Reference ID and module name, also filter out license issues
 		snykVulnerabilitiesMap := make(map[string]map[string][]SnykVulnerability)
-
-		// Group vulnerabilities by their Snyk Reference ID and filter out license issues
 		for _, v := range r.Vulnerabilities {
 			if v.Type == "license" {
 				continue
 			}
 
-			// Vulcan will report one vulnerability per library,snyk vulnerabilit
 			_, ok := snykVulnerabilitiesMap[v.ID]
 			if !ok {
 				snykVulnerabilitiesMap[v.ID] = make(map[string][]SnykVulnerability)
@@ -114,7 +110,7 @@ func main() {
 		}
 
 		vulns := []report.Vulnerability{}
-		// for each snyk vuln, create a vulcan vuln
+		// for each pair of (snyk vuln & module name), create a vulcan vuln
 		for _, snykModulesMap := range snykVulnerabilitiesMap {
 			for moduleName, snykIssues := range snykModulesMap {
 				vulcanVulnerability := &report.Vulnerability{}
@@ -145,14 +141,10 @@ func main() {
 				}
 
 				vulns = append(vulns, *vulcanVulnerability)
-				// fmt.Printf("%+v\n", vulcanVulnerability)
 			}
 		}
 
 		state.AddVulnerabilities(vulns...)
-
-		// Issue XYZ found in FooLib from github.mpi-internal.com/spt-org/repository
-		// So, for each snyl vuln-id, create a vuln in vulcan
 
 		return nil
 	}
@@ -175,35 +167,6 @@ func createImpactDetails(vulnerabilities []SnykVulnerability) string {
 		res = res + str + "\n"
 	}
 	return res
-}
-
-func translateFromSnykToVulcan(snykVulnerability SnykVulnerability) (*report.Vulnerability, error) {
-	vulcanVulnerability := &report.Vulnerability{}
-
-	vulcanVulnerability.Summary = snykVulnerability.Title + ": " + snykVulnerability.Name
-	vulcanVulnerability.Description = extractOverview([]byte(snykVulnerability.Description))
-	vulcanVulnerability.Details = extractDetails([]byte(snykVulnerability.Description))
-	//vulcanVulnerability.ImpactDetails = createImpactDetails(snykVulnerability)
-
-	// TODO: details should be snyk.details
-	// vulcanVulnerability.Details = extractOverview()
-	vulcanVulnerability.Score = snykVulnerability.CVSSScore
-
-	cweCount := len(snykVulnerability.Identifiers.CWE)
-	if cweCount > 0 {
-		if cweCount > 1 {
-			logger.Infof("Multiple CWE found (SNYK ID: %f). Storing the first CWE found.", snykVulnerability.CVSSScore)
-		}
-
-		cweID, err := strconv.Atoi(strings.ReplaceAll(snykVulnerability.Identifiers.CWE[0], "CWE-", ""))
-		if err != nil {
-			logger.Errorf("Not possible to convert %s to uint32", snykVulnerability.Identifiers.CWE[0])
-		} else {
-			vulcanVulnerability.CWEID = uint32(cweID)
-		}
-	}
-
-	return vulcanVulnerability, nil
 }
 
 var regexpRemediationTagBegin = regexp.MustCompile(`(?i)<h2.*id="remediation".*</h2>`)
