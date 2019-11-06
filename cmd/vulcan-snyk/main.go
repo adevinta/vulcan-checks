@@ -118,8 +118,8 @@ func main() {
 
 				vulcanVulnerability.Summary = snykIssues[0].Title + ": " + moduleName
 				vulcanVulnerability.Description = extractOverview([]byte(snykIssues[0].Description))
-				vulcanVulnerability.Details = extractDetails([]byte(snykIssues[0].Description))
-				vulcanVulnerability.ImpactDetails = createImpactDetails(snykIssues)
+				vulcanVulnerability.Details = createDetails(snykIssues)
+				vulcanVulnerability.ImpactDetails = extractImpactDetails([]byte(snykIssues[0].Description))
 				vulcanVulnerability.Score = snykIssues[0].CVSSScore
 				vulcanVulnerability.Recommendations = extractRecommendations([]byte(snykIssues[0].Description))
 
@@ -154,7 +154,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func createImpactDetails(vulnerabilities []SnykVulnerability) string {
+func createDetails(vulnerabilities []SnykVulnerability) string {
 	res := ""
 	for _, vulnerability := range vulnerabilities {
 		str := "Introduced through: "
@@ -215,7 +215,7 @@ var regexpDetailsTagBegin = regexp.MustCompile(`(?i)<h2.*id="details".*</h2>`)
 
 var regexpNextH2TagBegin = regexp.MustCompile(`(?i)<h2`)
 
-func extractDetails(buf []byte) string {
+func extractImpactDetails(buf []byte) string {
 	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs)
 
 	bufStr := string(buf)
