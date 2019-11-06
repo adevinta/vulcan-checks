@@ -65,8 +65,9 @@ func main() {
 		}
 
 		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:  target,
-			Auth: auth,
+			URL:   target,
+			Auth:  auth,
+			Depth: 1,
 		})
 		if err != nil {
 			return err
