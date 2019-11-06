@@ -73,11 +73,11 @@ func main() {
 			return err
 		}
 
-		if os.ExpandEnv("$SNYK_TOKEN") == "" {
+		if os.Getenv("SNYK_TOKEN") == "" {
 			return fmt.Errorf("SNYK_TOKEN is not set")
 		}
 
-		output, code, err := command.Execute(ctx, logger, "snyk", append([]string{"auth", os.ExpandEnv("$SNYK_TOKEN")})...)
+		output, code, err := command.Execute(ctx, logger, "sh", append([]string{"-c", "snyk auth $SNYK_TOKEN"})...)
 		if code != 0 {
 			return fmt.Errorf("%s", output)
 		}
