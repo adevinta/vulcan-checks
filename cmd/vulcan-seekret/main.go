@@ -59,14 +59,14 @@ func main() {
 			return errors.New("check target missing")
 		}
 
-		// We check if the target is in Adevinta's GHE.
+		// We check if the target is not the public Github.
 		targetURL, err := url.Parse(target)
 		if err != nil {
 			return err
 		}
 
 		var auth *http.BasicAuth
-		if targetURL.Host == "github.mpi-internal.com" {
+		if targetURL.Host != "github.com" {
 			auth = &http.BasicAuth{
 				Username: "username", // Can be anything except blank.
 				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
