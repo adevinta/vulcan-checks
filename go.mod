@@ -9,14 +9,18 @@ require (
 	github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20190916123546-100c3a96f161
 	github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff
+	github.com/apuigsech/seekret v0.0.0-20161231092511-9b1f7ea1b3fd
+	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/aws/aws-sdk-go v1.25.1
+	github.com/codahale/blake2 v0.0.0-20150924215134-8d10d0420cbf // indirect
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/knqyf263/go-rpm-version v0.0.0-20170716094938-74609b86c936
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/miekg/dns v1.1.19 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992
 	gopkg.in/resty.v1 v1.12.0
+	gopkg.in/src-d/go-git.v4 v4.13.1
+	gopkg.in/yaml.v2 v2.2.5 // indirect
 )
