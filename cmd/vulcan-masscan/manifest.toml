@@ -1,0 +1,3 @@
+Description = "Checks if a host has any open port by scanning the whole TCP port range using masscan"
+AssetTypes = ["Hostname", "IP", "IPRange"]
+Timeout = 3600 # 1 hour expressed in seconds.

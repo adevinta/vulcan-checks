@@ -1,0 +1,2 @@
+Description = "Checks if an asset is vulnerable to LuckyMinus20 attack"
+AssetTypes = ["Hostname", "IP"]

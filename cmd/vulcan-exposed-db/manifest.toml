@@ -1,0 +1,2 @@
+Description = "Checks if an asset has database well known ports open"
+AssetTypes = ["Hostname", "IP"]

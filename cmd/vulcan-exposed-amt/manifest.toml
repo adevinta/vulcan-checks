@@ -1,0 +1,2 @@
+Description = "Checks if an asset has the Intel AMT port exposed."
+AssetTypes = ["Hostname", "IP"]

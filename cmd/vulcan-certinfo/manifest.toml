@@ -1,0 +1,3 @@
+Description = "Gathers TLS Certificate information"
+Timeout = 15
+AssetTypes = ["Hostname"]

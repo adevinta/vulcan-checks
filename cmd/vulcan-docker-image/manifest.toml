@@ -1,0 +1,2 @@
+Description = "Scans docker images using Clair"
+AssetTypes = ["DockerImage"]

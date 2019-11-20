@@ -1,0 +1,4 @@
+Description = "Checks if a host has any open ports by scanning the 1000 most common TCP and UDP ports"
+AssetTypes = ["Hostname", "IP"]
+Timeout = 10800 # 3 hours expressed in seconds.
+Options = '{"timing": 4}'

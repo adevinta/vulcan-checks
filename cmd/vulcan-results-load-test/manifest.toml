@@ -1,0 +1,2 @@
+Description = "Check for testing performance when a check generates a lot of data"
+Timeout= 700 # Expressed in seconds as an integer.

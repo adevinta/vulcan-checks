@@ -1,0 +1,3 @@
+Description = "Checks if the asset contains an exposed Memcached server"
+Options = '{"port":11211}'
+AssetTypes = ["Hostname", "IP"]

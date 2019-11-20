@@ -1,0 +1,2 @@
+Description = "Runs an AWS Trusted Advisor check against an AWS account"
+AssetTypes = ["AWSAccount"]

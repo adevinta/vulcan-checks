@@ -1,0 +1,2 @@
+Description = "Checks if an asset has a RDP port exposed."
+AssetTypes = ["Hostname", "IP"]
