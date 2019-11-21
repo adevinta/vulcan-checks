@@ -1,2 +1,3 @@
 Description = "Scans docker images using Clair"
 AssetTypes = ["DockerImage"]
+RequiredVars = ["PORT_AUTHORITY_ENDPOINT"]
