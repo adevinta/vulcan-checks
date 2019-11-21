@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -19,9 +20,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 	"github.com/aws/aws-sdk-go/aws/arn"
 )
 
@@ -39,9 +40,7 @@ var (
 )
 
 type options struct {
-	VulcanAssumeRoleURL string `json:"vulcan_assume_role_url"`
-	Role                string `json:"role"`
-	RefreshTimeout      int    `json:"refresh_timeout"`
+	RefreshTimeout int `json:"refresh_timeout"`
 }
 
 func main() {
@@ -49,7 +48,6 @@ func main() {
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {
-			opt.VulcanAssumeRoleURL = "http://localhost:8080/assume"
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
@@ -93,7 +91,7 @@ func scanAccount(opt options, target string, logger *logrus.Entry, state state.S
 		return err
 	}
 
-	creds, err := getCredentials(opt.VulcanAssumeRoleURL, target, opt.Role, logger)
+	creds, err := getCredentials(os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT"), target, os.Getenv("ROLE_NAME"), logger)
 	if err != nil {
 		return err
 	}

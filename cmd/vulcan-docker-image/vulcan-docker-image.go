@@ -6,23 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 	version "github.com/knqyf263/go-rpm-version"
 	"gopkg.in/resty.v1"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
 var checkName = "vulcan-docker-image"
-
-type options struct {
-	PortauthorityURL string `json:"portauthority_url"`
-}
 
 type CreateScanRequest struct {
 	Image Image `json:"Image"`
@@ -107,13 +104,8 @@ func main() {
 }
 
 func run(ctx context.Context, target string, optJSON string, state state.State) error {
-	var opt options
-	if optJSON != "" {
-		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
-			return err
-		}
-	}
-	log.Printf("using %s as portauthority URL", opt.PortauthorityURL)
+	portAuthorityURL := os.Getenv("PORT_AUTHORITY_ENDPOINT")
+	log.Printf("using %s as portauthority URL", portAuthorityURL)
 
 	slashSplit := strings.SplitAfterN(target, "/", 2)
 	if len(slashSplit) <= 1 {
@@ -141,7 +133,7 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	request.SetResult(CreateScanRequest{})
 	request.SetBody(createScanRequest)
 	request.SetContext(ctx)
-	createScanResponse, err := request.Post(opt.PortauthorityURL)
+	createScanResponse, err := request.Post(portAuthorityURL)
 	if err != nil {
 		return err
 	}
@@ -154,7 +146,7 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	request.SetHeader("Accept", "application/json")
 	request.SetResult(GetScanResponse{})
 	request.SetContext(ctx)
-	getScanResponse, err := request.Get(fmt.Sprintf("%s/%d?vulnerabilities&policy=default", opt.PortauthorityURL, createScanData.Image.ID))
+	getScanResponse, err := request.Get(fmt.Sprintf("%s/%d?vulnerabilities&policy=default", portAuthorityURL, createScanData.Image.ID))
 	if err != nil {
 		return err
 	}
