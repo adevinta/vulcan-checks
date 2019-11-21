@@ -1,0 +1,2 @@
+Description = "Checks if a domain has a SPF record on DNS"
+AssetTypes = ["DomainName"]

@@ -1,0 +1,2 @@
+Description = "Performs a quick Nmap ping scan that identifies which hosts are up"
+AssetTypes = ["IPRange"]

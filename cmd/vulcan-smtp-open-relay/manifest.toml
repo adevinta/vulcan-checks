@@ -1,0 +1,2 @@
+Description = "Check for testing SMTP Open Relay"
+AssetTypes = ["Hostname", "IP"]

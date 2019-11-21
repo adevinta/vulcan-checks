@@ -1,0 +1,2 @@
+Description = "Checks for IPv6 presence"
+AssetTypes = ["Hostname"]

@@ -1,0 +1,3 @@
+Description = "Runs Wordpress scan"
+Timeout= 1500 # Expressed in seconds as an integer.
+AssetTypes = ["Hostname"]

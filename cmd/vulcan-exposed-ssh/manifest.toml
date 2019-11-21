@@ -1,0 +1,2 @@
+Description = "Checks SSH server configuration for compliance with Mozilla OpenSSH guidelines"
+AssetTypes = ["Hostname", "IP"]

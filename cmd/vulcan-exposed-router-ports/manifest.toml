@@ -1,0 +1,2 @@
+Description = "Checks if an asset has routers well known ports open."
+AssetTypes = ["Hostname", "IP"]

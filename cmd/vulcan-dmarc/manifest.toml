@@ -1,0 +1,2 @@
+Description = "Checks if a domain have valid DNS configuration for DMARC"
+AssetTypes = ["DomainName"]

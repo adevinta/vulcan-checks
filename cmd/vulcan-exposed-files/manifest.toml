@@ -1,0 +1,2 @@
+Description = "Checks web servers for exposed sensitive files"
+AssetTypes = ["Hostname"]
