@@ -37,7 +37,13 @@ func (r *runner) Run(ctx context.Context, target string, optJSON string, state s
 			return err
 		}
 	}
-	policyID := os.Getenv("NESSUS_POLICY_ID")
+
+	p, err := strconv.Atoi(os.Getenv("NESSUS_POLICY_ID"))
+	if err != nil {
+		return fmt.Errorf("wrong value for NESSUS_POLICY_ID: %v", err)
+	}
+	policyID := int64(p)
+
 	pollingInterval := opt.PollingInterval
 	basicAuth := opt.BasicAuth
 	r.Delete = opt.Delete
