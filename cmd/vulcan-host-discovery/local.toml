@@ -2,4 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "localhost"
-Opts = '{"timing": 3, "known_hosts_list_url": ""}'
+Options = '{"timing": 3, "known_hosts_list_url": ""}'
