@@ -3,4 +3,4 @@ Target = "registry-1.docker.io/library/postgres:9.6"
 # example targets:
 # registry-1.docker.io/library/postgres:9.6
 # Port Authority : https://github.com/target/portauthority
-Opts = '{"portauthority_url":"https://example.com/v1/images"}'
+Options = '{"portauthority_url":"https://example.com/v1/images"}'

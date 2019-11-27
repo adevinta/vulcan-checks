@@ -1,3 +1,3 @@
 [Check]
 Target = "example.com"
-Opts = "{\"depth\":2, \"active\":true}"
+Options = "{\"depth\":2, \"active\":true}"
