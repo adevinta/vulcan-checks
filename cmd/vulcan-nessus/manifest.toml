@@ -1,6 +1,5 @@
 Description = "Runs a Nessus scan"
 Timeout = 28800 # 8 hour. Expressed in seconds as an integer.
-QueueName = "vulcanNessusQueue"
 AssetTypes = ["Hostname", "IP"]
 RequiredVars = [
   "NESSUS_ENDPOINT",
