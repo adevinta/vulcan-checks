@@ -9,7 +9,9 @@ require (
 	github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20191127095848-65ef05254e9c
 	github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff
+	github.com/adevinta/vulcan-types v0.0.0-20190816125304-ee0624e808ce
 	github.com/aws/aws-sdk-go v1.25.43
+	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/knqyf263/go-rpm-version v0.0.0-20170716094938-74609b86c936
@@ -17,6 +19,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/miekg/dns v1.1.22 // indirect
+	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992
 	golang.org/x/crypto v0.0.0-20191122220453-ac88ee75c92c // indirect

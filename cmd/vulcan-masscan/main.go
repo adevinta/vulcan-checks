@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/helpers"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
+	types "github.com/adevinta/vulcan-types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -127,13 +127,11 @@ func main() {
 		}
 
 		dest := target
-		t := helpers.Target{Value: target}
-		b, _ := t.IsHostname()
 		solved := false
 		switch {
-		case t.IsIP(), t.IsCIDR():
+		case types.IsIP(target), types.IsCIDR(target):
 			break
-		case b:
+		case types.IsHostname(target):
 			// masscan doesn't accept hostnames as target.
 			ips, err := net.LookupHost(target)
 			if err != nil || len(ips) < 1 {
