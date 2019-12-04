@@ -2,12 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
+	"net/http"
+	"time"
 
 	gozuul "github.com/adevinta/gozuul"
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
+	types "github.com/adevinta/vulcan-types"
 )
 
 const (
@@ -29,9 +34,17 @@ var (
 
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
-		if target == "" {
-			return errors.New("check target missing")
+		logger := check.NewCheckLog(checkName)
+
+		target, err = toURL(target)
+		if err != nil {
+			if errors.Is(err, ErrNotReachable) {
+				logger.Info("no HTTP server found in target")
+				return nil
+			}
+			return err
 		}
+
 		res, err := gozuul.PassiveScan(target)
 		if err != nil {
 			return err
@@ -46,4 +59,47 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+var (
+	ErrBadTarget    = errors.New("bad target")
+	ErrNotReachable = errors.New("not reachable")
+)
+
+func toURL(target string) (string, error) {
+	switch {
+	case types.IsWebAddress(target):
+		if testURL(target) {
+			return target, nil
+		}
+	case types.IsHostname(target) || types.IsIP(target):
+		for _, scheme := range []string{"https", "http"} {
+			url := fmt.Sprintf("%s://%s", scheme, target)
+			if testURL(url) {
+				return url, nil
+			}
+		}
+	default:
+		return "", fmt.Errorf("%w: '%s' can not be converted to a URL", ErrBadTarget, target)
+	}
+
+	return "", fmt.Errorf("%w", ErrNotReachable)
+}
+
+func testURL(url string) bool {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Transport: tr,
+		Timeout:   timeout,
+	}
+
+	_, err := client.Get(url)
+
+	return err == nil
 }

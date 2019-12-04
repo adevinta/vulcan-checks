@@ -1,2 +1,2 @@
 Description = "Checks if an asset is vulnerable to Remote Code Execution as specified in nflx-2016-003"
-AssetTypes = ["Hostname", "IP"]
+AssetTypes = ["Hostname", "IP", "WebAddress"]
