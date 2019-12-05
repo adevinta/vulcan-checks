@@ -1,2 +1,3 @@
 Description = "Checks if an asset is vulnerable to Remote Code Execution as specified in nflx-2016-003"
 AssetTypes = ["Hostname", "IP", "WebAddress"]
+Options = '{"ports" : [80, 443, 8080]}'

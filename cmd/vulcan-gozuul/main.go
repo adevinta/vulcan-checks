@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,27 +31,54 @@ var (
 		References:      []string{"https://github.com/Netflix/security-bulletins/blob/master/advisories/nflx-2016-003.md"},
 		Recommendations: []string{"Ensure the property ZUUL_FILTER_ADMIN_ENABLED is set to False."},
 	}
+
+	ErrBadTarget  = errors.New("bad target")
+	ErrBadOptions = errors.New("bad options")
 )
+
+type options struct {
+	Schemes []string `json:"schemes"`
+	Ports   []int    `json:"ports"`
+}
 
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
-		logger := check.NewCheckLog(checkName)
-
-		target, err = toURL(target)
-		if err != nil {
-			if errors.Is(err, ErrNotReachable) {
-				logger.Info("no HTTP server found in target")
-				return nil
+		var opt options
+		if optJSON != "" {
+			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
+				return fmt.Errorf("%w: %v", ErrBadOptions, err)
 			}
-			return err
 		}
 
-		res, err := gozuul.PassiveScan(target)
+		urls, err := discoverURLs(target, opt.Schemes, opt.Ports)
 		if err != nil {
 			return err
 		}
 
-		if res.Vulnerable {
+		gr := report.ResourcesGroup{
+			Name: "Network Resources",
+			Header: []string{
+				"URL",
+			},
+		}
+
+		vulnerable := false
+		for _, url := range urls {
+			res, err := gozuul.PassiveScan(url)
+			if err != nil {
+				return err
+			}
+			if res.Vulnerable {
+				vulnerable = true
+				networkResource := map[string]string{
+					"URL": url,
+				}
+				gr.Rows = append(gr.Rows, networkResource)
+			}
+		}
+
+		if vulnerable {
+			gozuulVuln.Resources = append(gozuulVuln.Resources, gr)
 			state.AddVulnerabilities(gozuulVuln)
 		}
 
@@ -61,29 +89,34 @@ func main() {
 	c.RunAndServe()
 }
 
-var (
-	ErrBadTarget    = errors.New("bad target")
-	ErrNotReachable = errors.New("not reachable")
-)
+func discoverURLs(target string, schemes []string, ports []int) ([]string, error) {
+	if len(schemes) == 0 {
+		schemes = append(schemes, "http", "https")
+	}
+	if len(ports) == 0 {
+		ports = append(ports, 80, 443)
+	}
 
-func toURL(target string) (string, error) {
+	var urls []string
 	switch {
 	case types.IsWebAddress(target):
 		if testURL(target) {
-			return target, nil
+			urls = append(urls, target)
 		}
 	case types.IsHostname(target) || types.IsIP(target):
-		for _, scheme := range []string{"https", "http"} {
-			url := fmt.Sprintf("%s://%s", scheme, target)
-			if testURL(url) {
-				return url, nil
+		for _, scheme := range schemes {
+			for _, port := range ports {
+				url := fmt.Sprintf("%s://%s:%d", scheme, target, port)
+				if testURL(url) {
+					urls = append(urls, url)
+				}
 			}
 		}
 	default:
-		return "", fmt.Errorf("%w: '%s' can not be converted to a URL", ErrBadTarget, target)
+		return nil, fmt.Errorf("%w: '%s' can not be converted to a URL", ErrBadTarget, target)
 	}
 
-	return "", fmt.Errorf("%w", ErrNotReachable)
+	return urls, nil
 }
 
 func testURL(url string) bool {
