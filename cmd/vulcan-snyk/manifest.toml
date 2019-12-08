@@ -1,0 +1,2 @@
+Description = "Runs Snyk CLI against a repository"
+AssetTypes = ["WebAddress"]
