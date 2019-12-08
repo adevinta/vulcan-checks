@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,8 +14,6 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
-	git "gopkg.in/src-d/go-git.v4"
-	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
@@ -41,38 +37,6 @@ func main() {
 			return errors.New("check target missing")
 		}
 
-		targetURL, err := url.Parse(target)
-		if err != nil {
-			return err
-		}
-
-		var auth *http.BasicAuth
-		if targetURL.Host == "github.mpi-internal.com" {
-			auth = &http.BasicAuth{
-				Username: "username", // Can be anything except blank.
-				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
-			}
-		}
-
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
-		err = os.RemoveAll(repoPath)
-		if err != nil {
-			return err
-		}
-
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return err
-		}
-
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:   target,
-			Auth:  auth,
-			Depth: 1,
-		})
-		if err != nil {
-			return err
-		}
-
 		if os.Getenv("SNYK_TOKEN") == "" {
 			return fmt.Errorf("SNYK_TOKEN is not set")
 		}
@@ -87,7 +51,7 @@ func main() {
 			return err
 		}
 
-		output, _, _ = command.Execute(ctx, logger, "snyk", append([]string{"test", repoPath, "--all-sub-projects", "--json"})...)
+		output, _, _ = command.Execute(ctx, logger, "snyk", append([]string{"test", target, "--all-sub-projects", "--json"})...)
 
 		r := SnykResponse{}
 		err = json.Unmarshal(output, &r)
