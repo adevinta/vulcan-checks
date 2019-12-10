@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
-	github.com/adevinta/gozuul v0.0.0-20190826162702-ffddba644c3f
+	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
 	github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20191204152159-8287b2fe0bbe
 	github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff
@@ -18,5 +18,6 @@ require (
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/sirupsen/logrus v1.4.2
 	github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992
+	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	gopkg.in/resty.v1 v1.12.0
 )
