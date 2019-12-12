@@ -2,4 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "example.com"
-Opts = "{\"selectors\":[\"default\"]}"
+Options = "{\"selectors\":[\"default\"]}"

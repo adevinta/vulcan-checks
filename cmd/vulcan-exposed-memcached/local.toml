@@ -1,5 +1,5 @@
 [Check]
 Target = "localhost"
-Opts = '{"port":11211}'
+Options = '{"port":11211}'
 [Log]
 LogLevel = "DEBUG"
