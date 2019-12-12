@@ -1,0 +1,12 @@
+generic_private_key:
+  match: .*-----BEGIN PRIVATE KEY-----.*
+pgp_private_key:
+  match: .*-----BEGIN PGP PRIVATE KEY BLOCK-----.*
+rsa_private_key:
+  match: .*-----BEGIN RSA PRIVATE KEY-----.*
+ec_private_key:
+  match: .*-----BEGIN EC PRIVATE KEY-----.*
+dsa_private_key:
+  match: .*-----BEGIN DSA PRIVATE KEY-----.*
+openssh_private_key:
+  match: .*-----BEGIN OPENSSH PRIVATE KEY-----.*

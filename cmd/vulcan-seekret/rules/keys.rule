@@ -1,0 +1,46 @@
+artifactory:
+  match: (?i)artifactory.{0,50}(\\\"|'|`)?[a-zA-Z0-9=]{112}(\\\"|'|`)?
+codeclimate:
+  match: (?i)codeclima.{0,50}(\\\"|'|`)?[0-9a-f]{64}(\\\"|'|`)?
+facebook_access_token:
+  match: EAACEdEose0cBA[0-9A-Za-z]+
+google_gcm_service_account:
+  match: ((\\\"|'|`)?type(\\\"|'|`)?\\\\s{0,50}(:|=>|=)\\\\s{0,50}(\\\"|'|`)?service_account(\\\"|'|`)?,?)
+stripe_api_key:
+  match: (?:r|s)k_[live|test]_[0-9a-zA-Z]{24}
+google_oauth_key:
+  match: [0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com
+google_cloud_api_key:
+  match: AIza[0-9A-Za-z\\-_]{35}
+google_oauth_access_token:
+  match: ya29\\.[0-9A-Za-z\\-_]+
+picatic_api_key:
+  match: sk_[live|test]_[0-9a-z]{32}
+square_access_token:
+  match: sq0atp-[0-9A-Za-z\-_]{22}
+square_oauth_secret:
+  match: sq0csp-[0-9A-Za-z\-_]{43}
+paypal_braintree_access_token:
+  match: access_token\$production\$[0-9a-z]{16}\$[0-9a-f]{32}
+amazon_mws_auth_token:
+  match: amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+twilo_api_key:
+  match: SK[0-9a-fA-F]{32}
+mailgun_api_key:
+  match: key-[0-9a-zA-Z]{32}
+mailchimp_api_key:
+  match: [0-9a-f]{32}-us[0-9]{12}
+outlook_team:
+  match: (https\\://outlook\\.office.com/webhook/[0-9a-f-]{36}\\@)
+sauce_token:
+  match: (?i)sauce.{0,50}(\\\"|'|`)?[0-9a-f-]{36}(\\\"|'|`)?
+slack_token:
+  match: (xox[pboa]-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-z0-9]{32})
+slack_webhook:
+  match: https://hooks.slack.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}
+sonarqube_docs_api_key:
+  match: (?i)sonar.{0,50}(\\\"|'|`)?[0-9a-f]{40}(\\\"|'|`)?
+hockeyapp:
+  match: (?i)hockey.{0,50}(\\\"|'|`)?[0-9a-f]{32}(\\\"|'|`)?
+nuget_api_key:
+  match: oy2[a-z0-9]{43}
