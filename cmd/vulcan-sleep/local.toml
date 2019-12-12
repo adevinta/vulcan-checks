@@ -1,2 +1,2 @@
 [Check]
-Opts = "{\"sleep_time\":1}"
+Options = "{\"sleep_time\":1}"

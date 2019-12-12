@@ -2,23 +2,23 @@
 LogLevel = "debug"
 [Check]
 Target = "https://example.com"
-Opts = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \"(?s)Transfer.*Alt\"}]}"
+Options = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \"(?s)Transfer.*Alt\"}]}"
 
 # Other examples
 
 # This example will trigger the vuln:
 # Target="https://www.google.com"
-# Opts = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \".*www.google.com.*\"}]}"
+# Options = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \".*www.google.com.*\"}]}"
 
 
 # This example will not trigger the vuln
 # Target="https://www.google.com"
-# Opts = "{\"paths\":[{\"path\":\"/\", \"status\": 400]}"
+# Options = "{\"paths\":[{\"path\":\"/\", \"status\": 400]}"
 
 # This example will trigger the vuln
 # Target="https://www.google.com"
-# Opts = "{\"paths\":[{\"path\":\"/\"}]}"
+# Options = "{\"paths\":[{\"path\":\"/\"}]}"
 
 # This example will trigger the vuln
 # Target="https://www.google.com"
-# Opts = "{\"paths\":[{\"path\":\"/\", \"status\": 200}]}"
+# Options = "{\"paths\":[{\"path\":\"/\", \"status\": 200}]}"

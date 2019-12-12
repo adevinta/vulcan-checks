@@ -2,4 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "example.com"
-Opts = "{\"ports\":[\"22\"], \"allowed\": true}"
+Options = "{\"ports\":[\"22\"], \"allowed\": true}"
