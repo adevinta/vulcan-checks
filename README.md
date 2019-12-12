@@ -41,3 +41,4 @@ Currently there's no vendoring provided for this project.
 34. **vulcan-exposed-endpoint** - Checks if well known or provided paths are present in a http url
 35. **vulcan-exposed-hdfs** - Checks if an EMR cluster is exposed to the Internet
 36. **vulcan-exposed-rdp** - Checks if an Microsoft Remote Desktop service is exposed to the Internet
+37. **vulcan-seekret** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
