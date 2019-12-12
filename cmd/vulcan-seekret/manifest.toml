@@ -1,5 +1,4 @@
 Description = "Finds leaked secrets in a Git repository using Seekret"
 Timeout = 600
-Options = '{}'
-AssetTypes = ["WebAddress"] # For testing. Should be "GitRepository".
+AssetTypes = ["GitRepository"]
 RequiredVars = ["GITHUB_ENTERPRISE_TOKEN"]
