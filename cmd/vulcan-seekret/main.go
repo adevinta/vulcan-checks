@@ -109,6 +109,8 @@ func main() {
 		secrets := s.ListSecrets()
 
 		if len(secrets) > 0 {
+			vuln := leakedSecret
+
 			leakedSecrets := report.ResourcesGroup{
 				Name: "Leaked Secrets",
 				Header: []string{
@@ -116,14 +118,11 @@ func main() {
 					"File",
 					"Line Number",
 					"Line Summary",
+					"Exception",
 				},
 			}
 
 			for _, secret := range secrets {
-				if secret.Exception {
-					continue
-				}
-
 				objectPath, err := filepath.Rel(repoPath, secret.Object.Name)
 				if err != nil {
 					continue
@@ -140,13 +139,16 @@ func main() {
 						"File":         objectPath,
 						"Line Number":  fmt.Sprintf("%d", secret.Nline),
 						"Line Summary": lineSummary,
+						"Exception":    fmt.Sprintf("%v", secret.Exception),
 					},
 				)
+
+				if !secret.Exception {
+					vuln.Score = report.SeverityThresholdHigh
+				}
 			}
 
 			if len(leakedSecrets.Rows) > 0 {
-				vuln := leakedSecret
-				vuln.Score = report.SeverityThresholdHigh
 				vuln.Resources = []report.ResourcesGroup{leakedSecrets}
 				state.AddVulnerabilities(vuln)
 			}
