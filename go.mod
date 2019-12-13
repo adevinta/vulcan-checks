@@ -12,12 +12,14 @@ require (
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/aws/aws-sdk-go v1.25.47
+	github.com/gomarkdown/markdown v0.0.0-20191207194928-fbea82c4bb03
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/knqyf263/go-rpm-version v0.0.0-20170716094938-74609b86c936
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
+	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
