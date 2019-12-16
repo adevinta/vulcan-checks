@@ -79,7 +79,6 @@ func main() {
 				vulcanVulnerability.Summary = snykIssues[0].Title + ": " + moduleName
 				vulcanVulnerability.Description = extractOverview([]byte(snykIssues[0].Description))
 				vulcanVulnerability.Details = createDetails(snykIssues)
-				vulcanVulnerability.ImpactDetails = extractImpactDetails([]byte(snykIssues[0].Description))
 				vulcanVulnerability.Score = snykIssues[0].CVSSScore
 				vulcanVulnerability.Recommendations = extractRecommendations([]byte(snykIssues[0].Description))
 
@@ -174,29 +173,6 @@ var regexpOverviewTagBegin = regexp.MustCompile(`(?i)<h2.*id="overview".*</h2>`)
 var regexpDetailsTagBegin = regexp.MustCompile(`(?i)<h2.*id="details".*</h2>`)
 
 var regexpNextH2TagBegin = regexp.MustCompile(`(?i)<h2`)
-
-func extractImpactDetails(buf []byte) string {
-	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs | parser.HardLineBreak)
-
-	bufStr := string(buf)
-	//bufStr = strings.ReplaceAll(bufStr, "\\\\r\\\\n", "\n")
-	//bufStr = strings.ReplaceAll(bufStr, "\\\\n", "\n")
-
-	htmlUnsafe := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
-	html := []byte(bluemonday.UGCPolicy().Sanitize(string(htmlUnsafe)))
-
-	locationTagDetails := regexpDetailsTagBegin.FindIndex(html)
-	if len(locationTagDetails) > 1 {
-		html = html[locationTagDetails[1]:]
-		locationTagNextH2 := regexpNextH2TagBegin.FindIndex(html)
-		if len(locationTagNextH2) > 1 {
-			html = html[:locationTagNextH2[0]]
-		}
-		return strings.Trim(string(html), "\n")
-	}
-
-	return ""
-}
 
 func extractOverview(buf []byte) string {
 	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs)
