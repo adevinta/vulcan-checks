@@ -206,7 +206,8 @@ func extractOverview(buf []byte) string {
 	bufStr = strings.ReplaceAll(bufStr, "\\\\n", "\n")
 	bufStr = strings.ReplaceAll(bufStr, "--|", "---|")
 
-	html := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
+	htmlUnsafe := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
+	html := bluemondayParser.AllowAttrs("id").OnElements("h2").SanitizeBytes(htmlUnsafe)
 
 	locationTagOverview := regexpOverviewTagBegin.FindIndex(html)
 	if len(locationTagOverview) > 1 {
