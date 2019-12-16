@@ -149,10 +149,10 @@ func doRequest(method, path string) ([]byte, error) {
 	return nil, err
 }
 
-func getSnykRepositoryName(snykProject project, options options) string {
+func getSnykRepositoryName(snykProject project, orgName string) string {
 	snykRepositoryName := snykProject.Name
 	if snykProject.Origin == `github-enterprise` {
-		snykRepositoryName = snykRepositoryName[len(options.BaseURL)+1:]
+		snykRepositoryName = snykRepositoryName[len(orgName)+1:]
 		i := strings.Index(snykRepositoryName, ":")
 		if i >= 0 {
 			snykRepositoryName = snykRepositoryName[:i]

@@ -41,7 +41,7 @@ func main() {
 
 		r := SnykResponse{}
 		for _, snykProject := range snykProjects.Projects {
-			snykRepositoryName := getSnykRepositoryName(snykProject, *options)
+			snykRepositoryName := getSnykRepositoryName(snykProject, *organizationName)
 
 			if snykRepositoryName == *repositoryName {
 				p, err := getProjectIssues(snykOrgID, snykProject.ID)
