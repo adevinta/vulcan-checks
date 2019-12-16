@@ -176,13 +176,14 @@ var regexpDetailsTagBegin = regexp.MustCompile(`(?i)<h2.*id="details".*</h2>`)
 var regexpNextH2TagBegin = regexp.MustCompile(`(?i)<h2`)
 
 func extractImpactDetails(buf []byte) string {
-	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs)
+	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs | parser.HardLineBreak)
 
 	bufStr := string(buf)
-	bufStr = strings.ReplaceAll(bufStr, "--|", "---|")
+	//bufStr = strings.ReplaceAll(bufStr, "\\\\r\\\\n", "\n")
+	//bufStr = strings.ReplaceAll(bufStr, "\\\\n", "\n")
 
 	htmlUnsafe := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
-	html := bluemondayParser.AllowAttrs("id").OnElements("h2").SanitizeBytes(htmlUnsafe)
+	html := []byte(bluemonday.UGCPolicy().Sanitize(string(htmlUnsafe)))
 
 	locationTagDetails := regexpDetailsTagBegin.FindIndex(html)
 	if len(locationTagDetails) > 1 {
