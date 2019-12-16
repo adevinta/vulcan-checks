@@ -1,2 +1,3 @@
 Description = "Runs Snyk CLI against a repository"
-AssetTypes = ["WebAddress"]
+AssetTypes = ["GitRepository"]
+RequiredVars = ["SNYK_TOKEN"]

@@ -2,12 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,15 +9,10 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/sirupsen/logrus"
-	git "gopkg.in/src-d/go-git.v4"
-	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
-
-	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 )
 
 var (
@@ -33,66 +22,37 @@ var (
 
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
-		logger.WithFields(logrus.Fields{
-			"repository": target,
-		}).Debug("testing repository")
-
-		if target == "" {
-			return errors.New("check target missing")
-		}
-
-		targetURL, err := url.Parse(target)
+		options, err := parseOptions(optJSON)
 		if err != nil {
 			return err
 		}
 
-		var auth *http.BasicAuth
-		if targetURL.Host == "github.mpi-internal.com" {
-			auth = &http.BasicAuth{
-				Username: "username", // Can be anything except blank.
-				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
-			}
-		}
-
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
-		err = os.RemoveAll(repoPath)
+		organizationName, repositoryName, err := parseTarget(target)
 		if err != nil {
 			return err
 		}
 
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return err
-		}
+		snykOrgID := options.OrganizationNameToSnykID[*organizationName]
 
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:   target,
-			Auth:  auth,
-			Depth: 1,
-		})
+		snykProjects, err := getProjects(snykOrgID)
 		if err != nil {
 			return err
 		}
-
-		if os.Getenv("SNYK_TOKEN") == "" {
-			return fmt.Errorf("SNYK_TOKEN is not set")
-		}
-
-		output, code, err := command.Execute(ctx, logger, "sh", append([]string{"-c", "snyk auth $SNYK_TOKEN"})...)
-		if code != 0 {
-			return fmt.Errorf("%s", output)
-		}
-
-		logger.Infof("auth: %s", output)
-		if err != nil {
-			return err
-		}
-
-		output, _, _ = command.Execute(ctx, logger, "snyk", append([]string{"test", repoPath, "--all-sub-projects", "--json"})...)
 
 		r := SnykResponse{}
-		err = json.Unmarshal(output, &r)
-		if err != nil {
-			return err
+		for _, snykProject := range snykProjects.Projects {
+			snykRepositoryName := getSnykRepositoryName(snykProject, *options)
+
+			if snykRepositoryName == *repositoryName {
+				p, err := getProjectIssues(snykOrgID, snykProject.ID)
+				if err != nil {
+					return err
+				}
+
+				for _, v := range p.Issues.Vulnerabilities {
+					r.Vulnerabilities = append(r.Vulnerabilities, v)
+				}
+			}
 		}
 
 		// Group vulnerabilities by their Snyk Reference ID and module name, also filter out license issues
@@ -107,7 +67,7 @@ func main() {
 				snykVulnerabilitiesMap[v.ID] = make(map[string][]SnykVulnerability)
 			}
 
-			snykVulnerabilitiesMap[v.ID][v.ModuleName] = append(snykVulnerabilitiesMap[v.ID][v.ModuleName], v)
+			snykVulnerabilitiesMap[v.ID][v.PackageName] = append(snykVulnerabilitiesMap[v.ID][v.PackageName], v)
 		}
 
 		vulns := []report.Vulnerability{}
