@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/jpillora/backoff"
+	//	"github.com/jpillora/backoff"
 )
 
 type SnykResponse struct {
@@ -110,6 +115,15 @@ func getProjects(id string) (*orgProjectsResponse, error) {
 const baseURL = "https://snyk.io/api/v1/"
 
 func doRequest(method, path string) ([]byte, error) {
+	b := &backoff.Backoff{
+		Min:    100 * time.Millisecond,
+		Max:    60 * time.Second,
+		Factor: 1.5,
+		Jitter: true,
+	}
+
+	rand.Seed(time.Now().UnixNano())
+
 	req, err := http.NewRequest(method, baseURL+path, nil)
 	if err != nil {
 		return nil, err
@@ -119,13 +133,20 @@ func doRequest(method, path string) ([]byte, error) {
 
 	client := http.Client{}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	for i := 0; i < 10; i++ {
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			return ioutil.ReadAll(resp.Body)
+		}
 
-	return ioutil.ReadAll(resp.Body)
+		waitTime := b.Duration()
+		time.Sleep(waitTime)
+
+		continue
+	}
+
+	return nil, err
 }
 
 func getSnykRepositoryName(snykProject project, options options) string {
