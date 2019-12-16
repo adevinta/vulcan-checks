@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
@@ -88,6 +89,11 @@ func main() {
 
 		s := seekret.NewSeekret()
 
+		ruleScores, err := loadRuleScoresFromDir(rulesPath)
+		if err != nil {
+			return err
+		}
+
 		s.LoadRulesFromDir(rulesPath, true)
 		s.LoadObjects(
 			sourcedir.SourceTypeDir,
@@ -133,9 +139,22 @@ func main() {
 					lineSummary = lineSummary[0:29] + "..."
 				}
 
+				ruleScore := float32(report.SeverityThresholdHigh)
+				if !secret.Exception {
+					shortRuleName := strings.Split(secret.Rule.Name, ".")[1]
+					if score, ok := ruleScores[shortRuleName]; ok {
+						ruleScore = score.Score
+					}
+
+					if ruleScore > vuln.Score {
+						vuln.Score = ruleScore
+					}
+				}
+
 				leakedSecrets.Rows = append(leakedSecrets.Rows,
 					map[string]string{
 						"Rule":         secret.Rule.Name,
+						"Severity":     fmt.Sprintf("%.1f", ruleScore),
 						"File":         objectPath,
 						"Line Number":  fmt.Sprintf("%d", secret.Nline),
 						"Line Summary": lineSummary,
@@ -143,9 +162,6 @@ func main() {
 					},
 				)
 
-				if !secret.Exception {
-					vuln.Score = report.SeverityThresholdHigh
-				}
 			}
 
 			if len(leakedSecrets.Rows) > 0 {

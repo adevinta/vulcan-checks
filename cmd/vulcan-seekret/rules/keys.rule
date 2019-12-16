@@ -9,7 +9,7 @@ google_gcm_service_account:
 stripe_api_key:
   match: (?:r|s)k_[live|test]_[0-9a-zA-Z]{24}
 google_oauth_key:
-  match: [0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com
+  match: '[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com'
 google_cloud_api_key:
   match: AIza[0-9A-Za-z\\-_]{35}
 google_oauth_access_token:
@@ -29,7 +29,7 @@ twilo_api_key:
 mailgun_api_key:
   match: key-[0-9a-zA-Z]{32}
 mailchimp_api_key:
-  match: [0-9a-f]{32}-us[0-9]{12}
+  match: '[0-9a-f]{32}-us[0-9]{12}'
 outlook_team:
   match: (https\\://outlook\\.office.com/webhook/[0-9a-f-]{36}\\@)
 sauce_token:
