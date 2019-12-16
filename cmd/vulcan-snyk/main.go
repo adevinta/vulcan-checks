@@ -179,11 +179,10 @@ func extractImpactDetails(buf []byte) string {
 	markdownParser := parser.NewWithExtensions(parser.CommonExtensions | parser.AutoHeadingIDs)
 
 	bufStr := string(buf)
-	bufStr = strings.ReplaceAll(bufStr, "\\\\r\\\\n", "\n")
-	bufStr = strings.ReplaceAll(bufStr, "\\\\n", "\n")
 	bufStr = strings.ReplaceAll(bufStr, "--|", "---|")
 
-	html := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
+	htmlUnsafe := markdown.ToHTML([]byte(bufStr), markdownParser, nil)
+	html := bluemondayParser.AllowAttrs("id").OnElements("h2").SanitizeBytes(htmlUnsafe)
 
 	locationTagDetails := regexpDetailsTagBegin.FindIndex(html)
 	if len(locationTagDetails) > 1 {
