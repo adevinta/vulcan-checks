@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -151,8 +150,6 @@ func main() {
 						vuln.Score = ruleScore
 					}
 				}
-
-				log.Println(ruleScore)
 
 				leakedSecrets.Rows = append(leakedSecrets.Rows,
 					map[string]string{
