@@ -29,7 +29,7 @@ func main() {
 		}
 
 		token := os.Getenv("WPVULNDB_API_TOKEN")
-		if token != "" {
+		if token == "" {
 			return fmt.Errorf("missing Wordpress Vulnerability Database API token")
 		}
 
