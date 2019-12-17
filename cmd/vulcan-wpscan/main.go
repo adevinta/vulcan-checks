@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -27,13 +28,18 @@ func main() {
 			return fmt.Errorf("check target missing")
 		}
 
+		token := os.Getenv("WPVULNDB_API_TOKEN")
+		if token != "" {
+			return fmt.Errorf("missing Wordpress Vulnerability Database API token")
+		}
+
 		url, ok := resolveTarget(target)
 		if !ok {
 			logger.Info("target does not answer to http or https")
 			return nil
 		}
 
-		wpScanReport, err := RunWpScan(ctx, logger, target, url)
+		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
 		if err != nil {
 			return err
 		}
