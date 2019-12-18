@@ -54,7 +54,6 @@ type WpScanReport struct {
 		LatestVersion      string          `json:"latest_version"`
 		LastUpdated        time.Time       `json:"last_updated"`
 		Outdated           bool            `json:"outdated"`
-		ReadmeURL          string          `json:"readme_url"`
 		ChangelogURL       string          `json:"changelog_url"`
 		DirectoryListing   bool            `json:"directory_listing"`
 		ErrorLogURL        string          `json:"error_log_url"`
