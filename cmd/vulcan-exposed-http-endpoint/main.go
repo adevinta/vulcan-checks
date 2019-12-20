@@ -13,10 +13,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-exposed-http-endpoint/path"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 /*
@@ -48,10 +48,9 @@ var (
 	// exposedVuln defines the vulnerability that will be returned by the check
 	// when one or more paths are exposed.
 	exposedVuln = report.Vulnerability{
-		Summary:     "Exposed URLs",
-		Description: "Paths that should not be publicly accessible are exposed.",
-		ImpactDetails: `An attacker may be able to interact with functionalities that could harm your system,
-		like admin endpoints or access information that shouldn't be public.`,
+		Summary:         "Exposed URLs",
+		Description:     "Paths that should not be publicly accessible are exposed.",
+		ImpactDetails:   `An attacker may be able to interact with functionalities that could harm your system, like admin endpoints or access information that shouldn't be public.`,
 		Score:           report.SeverityThresholdHigh,
 		Recommendations: []string{"Forbid access to the reported paths."},
 		Resources: []report.ResourcesGroup{

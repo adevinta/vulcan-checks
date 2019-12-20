@@ -1,0 +1,18 @@
+[
+	{
+		"path":"wp-uploads",
+		"reg_exp": "Index of"
+	},
+	{
+		"path":"wp-uploads/",
+		"reg_exp": "Index of"
+	},
+	{
+		"path":"wp-content/uploads",
+		"reg_exp": "Index of"
+	},
+	{
+		"path":"wp-content/uploads/",
+		"reg_exp": "Index of"
+	}
+]
