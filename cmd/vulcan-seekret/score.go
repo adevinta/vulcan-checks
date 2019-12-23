@@ -11,11 +11,11 @@ import (
 )
 
 type score struct {
-	Score float32 `yaml:"score,omitempty"`
+	Score *float32 `yaml:"score,omitempty"`
 }
 
-func loadRuleScoresFromDir(dir string) (map[string]score, error) {
-	ruleScores := make(map[string]score)
+func loadRuleScoresFromDir(dir string) (map[string]float32, error) {
+	ruleScores := make(map[string]float32)
 
 	fi, err := os.Stat(dir)
 	if err != nil {
@@ -40,7 +40,9 @@ func loadRuleScoresFromDir(dir string) (map[string]score, error) {
 			}
 
 			for k, v := range fileRuleScores {
-				ruleScores[k] = v
+				if v.Score != nil {
+					ruleScores[k] = *v.Score
+				}
 			}
 		}
 	}

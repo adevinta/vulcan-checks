@@ -143,7 +143,7 @@ func main() {
 				if !secret.Exception {
 					shortRuleName := strings.Split(secret.Rule.Name, ".")[1]
 					if score, ok := ruleScores[shortRuleName]; ok {
-						ruleScore = score.Score
+						ruleScore = score
 					}
 
 					if ruleScore > vuln.Score {
