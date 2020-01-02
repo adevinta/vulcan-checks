@@ -18,9 +18,10 @@ var (
 	wpscanFile = "/usr/local/bundle/bin/wpscan"
 
 	// WPScan parameters.
-	wpscanParams      = []string{"-f", "json", "--disable-tls-checks", "--url"}
+	wpscanBaseParams  = []string{"-f", "json", "--disable-tls-checks", "--url"}
 	wpscanForceParams = []string{"--force", "--wp-content-dir", "wp-content"}
 	wpscanScopeParams = []string{"--scope"}
+	wpscanTokenParams = []string{"--api-token"}
 )
 
 // WpScanReport holds the report produced by a wpscan run.
@@ -53,7 +54,6 @@ type WpScanReport struct {
 		LatestVersion      string          `json:"latest_version"`
 		LastUpdated        time.Time       `json:"last_updated"`
 		Outdated           bool            `json:"outdated"`
-		ReadmeURL          string          `json:"readme_url"`
 		ChangelogURL       string          `json:"changelog_url"`
 		DirectoryListing   bool            `json:"directory_listing"`
 		ErrorLogURL        string          `json:"error_log_url"`
@@ -132,7 +132,29 @@ type Vulnerability struct {
 }
 
 // RunWpScan runs wpscan an returns a report with the result of the scan.
-func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (report *WpScanReport, err error) {
+func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (report *WpScanReport, err error) {
+	params := []string{rubyArgs, wpscanFile}
+
+	resp, err := http.Get(url + "wp-content")
+	if err == nil && resp.StatusCode == http.StatusOK {
+		params = append(params, wpscanForceParams...)
+	}
+
+	wpscanScopeParams = append(wpscanScopeParams, fmt.Sprintf("*.%s", target))
+	params = append(params, wpscanScopeParams...)
+
+	wpscanTokenParams = append(wpscanTokenParams, token)
+	params = append(params, wpscanTokenParams...)
+
+	wpscanBaseParams = append(wpscanBaseParams, url)
+	params = append(params, wpscanBaseParams...)
+
+	report = &WpScanReport{}
+
+	// Print the wpscan version used.
+	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
+	logger.Infof("wpscan version: %s", output)
+
 	// Wpscan can return following errors:
 
 	// OK               = 0 # No error, scan finished w/o any vulnerabilities found
@@ -141,21 +163,6 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (r
 	// ERROR            = 3 # Exceptions raised
 	// VULNERABLE       = 4 # The target has at least one vulnerability.
 	// Currently, the interesting findings do not count as vulnerabilities.
-
-	resp, err := http.Get(url + "wp-content")
-	if err == nil && resp.StatusCode == http.StatusOK {
-		wpscanParams = append(wpscanForceParams, wpscanParams...)
-	}
-
-	wpscanScopeParams = append(wpscanScopeParams, fmt.Sprintf("*.%s", target))
-	wpscanParams = append(wpscanScopeParams, wpscanParams...)
-
-	params := append(append([]string{rubyArgs, wpscanFile}, wpscanParams...), url)
-	report = &WpScanReport{}
-
-	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
-	logger.Infof("wpscan version: %s", output)
-
 	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, report, pathToRuby, params...)
 	logger.Infof("exit code from wpscan: %d", exitCode)
 
