@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 var vulns = map[string]report.Vulnerability{
@@ -9,25 +9,26 @@ var vulns = map[string]report.Vulnerability{
 	// https://github.com/bugcrowd/vulnerability-rating-taxonomy/blob/a6dcfb43cf26004ab20320071b84f59beda49e22/mappings/cvss_v3.json#L73
 	"spf-not-found": report.Vulnerability{
 		CWEID:   358,
-		Summary: "SPF DNS Record Not Found",
+		Summary: "SPF Policy Not Found",
 		//discard records that do not begin with a version section of exactly "v=spf1"
 		Description: "No SPF policy has been found for this domain.\nA SPF (Sender Policy Framework) " +
 			"policy allows you to detect and block email spoofing by providing a mechanism to allow " +
 			"receiving mail exchangers to verify that incoming mail from a domain comes from an IP address " +
 			"authorized to send email from this domain. Email spam and phishing often use forged " +
-			"'from' addresses and domains, so publishing and checking SPF records can be considered " +
+			"'from' addresses and domains, so publishing and checking an SPF policy can be considered " +
 			"one of the most reliable and simple to use anti-spam and anti-phishing techniques.",
 		Score: 4.3,
 		ImpactDetails: "An attacker may be able to send email messages that appear to originate " +
 			"from this domain without your knowledge, which can be used to perform very convincing " +
 			"phishing attacks against your users.",
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-4.5",
+			"https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/quickref-route53.html",
 		},
 		Recommendations: []string{
-			"Create a SPF record beginning with 'v=spf1'",
+			"Create a single SPF TXT record beginning with 'v=spf1'",
 			"For easy SPF deployment in AWS Route53, check our CloudFormation template in References",
 		},
 	},
@@ -36,11 +37,11 @@ var vulns = map[string]report.Vulnerability{
 		Summary: "SPF 'all' Is Not The Rightmost Mechanism",
 		//Mechanisms after "all" will never be tested.  Mechanisms listed after "all" MUST be ignored.
 		Description: "The 'all' mechanism is a test that always matches. It is used as the rightmost " +
-			"mechanism in a record to provide an explicit default. For example: [v=spf1 a mx -all] " +
+			"mechanism in a policy to provide an explicit default. For example: [v=spf1 a mx -all] " +
 			"Mechanisms after 'all' will never be tested. Mechanisms listed after 'all' MUST be ignored. ",
 		Score: report.SeverityThresholdLow,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-5.1",
 		},
@@ -53,12 +54,12 @@ var vulns = map[string]report.Vulnerability{
 		Summary: "SPF Missing 'all' And 'redirect'",
 		Description: "It is better to use either a 'redirect' modifier or an 'all' " +
 			"mechanism to explicitly terminate processing.  Although there is an " +
-			"implicit '?all' at the end of every record that is not explicitly " +
+			"implicit '?all' at the end of every policy that is not explicitly " +
 			"terminated, it aids debugging efforts when it is explicitly provided. " +
 			"For example: [v=spf1 +mx -all] or [v=spf1 +mx redirect=_spf.example.com]",
 		Score: report.SeverityThresholdNone,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-4.7",
 		},
@@ -78,7 +79,7 @@ var vulns = map[string]report.Vulnerability{
 			"from this domain without your knowledge, which can be used to perform very convincing " +
 			"phishing attacks against your users.",
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-2.6.3",
 		},
@@ -95,7 +96,7 @@ var vulns = map[string]report.Vulnerability{
 			"authorized to use the domain in the given identity.",
 		Score: report.SeverityThresholdLow,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-2.6.2",
 		},
@@ -113,7 +114,7 @@ var vulns = map[string]report.Vulnerability{
 			"authorized to use the domain in the given identity.",
 		Score: report.SeverityThresholdLow,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-2.6.5",
 		},
@@ -123,7 +124,7 @@ var vulns = map[string]report.Vulnerability{
 	},
 	"dns-queries-exceeded-limit": report.Vulnerability{
 		CWEID:   358,
-		Summary: "SPF DNS Queries Exceeded The Maximum Limit",
+		Summary: "SPF Queries Exceeded The Maximum Limit",
 		// SPF implementations MUST limit the total number of those terms to 10 during SPF evaluation
 		Description: "Some mechanisms and modifiers (collectively, 'terms') cause DNS " +
 			"queries at the time of evaluation, and some do not.  The following " +
@@ -133,28 +134,28 @@ var vulns = map[string]report.Vulnerability{
 			"during SPF evaluation, to avoid unreasonable load on the DNS",
 		Score: report.SeverityThresholdNone,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-4.6.4",
 		},
 		Recommendations: []string{
-			"Review the SPF record and reduce the number of DNS queries invoked to be equal or less than 10",
+			"Review the SPF policy and reduce the number of DNS queries invoked to be equal or less than 10",
 		},
 	},
 	"multiple-spf-found": report.Vulnerability{
 		CWEID:   358,
 		Summary: "SPF Multiple Records Found",
 		// multiple SPF records are not permitted for the same owner name.
-		Description: "A domain name MUST NOT have multiple records that would cause an " +
-			"authorization check to select more than one record.",
+		Description: "A domain name MUST NOT have multiple SPF TXT records that would cause an " +
+			"authorization check to select more than one policy.",
 		Score: report.SeverityThresholdLow,
 		References: []string{
-			"http://www.openspf.org/Introduction",
+			"http://www.open-spf.org/Introduction/",
 			"https://en.wikipedia.org/wiki/Sender_Policy_Framework",
 			"https://tools.ietf.org/html/rfc7208#section-3",
 		},
 		Recommendations: []string{
-			"Create a single SPF record",
+			"Create a single SPF TXT record",
 		},
 	},
 }
