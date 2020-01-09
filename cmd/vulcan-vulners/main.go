@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -133,6 +134,7 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 	}
 
 	add := false
+	var rows []map[string]string
 	for _, e := range b.Data.Search {
 		// NOTE (julianvilas): for now support just the CVE type. But would be good
 		// to evaluate other types.
@@ -147,7 +149,7 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 			"Score": fmt.Sprintf("%.2f", e.Source.CVSS.Score),
 			"Link":  e.Source.Href,
 		}
-		gr.Rows = append(gr.Rows, finding)
+		rows = append(rows, finding)
 
 		logger.WithFields(logrus.Fields{"resource": finding}).Debug("Resource added")
 
@@ -157,8 +159,20 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 	}
 
 	if add {
+		// Sort by score and alphabetically.
+		sort.Slice(rows, func(i, j int) bool {
+			switch {
+			case rows[i]["Score"] != rows[j]["Score"]:
+				return rows[i]["Score"] > rows[j]["Score"]
+			default:
+				return rows[i]["CVE"] > rows[j]["CVE"]
+			}
+		})
+		gr.Rows = rows
+
 		vuln.Resources = append(vuln.Resources, gr)
 		logger.WithFields(logrus.Fields{"vulnerability": vuln}).Debug("Vulnerability added")
+
 		return &vuln, nil
 	}
 
@@ -203,7 +217,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 
 				if v != nil {
 					v.Summary = fmt.Sprintf(v.Summary, port.Service.Product)
-					v.Details = fmt.Sprintf("Found at %d", port.PortId)
+					v.Details = fmt.Sprintf("Found at port %d/%s", port.PortId, port.Protocol)
 
 					vulns = append(vulns, *v)
 				}
