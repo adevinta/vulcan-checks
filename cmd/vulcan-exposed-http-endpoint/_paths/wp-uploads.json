@@ -1,8 +1,10 @@
 [
 	{
-		"path":"wp-uploads/"
+		"path":"wp-uploads/",
+		"reg_exp": "Index of"
 	},
 	{
-		"path":"wp-content/uploads/"
+		"path":"wp-content/uploads/",
+		"reg_exp": "Index of"
 	}
 ]
