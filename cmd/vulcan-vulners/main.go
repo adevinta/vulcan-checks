@@ -40,10 +40,14 @@ var (
 	checkName = "vulcan-vulners"
 
 	vulnersVuln = report.Vulnerability{
-		Summary:         "Multiple vulnerabilities in %s",
-		Description:     "The nmap vulners script has detected one or more vulnerabilities in the target's exposed services.",
-		Score:           report.SeverityThresholdNone,
-		Recommendations: []string{"Check the resources table to get more details of the findings."},
+		Summary:     "Multiple vulnerabilities in %s",
+		Description: "One or more vulnerabilities were detected in %s.",
+		Score:       report.SeverityThresholdNone,
+		Recommendations: []string{
+			"If possible, restrict network access to the service.",
+			"Check if the service has available security updates and apply them.",
+			"When in doubt, check the resources linked below.",
+		},
 	}
 
 	logger   *logrus.Entry
@@ -80,6 +84,25 @@ type vulnersResponse struct {
 		} `json:"search"`
 		Total int `json:"total"`
 	} `json:"data"`
+}
+
+func severity(score float32) string {
+	r := report.RankSeverity(score)
+
+	switch r {
+	case report.SeverityNone:
+		return "Info"
+	case report.SeverityLow:
+		return "Low"
+	case report.SeverityMedium:
+		return "Medium"
+	case report.SeverityHigh:
+		return "High"
+	case report.SeverityCritical:
+		return "Critical"
+	default:
+		return "N/A"
+	}
 }
 
 // vulnerabilities retrieves the vulnerabilities affecting a software component from the vulners.com API.
@@ -128,6 +151,7 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 		Name: "Findings",
 		Header: []string{
 			"CVE",
+			"Severity",
 			"Score",
 			"Link",
 		},
@@ -145,9 +169,10 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 		add = true
 
 		finding := map[string]string{
-			"CVE":   e.Source.ID,
-			"Score": fmt.Sprintf("%.2f", e.Source.CVSS.Score),
-			"Link":  e.Source.Href,
+			"CVE":      e.Source.ID,
+			"Severity": severity(float32(e.Source.CVSS.Score)),
+			"Score":    fmt.Sprintf("%.2f", e.Source.CVSS.Score),
+			"Link":     e.Source.Href,
 		}
 		rows = append(rows, finding)
 
@@ -158,25 +183,25 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 		}
 	}
 
-	if add {
-		// Sort by score and alphabetically.
-		sort.Slice(rows, func(i, j int) bool {
-			switch {
-			case rows[i]["Score"] != rows[j]["Score"]:
-				return rows[i]["Score"] > rows[j]["Score"]
-			default:
-				return rows[i]["CVE"] > rows[j]["CVE"]
-			}
-		})
-		gr.Rows = rows
-
-		vuln.Resources = append(vuln.Resources, gr)
-		logger.WithFields(logrus.Fields{"vulnerability": vuln}).Debug("Vulnerability added")
-
-		return &vuln, nil
+	if !add {
+		return nil, nil
 	}
 
-	return nil, nil
+	// Sort by score and alphabetically.
+	sort.Slice(rows, func(i, j int) bool {
+		switch {
+		case rows[i]["Score"] != rows[j]["Score"]:
+			return rows[i]["Score"] > rows[j]["Score"]
+		default:
+			return rows[i]["CVE"] > rows[j]["CVE"]
+		}
+	})
+	gr.Rows = rows
+
+	vuln.Resources = append(vuln.Resources, gr)
+	logger.WithFields(logrus.Fields{"vulnerability": vuln}).Debug("Vulnerability added")
+
+	return &vuln, nil
 }
 
 func vulnerabilitiesByCPE(CPE string) (*report.Vulnerability, error) {
@@ -217,6 +242,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 
 				if v != nil {
 					v.Summary = fmt.Sprintf(v.Summary, port.Service.Product)
+					v.Description = fmt.Sprintf(v.Description, port.Service.Product)
 					v.Details = fmt.Sprintf("Found at port %d/%s", port.PortId, port.Protocol)
 
 					vulns = append(vulns, *v)
@@ -239,6 +265,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			}
 			if v != nil {
 				v.Summary = fmt.Sprintf(v.Summary, port.Service.Product)
+				v.Description = fmt.Sprintf(v.Description, port.Service.Product)
 				v.Details = fmt.Sprintf("Found at %d", port.PortId)
 
 				vulns = append(vulns, *v)
