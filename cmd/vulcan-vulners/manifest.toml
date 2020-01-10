@@ -1,0 +1,2 @@
+Description = "Runs the nmap-script vulners against the target opened ports"
+AssetTypes = ["Hostname", "IP"]
