@@ -1,0 +1,4 @@
+Description = "Detects general issues for an AWS account"
+AssetTypes = ["AWSAccount"]
+RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME"]
+Options = '{}'
