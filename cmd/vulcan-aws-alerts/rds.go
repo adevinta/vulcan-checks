@@ -52,8 +52,12 @@ func caCertificateRotation(opt options, target string, vulcanAssumeRoleEndpoint 
 		}
 
 		v := report.Vulnerability{
-			Summary:     `Rotation of CA certificate`,
-			Description: `Rotation of CA certificate`,
+			Summary: `Managed AWS database using CA about to expire`,
+			Description: `Due to the expiration of the AWS RDS CA, and to prevent downtime ` +
+				`in your applications, you should add the new CA to your clients using a ` +
+				`managed (i.e. RDS or Aurora) database through SSL/TLS and perform maintenance ` +
+				`on the affected database instances before the certificate expiration date.`,
+			References: []string{"https://aws.amazon.com/blogs/database/amazon-rds-customers-update-your-ssl-tls-certificates-by-february-5-2020/"},
 		}
 
 		for _, action := range result.PendingMaintenanceActions {
