@@ -10,12 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/sirupsen/logrus"
 
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleName string, logger *logrus.Entry, state state.State) error {
+func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleName string, state state.State) error {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"),
 	})
@@ -23,7 +22,7 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 		return err
 	}
 
-	creds, err := getCredentials(vulcanAssumeRoleEndpoint, target, roleName, logger)
+	creds, err := getCredentials(vulcanAssumeRoleEndpoint, target, roleName)
 	if err != nil {
 		return err
 	}
