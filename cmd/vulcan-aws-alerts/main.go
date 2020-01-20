@@ -22,42 +22,25 @@ var (
 	logger    = check.NewCheckLog(checkName)
 )
 
-type options struct {
-	VulcanAssumeRoleEndpoint string `json:"vulcan_assume_role_endpoint"`
-	RoleName                 string `json:"role_name"`
-}
-
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
-		var opt options
-		if optJSON != "" {
-			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
-				return err
-			}
-		}
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
 
-		vulcanAssumeRoleEndpoint := opt.VulcanAssumeRoleEndpoint
-		if vulcanAssumeRoleEndpoint == "" {
-			vulcanAssumeRoleEndpoint = os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
-		}
+		vulcanAssumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
 		if vulcanAssumeRoleEndpoint == "" {
 			return fmt.Errorf("VULCAN_ASSUME_ROLE_ENDPOINT option is missing")
 		}
 
-		roleName := opt.RoleName
-		if roleName == "" {
-			roleName = os.Getenv("ROLE_NAME")
-		}
+		roleName := os.Getenv("ROLE_NAME")
 
 		parsedARN, err := arn.Parse(target)
 		if err != nil {
 			return err
 		}
 
-		return caCertificateRotation(opt, parsedARN.AccountID, vulcanAssumeRoleEndpoint, roleName, logger, state)
+		return caCertificateRotation(parsedARN.AccountID, vulcanAssumeRoleEndpoint, roleName, logger, state)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()

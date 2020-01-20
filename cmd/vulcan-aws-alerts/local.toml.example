@@ -1,3 +1,6 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
-Options = '{"vulcan_assume_role_endpoint":"http://localhost:8080/assume", "role_name":"SecurityAuditRole"}'
+
+[RequiredVars]
+VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
+ROLE_NAME="SecurityAuditRole"

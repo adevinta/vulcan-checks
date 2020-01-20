@@ -15,7 +15,7 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-func caCertificateRotation(opt options, target string, vulcanAssumeRoleEndpoint string, roleName string, logger *logrus.Entry, state state.State) error {
+func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleName string, logger *logrus.Entry, state state.State) error {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"),
 	})
