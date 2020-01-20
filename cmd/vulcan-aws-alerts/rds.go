@@ -15,9 +15,7 @@ import (
 )
 
 func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleName string, state state.State) error {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("eu-west-1"),
-	})
+	sess, err := session.NewSession(&aws.Config{})
 	if err != nil {
 		return err
 	}
