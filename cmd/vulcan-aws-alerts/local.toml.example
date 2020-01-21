@@ -1,0 +1,6 @@
+[Check]
+Target = "arn:aws:iam::123456789012:root"
+
+[RequiredVars]
+VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
+ROLE_NAME="SecurityAuditRole"
