@@ -71,16 +71,20 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 					}
 
 					for _, instance := range result.DBInstances {
-						m := make(map[string]string)
-						m["AutoAppliedAfterDate"] = fmt.Sprintf("%s", *details.AutoAppliedAfterDate)
-						m["CurrentApplyDate"] = fmt.Sprintf("%s", *details.CurrentApplyDate)
-						m["identifier"] = *instance.DBInstanceIdentifier
-						m["account"] = target
-						m["region"] = region
-						m["dbname"] = *instance.DBName
-						m["engine"] = *instance.Engine
-						m["arn"] = *instance.DBInstanceArn
-						rg.Rows = append(rg.Rows, m)
+						if instance != nil {
+							m := make(map[string]string)
+							m["AutoAppliedAfterDate"] = fmt.Sprintf("%s", aws.TimeValue(details.AutoAppliedAfterDate))
+							m["CurrentApplyDate"] = fmt.Sprintf("%s", aws.TimeValue(details.CurrentApplyDate))
+							m["identifier"] = aws.StringValue(instance.DBInstanceIdentifier)
+							m["account"] = target
+							m["region"] = region
+							m["dbname"] = aws.StringValue(instance.DBName)
+							m["engine"] = aws.StringValue(instance.Engine)
+							m["arn"] = aws.StringValue(instance.DBInstanceArn)
+							rg.Rows = append(rg.Rows, m)
+						} else {
+							logger.Warn("Received nil instance from DescribeDBInstancesWithContext")
+						}
 					}
 				}
 			}
