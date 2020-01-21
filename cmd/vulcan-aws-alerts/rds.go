@@ -44,7 +44,7 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 
 		rg := report.ResourcesGroup{
 			Name:   `Instances`,
-			Header: []string{"identifier", "account", "region", "dbname", "engine", "arn", "AutoAppliedAfterDate", "CurrentApplyDate"},
+			Header: []string{"Identifier", "Account", "Region", "DBName", "Engine", "ARN", "AutoAppliedAfterDate", "CurrentApplyDate"},
 			Rows:   []map[string]string{},
 		}
 
@@ -76,12 +76,12 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 							m := make(map[string]string)
 							m["AutoAppliedAfterDate"] = fmt.Sprintf("%s", aws.TimeValue(details.AutoAppliedAfterDate))
 							m["CurrentApplyDate"] = fmt.Sprintf("%s", aws.TimeValue(details.CurrentApplyDate))
-							m["identifier"] = aws.StringValue(instance.DBInstanceIdentifier)
-							m["account"] = target
-							m["region"] = region
-							m["dbname"] = aws.StringValue(instance.DBName)
-							m["engine"] = aws.StringValue(instance.Engine)
-							m["arn"] = aws.StringValue(instance.DBInstanceArn)
+							m["Identifier"] = aws.StringValue(instance.DBInstanceIdentifier)
+							m["Account"] = target
+							m["Region"] = region
+							m["DBName"] = aws.StringValue(instance.DBName)
+							m["Engine"] = aws.StringValue(instance.Engine)
+							m["ARN"] = aws.StringValue(instance.DBInstanceArn)
 							rg.Rows = append(rg.Rows, m)
 						} else {
 							logger.Warn("Received nil instance from DescribeDBInstancesWithContext")
