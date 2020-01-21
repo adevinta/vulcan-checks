@@ -50,6 +50,7 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 
 		v := report.Vulnerability{
 			Summary: `Managed AWS databases using CA about to expire`,
+			Score:   report.SeverityThresholdHigh,
 			Description: `Due to the expiration of the AWS RDS CA, and to prevent downtime ` +
 				`in your applications, you should add the new CA to your clients using a ` +
 				`managed (i.e. RDS or Aurora) database through SSL/TLS and perform maintenance ` +
