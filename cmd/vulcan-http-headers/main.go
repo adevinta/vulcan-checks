@@ -47,8 +47,8 @@ func main() {
 
 		// TODO: This is maybe too concrete for the check as maybe there are some targets behind other kind of
 		// SSO.
-		url := hostnameToURL(target)
-		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(url.String(), helpers.OKTADomain)
+		u := hostnameToURL(target)
+		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(u.String(), helpers.OKTADomain)
 		if err != nil {
 			// From go doc: "Any returned error will be of type *url.Error. The
 			// url.Error value's Timeout method will report true if request
