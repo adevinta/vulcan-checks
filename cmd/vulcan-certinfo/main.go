@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 type certificateChecker struct {
@@ -58,6 +58,11 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 
 	// HANDLE HERE CERTIFICATE WITH ERRORS
 	if err != nil {
+		// Don't fail the check if it's a timeout.
+		if e, ok := err.(*net.OpError); ok && e.Timeout() {
+			return nil
+		}
+
 		if err.Error() == "x509: certificate has expired or is not yet valid" {
 			checker.certificateInfo = append(checker.certificateInfo, expiredCertificate)
 			checker.expired = true
