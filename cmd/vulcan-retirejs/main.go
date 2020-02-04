@@ -2,20 +2,22 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
-	"github.com/satori/go.uuid"
+	report "github.com/adevinta/vulcan-report"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/yhat/scrape"
 	"golang.org/x/net/html"
@@ -43,6 +45,10 @@ func main() {
 func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state state.State, args []string) error {
 	target, err := resolveTarget(target)
 	if err != nil {
+		// Don't fail the check if it's a timeout.
+		if e, ok := err.(*url.Error); ok && e.Timeout() {
+			return nil
+		}
 		return err
 	}
 	logger.Infof("Downloading javascript sources from %s", target)
@@ -297,8 +303,22 @@ func getFilePath(url string) string {
 
 // Follow redirects and return final URL.
 func resolveTarget(target string) (string, error) {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   timeout,
+	}
+
 	// TODO: Consider other cases.
-	resp, err := http.Get(fmt.Sprintf("http://%s/", target))
+	resp, err := client.Get(fmt.Sprintf("https://%s/", target))
+	if err == nil {
+		return resp.Request.URL.String(), nil
+	}
+
+	resp, err = client.Get(fmt.Sprintf("http://%s/", target))
 	if err != nil {
 		return "", err
 	}
