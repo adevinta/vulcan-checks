@@ -2,22 +2,31 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
+)
+
+const (
+	noSuchBucket = "NoSuchBucket"
+	timeout      = 3 * time.Second
 )
 
 var (
-	checkName  = "vulcan-s3-takeover"
-	logger     = check.NewCheckLog(checkName)
+	checkName = "vulcan-s3-takeover"
+	logger    = check.NewCheckLog(checkName)
+
 	s3Takeover = report.Vulnerability{
 		CWEID:   284,
 		Summary: "S3 Subdomain Takeover",
@@ -42,10 +51,6 @@ type s3Response struct {
 	Code string `xml:"Code"`
 }
 
-const (
-	noSuchBucket = "NoSuchBucket"
-)
-
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
 		logger := check.NewCheckLog(checkName)
@@ -58,16 +63,29 @@ func main() {
 			"website": website,
 		}).Debug("requesting target website")
 
-		client := &http.Client{}
-		// Client will not attempt redirects
-		// IF redirect THEN return last http response
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+			Transport: tr,
+			Timeout:   timeout,
 		}
 
 		resp, err := client.Get(website)
 		if err != nil {
-			return err
+			// From go doc: "Any returned error will be of type *url.Error. The
+			// url.Error value's Timeout method will report true if request
+			// timed out or was canceled."
+			// https://golang.org/pkg/net/http/#Client.Do
+			e, ok := err.(*url.Error)
+			if !ok || !e.Timeout() {
+				return err
+			}
+
+			return nil
 		}
 
 		logger.WithFields(logrus.Fields{
