@@ -48,6 +48,10 @@ func main() {
 		// TODO: This is maybe too concrete for the check as maybe there are some targets behind other kind of
 		// SSO.
 		u := hostnameToURL(target)
+		if u == nil {
+			e.Debug("No HTTP server on target")
+			return nil
+		}
 		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(u.String(), helpers.OKTADomain)
 		if err != nil {
 			// From go doc: "Any returned error will be of type *url.Error. The
@@ -152,14 +156,14 @@ func processResults(r observatoryResult, s state.State) error {
 	return nil
 }
 
-func hostnameToURL(hostname string) url.URL {
+func hostnameToURL(hostname string) *url.URL {
 	u := url.URL{}
 	u.Path = "//"
 	u.Host = hostname
 	for _, scheme := range []string{"https", "http"} {
 		u.Scheme = scheme
 
-		timeout := 10 * time.Second
+		timeout := 5 * time.Second
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -177,8 +181,8 @@ func hostnameToURL(hostname string) url.URL {
 			continue
 		}
 
-		return u
+		return &u
 	}
 
-	return url.URL{}
+	return nil
 }
