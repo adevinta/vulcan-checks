@@ -12,10 +12,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 const (
@@ -47,10 +47,19 @@ func main() {
 
 		// TODO: This is maybe too concrete for the check as maybe there are some targets behind other kind of
 		// SSO.
-		url := hostnameToURL(target)
-		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(url.String(), helpers.OKTADomain)
+		u := hostnameToURL(target)
+		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(u.String(), helpers.OKTADomain)
 		if err != nil {
-			return err
+			// From go doc: "Any returned error will be of type *url.Error. The
+			// url.Error value's Timeout method will report true if request
+			// timed out or was canceled."
+			// https://golang.org/pkg/net/http/#Client.Do
+			e, ok := err.(*url.Error)
+			if !ok || !e.Timeout() {
+				return err
+			}
+
+			return nil
 		}
 		if behindSSO {
 			v := buildBehindOktaVuln(target, redirectingTo)
