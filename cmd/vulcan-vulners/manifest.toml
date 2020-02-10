@@ -1,2 +1,3 @@
 Description = "Runs the nmap-script vulners against the target opened ports"
 AssetTypes = ["Hostname", "IP"]
+Timeout = 3600 # 1 hours expressed in seconds.
