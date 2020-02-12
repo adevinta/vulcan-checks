@@ -10,5 +10,10 @@
 	{
 		"path": "/",
 		"reg_exp": "pgweb"
+	},
+	{
+		"path": "stream",
+		"reg_exp": "IP Origin",
+		"status": 200
 	}
 ]
