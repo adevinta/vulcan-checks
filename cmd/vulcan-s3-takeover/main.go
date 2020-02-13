@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -76,15 +75,7 @@ func main() {
 
 		resp, err := client.Get(website)
 		if err != nil {
-			// From go doc: "Any returned error will be of type *url.Error. The
-			// url.Error value's Timeout method will report true if request
-			// timed out or was canceled."
-			// https://golang.org/pkg/net/http/#Client.Do
-			e, ok := err.(*url.Error)
-			if !ok || !e.Timeout() {
-				return err
-			}
-
+			// Don't fail the check if the target can not be accessed.
 			return nil
 		}
 
