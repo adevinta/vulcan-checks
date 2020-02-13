@@ -58,8 +58,8 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 
 	// HANDLE HERE CERTIFICATE WITH ERRORS
 	if err != nil {
-		// Don't fail the check if it's a timeout.
-		if e, ok := err.(*net.OpError); ok && e.Timeout() {
+		// Don't fail the check if the target can not be accessed.
+		if _, ok := err.(*net.OpError); ok {
 			return nil
 		}
 

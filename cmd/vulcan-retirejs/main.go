@@ -45,8 +45,8 @@ func main() {
 func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state state.State, args []string) error {
 	target, err := resolveTarget(target)
 	if err != nil {
-		// Don't fail the check if it's a timeout.
-		if e, ok := err.(*url.Error); ok && e.Timeout() {
+		// Don't fail the check if the target can not be accessed.
+		if _, ok := err.(*url.Error); ok {
 			return nil
 		}
 		return err
