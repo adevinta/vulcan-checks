@@ -26,5 +26,5 @@ require (
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v2 v2.2.5
+	gopkg.in/yaml.v2 v2.2.8
 )
