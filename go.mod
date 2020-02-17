@@ -11,7 +11,7 @@ require (
 	github.com/adevinta/vulcan-types v0.0.0-20191212162849-8e75a5e4503c
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
-	github.com/aws/aws-sdk-go v1.29.1
+	github.com/aws/aws-sdk-go v1.29.3
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
