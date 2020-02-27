@@ -21,8 +21,8 @@ import (
 	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
-type opt struct {
-	Depth string `json:"depth"`
+type options struct {
+	Depth int `json:"depth"`
 }
 
 var (
