@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -19,6 +20,10 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
+
+type opt struct {
+	Depth string `json:"depth"`
+}
 
 var (
 	checkName    = "vulcan-seekret"
@@ -60,6 +65,14 @@ func main() {
 			return errors.New("check target missing")
 		}
 
+		var opt options
+		opt.Depth = 1
+		if optJSON != "" {
+			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
+				return err
+			}
+		}
+
 		// We check if the target is not the public Github.
 		targetURL, err := url.Parse(target)
 		if err != nil {
@@ -80,8 +93,9 @@ func main() {
 		}
 
 		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:  target,
-			Auth: auth,
+			URL:   target,
+			Auth:  auth,
+			Depth: opt.Depth,
 		})
 		if err != nil {
 			return err
