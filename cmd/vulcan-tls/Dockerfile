@@ -12,6 +12,10 @@ WORKDIR /opt/vulcan-tls
 RUN git clone https://github.com/mozilla/cipherscan
 WORKDIR /opt/vulcan-tls/cipherscan
 
+# Fix problem where cipherscan reports good certs as bad
+RUN git fetch origin pull/184/head:analyze-inter
+RUN git cherry-pick -n 0c6f41ddc6063ceb457de2046dca19cbf6673c5a
+
 # Fix silly naming.
 RUN sed -i 's/fubar/vulnerable/g' analyze.py
 RUN sed -i 's/status = "bad"/status = "vulnerable"/g' analyze.py
