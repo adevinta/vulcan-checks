@@ -1,0 +1,8 @@
+[Check]
+Target = "registry-1.docker.io/library/python:3.4-alpine"
+# example targets:
+# registry-1.docker.io/library/python:3.4-alpine
+# registry-1.docker.io/library/postgres:9.6
+
+# example Options
+# Options = '{"force_update_db": false, "ignore_unfixed": false, "severities":"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"}'
