@@ -79,8 +79,14 @@ func main() {
 			return err
 		}
 
+		// TODO: Support multiple authenticated Github Enterprise instances.
+		githubURL, err := url.Parse(os.Getenv("GITHUB_ENTERPRISE_ENDPOINT"))
+		if err != nil {
+			return err
+		}
+
 		var auth *http.BasicAuth
-		if targetURL.Host != "github.com" {
+		if targetURL.Host == githubURL.Host {
 			auth = &http.BasicAuth{
 				Username: "username", // Can be anything except blank.
 				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
