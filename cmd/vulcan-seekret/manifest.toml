@@ -1,5 +1,5 @@
 Description = "Finds leaked secrets in a Git repository using Seekret"
 Timeout = 600
 AssetTypes = ["GitRepository"]
-RequiredVars = ["GITHUB_ENTERPRISE_TOKEN"]
+RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
 Options = '{"depth": 1}'
