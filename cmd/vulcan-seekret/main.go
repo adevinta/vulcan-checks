@@ -86,7 +86,7 @@ func main() {
 		}
 
 		var auth *http.BasicAuth
-		if targetURL.Host == githubURL.Host {
+		if githubURL.Host != "" && targetURL.Host == githubURL.Host {
 			auth = &http.BasicAuth{
 				Username: "username", // Can be anything except blank.
 				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
