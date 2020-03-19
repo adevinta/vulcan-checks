@@ -6,4 +6,4 @@ set -e
 tar xf trivy_cache.tgz
 
 # run check
-./vulcan-trivy
+./vulcan-trivy "$@"

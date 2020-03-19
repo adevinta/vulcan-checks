@@ -23,6 +23,7 @@ import (
 
 var (
 	checkName        = "vulcan-trivy"
+	logger           = check.NewCheckLog(checkName)
 	trivyCachePath   = "trivy_cache"
 	reportOutputFile = "report.json"
 )
@@ -118,14 +119,14 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		"-f", "json",
 		"-o", reportOutputFile,
 	}
-	// Force vulnerability db cache update.
-	if opt.ForceUpdateDB {
+	// Skip vulnerability db update if not explicitly forced.
+	if !opt.ForceUpdateDB {
 		triviArgs = append(triviArgs, "--skip-update")
 	}
-	// Force skip update if image is latest and force update is not explicit.
+	// Log skip vulnerability db update if image is latest and force
+	// update is not explicit.
 	if !opt.ForceUpdateDB && strings.HasSuffix(target, "latest") {
-		log.Printf("Skipping cache update with a latest dockerimage: %s\n", target)
-		triviArgs = append(triviArgs, "--skip-update")
+		logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
 	}
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
@@ -139,17 +140,17 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	// Append the target (docker image including registry hostname).
 	triviArgs = append(triviArgs, target)
 
-	log.Printf("Running command: %s %s\n", triviCmd, triviArgs)
+	logger.Infof("running command: %s %s\n", triviCmd, triviArgs)
 
 	err := retry.Do(
 		func() error {
 			cmd := exec.Command(triviCmd, triviArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
 			if err != nil {
-				log.Printf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
+				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
 				return errors.New("trivy command execution failed")
 			}
-			log.Printf("trivy command execution completed successfully")
+			logger.Infof("trivy command execution completed successfully")
 			return nil
 		},
 		retry.Attempts(3),
@@ -157,21 +158,13 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		retry.MaxJitter(5*time.Second),
 	)
 	if err != nil {
-		log.Printf("retry exec.Command() failed with error: %s\n", err)
+		logger.Errorf("retry exec.Command() failed with error: %s\n", err)
 		return errors.New("trivy command execution failed")
 	}
 
-	jsonFile, err := os.Open(reportOutputFile)
+	byteValue, err := ioutil.ReadFile(reportOutputFile)
 	if err != nil {
-		log.Printf("trivy report output file read failed with error: %s\n", err)
-		return errors.New("trivy report output file open failed")
-	}
-	log.Printf("successfully open trivy report output file %s\n", reportOutputFile)
-	defer jsonFile.Close()
-
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		log.Printf("trivy report output file read failed with error: %s\n", err)
+		logger.Errorf("trivy report output file read failed with error: %s\n", err)
 		return errors.New("trivy report output file read failed")
 	}
 
@@ -207,47 +200,49 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 
 	var rows []map[string]string
 	duppedPackageVulns := make(map[string]map[string]string)
-	// As we are scanning only one container per check, we have only one item
-	// in results array.
-	for _, feature := range results[0].Vulnerabilities {
-		// Set global score for the report.
-		score := getScore(feature.Severity)
-		if score > vuln.Score {
-			vuln.Score = score
-		}
 
-		ap := map[string]string{
-			"Name":            feature.PkgName,
-			"Version":         feature.InstalledVersion,
-			"Severity":        feature.Severity,
-			"FixedBy":         feature.FixedVersion,
-			"Vulnerabilities": fmt.Sprintf("%s", feature.Description),
-		}
-		if len(ap["Vulnerabilities"]) > 512 {
-			reportTruncated = true
-			ap["Vulnerabilities"] = fmt.Sprintf("%s ...truncated", ap["Vulnerabilities"][0:500])
-		}
-
-		// Check if affected package has already been indexed.
-		if _, exists := duppedPackageVulns[ap["Name"]]; !exists {
-			duppedPackageVulns[ap["Name"]] = ap
-			continue
-		}
-
-		key := duppedPackageVulns[ap["Name"]]
-		if isMoreSevere(ap["Severity"], key["Severity"]) {
-			key["Severity"] = ap["Severity"]
-			// Only showing most sever vulnerability description to avoid
-			// report size overflow.
-			if ap["Vulnerabilities"] != "" {
-				key["Vulnerabilities"] = ap["Vulnerabilities"]
+	for _, trivyTarget := range results {
+		for _, dockerVuln := range trivyTarget.Vulnerabilities {
+			// Set global score for the report.
+			score := getScore(dockerVuln.Severity)
+			if score > vuln.Score {
+				vuln.Score = score
 			}
-		}
-		if version.Compare(version.Normalize(ap["FixedBy"]), version.Normalize(key["FixedBy"]), ">") {
-			key["FixedBy"] = ap["FixedBy"]
-		}
 
-		duppedPackageVulns[ap["Name"]] = key
+			ap := map[string]string{
+				"Name":            dockerVuln.PkgName,
+				"Version":         dockerVuln.InstalledVersion,
+				"Severity":        dockerVuln.Severity,
+				"FixedBy":         dockerVuln.FixedVersion,
+				"Vulnerabilities": fmt.Sprintf("[%s](https://nvd.nist.gov/vuln/detail/%s)", dockerVuln.VulnerabilityID, dockerVuln.VulnerabilityID),
+			}
+
+			// Check if affected package has already been indexed.
+			key, ok := duppedPackageVulns[ap["Name"]]
+			if !ok {
+				duppedPackageVulns[ap["Name"]] = ap
+				continue
+			}
+
+			// Append VulnerabilityID to the affected package vulnerabilities.
+			// Truncate Vulnerabilities to 10 to avoid overflow the report.
+			switch count := len(strings.Split(key["Vulnerabilities"], "|")); {
+			case count < 10:
+				key["Vulnerabilities"] = fmt.Sprintf("%s | %s", key["Vulnerabilities"], ap["Vulnerabilities"])
+			case count == 10:
+				key["Vulnerabilities"] = fmt.Sprintf("%s | and some others ...", key["Vulnerabilities"])
+				reportTruncated = true
+			}
+
+			if isMoreSevere(ap["Severity"], key["Severity"]) {
+				key["Severity"] = ap["Severity"]
+			}
+			if version.Compare(version.Normalize(ap["FixedBy"]), version.Normalize(key["FixedBy"]), ">") {
+				key["FixedBy"] = ap["FixedBy"]
+			}
+
+			duppedPackageVulns[ap["Name"]] = key
+		}
 	}
 
 	for _, v := range duppedPackageVulns {
