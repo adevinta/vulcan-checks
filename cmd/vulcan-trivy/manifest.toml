@@ -1,0 +1,3 @@
+Description = "Scan docker images using aquasec/trivy"
+AssetTypes = ["DockerImage"]
+RequiredVars = ["REGISTRY_DOMAIN", "REGISTRY_USERNAME", "REGISTRY_PASSWORD"]
