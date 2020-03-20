@@ -1,0 +1,38 @@
+- paths:
+    - "controlpanel"
+  regex: "cpasswd"
+  severity: 6.9
+  description: Exposed Blocket control panel login page.
+
+- paths:
+    - ".git/HEAD"
+  regex: "ref: refs/"
+  severity: 10
+  description: Exposed Git repository contents.
+
+- paths:
+    - "/"
+  regex: "pgweb"
+  severity: 10
+  description: Exposed PostgreSQL management page.
+
+- paths:
+    - "stream"
+  regex: "IP Origin"
+  status: 200
+  severity: 10
+  description: Exposed web server access logs.
+
+- paths:
+    - "wp-uploads/"
+    - "wp-content/uploads/"
+  regex: "Index of"
+  severity: 8.9
+  description: Exposed WordPress uploads directory.
+
+- paths:
+    - "/etc/passwd"
+    - "/Etc/passwd"
+  regex: "root:x:0:0:root"
+  severity: 10
+  description: Exposed operating system files.

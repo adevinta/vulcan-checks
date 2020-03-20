@@ -1,0 +1,25 @@
+- path: "wp-uploads/"
+  regex: "Index of"
+  severity: 8.9
+  description: Directory listing of all files uploaded to WordPress.
+- path: "wp-content/uploads/"
+  regex: "Index of"
+  severity: 8.9
+  description: Directory listing of all files uploaded to WordPress.
+- path: "controlpanel"
+  regex: "cpasswd"
+  severity: 6.9
+  description: Login page for the Blocket control panel.
+- path: ".git/HEAD"
+  regex: "ref: refs/"
+  severity: 10
+  description: Potential source code leak.
+- path: "/"
+  regex: "pgweb"
+  severity: 10
+  description: Exposed PostgreSQL management page.
+- path: "stream"
+  regex: "IP Origin"
+  status: 200
+  severity: 10
+  description: Web server access log leakage.
