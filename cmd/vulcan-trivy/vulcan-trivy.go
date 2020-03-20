@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"sort"
@@ -122,12 +121,12 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
 		triviArgs = append(triviArgs, "--skip-update")
+		// Log warn if skip vulnerability db update and image tag is latest.
+		if strings.HasSuffix(target, "latest") {
+			logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
+		}
 	}
-	// Log skip vulnerability db update if image is latest and force
-	// update is not explicit.
-	if !opt.ForceUpdateDB && strings.HasSuffix(target, "latest") {
-		logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
-	}
+
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
 		triviArgs = append(triviArgs, "--ignore-unfixed")
@@ -268,7 +267,7 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	// the full report.
 	totalVulnerablePackages := len(rows)
 	if totalVulnerablePackages > 30 {
-		log.Print("warning: truncate to top 30 vulnerabilities\n")
+		logger.Warn("truncate to top 30 vulnerabilities\n")
 		reportTruncated = true
 		rows = rows[0:30]
 	}
