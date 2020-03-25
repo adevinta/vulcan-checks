@@ -29,6 +29,10 @@ For each resource to check for, a set of possible paths are specified, along wit
 
 - If no conditions are specified the check will consider the resource to be exposed if the request returns any response.
 
+## Resources
+
+Resources that the check can identify as exposed are listed in the `resources.yaml` file. Any resource added to the file should have a short but clear description and should be accompanied preferably by a matching regular expression. If a reliable regular expression cannot be written, a status code should be used instead and the description should be preceded by the word "potentially"; the severity of the vulnerability should not be lowered for this reason alone.
+
 ## Testing
 
 In order to test the detection of specific resources, you may use the following method.
