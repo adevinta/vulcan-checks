@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
-	github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee
+	github.com/adevinta/restuss v0.0.0-20191122105535-9cd10ccfaada // indirect
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20200213111412-a3538deba0c1
 	github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff
 	github.com/adevinta/vulcan-types v0.0.0-20191212162849-8e75a5e4503c
