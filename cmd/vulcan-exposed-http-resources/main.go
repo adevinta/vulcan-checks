@@ -13,8 +13,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"gopkg.in/yaml.v2"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -50,6 +52,11 @@ const (
 	// with low or medium confidence that the check must be looking
 	// for in order for the false positive filtering to take place.
 	falsePositiveMinimumResources = 20
+
+	// burst is the maximum number of simultaneous connections to the target.
+	burst = 5
+	// rateLimit is the maximum rate of simultaneous connections per second.
+	rateLimit = 10
 )
 
 var (
@@ -152,23 +159,51 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 }
 
 func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (map[string]string, error) {
+	foundPathsChan := make(chan string)
+
+	go func() {
+		limiter := rate.NewLimiter(rate.Limit(rateLimit), burst)
+		var wg sync.WaitGroup
+		for _, p := range httpResource.Paths {
+			wg.Add(1)
+			go func() {
+				err := limiter.Wait(context.Background())
+				if err != nil {
+					l.Error(err)
+					return
+				}
+
+				targetResource, err := url.Parse(targetURL.String())
+				if err != nil {
+					l.Error(err)
+					return
+				}
+
+				targetResource.Path = path.Join(targetResource.Path, p)
+				if strings.HasSuffix(p, "/") && !strings.HasSuffix(targetResource.Path, "/") {
+					targetResource.Path += "/"
+				}
+
+				positive, err := checkPath(l, targetResource, httpResource)
+				if err != nil {
+					l.Error(err)
+					return
+				}
+
+				if positive {
+					foundPathsChan <- targetResource.String()
+				}
+
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		close(foundPathsChan)
+	}()
+
 	foundPaths := []string{}
-
-	for _, p := range httpResource.Paths {
-		targetResource, _ := url.Parse(targetURL.String())
-		targetResource.Path = path.Join(targetResource.Path, p)
-		if strings.HasSuffix(p, "/") && !strings.HasSuffix(targetResource.Path, "/") {
-			targetResource.Path += "/"
-		}
-
-		positive, err := checkPath(l, targetResource, httpResource)
-		if err != nil {
-			continue
-		}
-
-		if positive {
-			foundPaths = append(foundPaths, targetResource.String())
-		}
+	for foundPath := range foundPathsChan {
+		foundPaths = append(foundPaths, foundPath)
 	}
 
 	if len(foundPaths) > 0 {
