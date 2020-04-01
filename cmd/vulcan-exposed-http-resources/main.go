@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -34,6 +36,20 @@ type Options struct {
 
 const (
 	checkName = "vulcan-exposed-http-resource"
+
+	// falsePositiveMessage is the message that will be displayed
+	// in the details section if the exposed resources of the check
+	// are flagged as false positives.
+	falsePositiveMessage = "The check found %v out of %v resources without reliable detection mechanisms. Flagged as false positive."
+	// falsePositiveThreshold is the ratio of found resources
+	// found with low or medium confidence necessary to consider
+	// that the HTTP server is returning false OK statuses and
+	// flag the found resources as a false positives.
+	falsePositiveThreshold = 0.80
+	// falsePositiveMinimum resources is the minimum number of resources
+	// with low or medium confidence that the check must be looking
+	// for in order for the false positive filtering to take place.
+	falsePositiveMinimumResources = 20
 )
 
 var (
@@ -46,7 +62,7 @@ var (
 		Resources: []report.ResourcesGroup{
 			report.ResourcesGroup{
 				Name:   "Exposed Resources",
-				Header: []string{"URL", "Severity", "Description"},
+				Header: []string{"Score", "Severity", "Confidence", "Description", "URL"},
 				Rows:   []map[string]string{},
 			},
 		},
@@ -88,12 +104,18 @@ func main() {
 			}
 		}
 
-		vuln, err := exposedResources(logger, targetURL, resources)
+		vuln, checked, err := exposedResources(logger, targetURL, resources)
 		if err != nil {
 			return err
 		}
 
 		if vuln != nil {
+			if len(vuln.Resources) > 0 {
+				err = filterFalsePositives(vuln, checked)
+				if err != nil {
+					return err
+				}
+			}
 			state.AddVulnerabilities(*vuln)
 		}
 
@@ -104,17 +126,20 @@ func main() {
 	c.RunAndServe()
 }
 
-func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, error) {
+func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int, error) {
 	var vuln *report.Vulnerability
 	vulnResources := []map[string]string{}
+	checkedResources := map[string]int{}
 
 	for _, httpResource := range httpResources {
-		foundResources, err := checkResource(l, targetURL, httpResource)
+		checkedResources[rankConfidence(httpResource)]++
+
+		foundResource, err := checkResource(l, targetURL, httpResource)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if foundResources != nil {
-			vulnResources = append(vulnResources, foundResources...)
+		if foundResource != nil {
+			vulnResources = append(vulnResources, foundResource)
 		}
 	}
 
@@ -123,11 +148,11 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 		vuln.Resources[0].Rows = vulnResources
 	}
 
-	return vuln, nil
+	return vuln, checkedResources, nil
 }
 
-func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) ([]map[string]string, error) {
-	foundResources := []map[string]string{}
+func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (map[string]string, error) {
+	foundPaths := []string{}
 
 	for _, p := range httpResource.Paths {
 		targetResource, _ := url.Parse(targetURL.String())
@@ -142,25 +167,31 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (
 		}
 
 		if positive {
-			var severityRank string
-			if httpResource.Severity != nil {
-				if *httpResource.Severity > exposedVuln.Score {
-					exposedVuln.Score = *httpResource.Severity
-				}
-				severityRank = rankSeverity(*httpResource.Severity)
-			} else {
-				severityRank = rankSeverity(report.SeverityThresholdHigh)
-			}
-
-			foundResources = append(foundResources, map[string]string{
-				"URL":         targetResource.String(),
-				"Severity":    severityRank,
-				"Description": httpResource.Description,
-			})
+			foundPaths = append(foundPaths, targetResource.String())
 		}
 	}
 
-	return foundResources, nil
+	if len(foundPaths) > 0 {
+		var severityRank string
+		if httpResource.Severity != nil {
+			if *httpResource.Severity > exposedVuln.Score {
+				exposedVuln.Score = *httpResource.Severity
+			}
+			severityRank = rankSeverity(*httpResource.Severity)
+		} else {
+			severityRank = rankSeverity(report.SeverityThresholdHigh)
+		}
+
+		return map[string]string{
+			"Score":       fmt.Sprintf("%.01f", *httpResource.Severity),
+			"Severity":    severityRank,
+			"Confidence":  rankConfidence(httpResource),
+			"Description": httpResource.Description,
+			"URL":         strings.Join(foundPaths, "\n"),
+		}, nil
+	}
+
+	return nil, nil
 }
 
 func checkPath(l *logrus.Entry, targetResource *url.URL, httpResource Resource) (bool, error) {
@@ -203,6 +234,42 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 	return regexp.Match(regex, contents)
 }
 
+func filterFalsePositives(vuln *report.Vulnerability, checkedStats map[string]int) error {
+	vulnStats := map[string]int{}
+	highConfidenceScore := 0.0
+	for _, resource := range vuln.Resources[0].Rows {
+		confidence := resource["Confidence"]
+		score, err := strconv.ParseFloat(resource["Score"], 32)
+		if err != nil {
+			return err
+		}
+
+		if confidence == "HIGH" && score > highConfidenceScore {
+			// We store the highest score with high confidence.
+			highConfidenceScore = score
+		}
+
+		// We count the number of resources found for each confidence type.
+		vulnStats[confidence]++
+	}
+
+	// False positives will only be filtered if a minimum of resources are checked.
+	if checkedStats["LOW"]+checkedStats["MEDIUM"] < falsePositiveMinimumResources {
+		return nil
+	}
+
+	if float64(vulnStats["LOW"]+vulnStats["MEDIUM"])/float64(checkedStats["LOW"]+checkedStats["MEDIUM"]) > falsePositiveThreshold {
+		vuln.Score = float32(highConfidenceScore)
+		vuln.Details = fmt.Sprintf(
+			falsePositiveMessage,
+			vulnStats["LOW"]+vulnStats["MEDIUM"],
+			checkedStats["LOW"]+checkedStats["MEDIUM"],
+		)
+	}
+
+	return nil
+}
+
 func rankSeverity(severity float32) string {
 	switch report.RankSeverity(severity) {
 	case report.SeverityNone:
@@ -217,5 +284,16 @@ func rankSeverity(severity float32) string {
 		return "CRITICAL"
 	default:
 		return "UNKNOWN"
+	}
+}
+
+func rankConfidence(resource Resource) string {
+	switch {
+	case resource.Regex != "":
+		return "HIGH"
+	case resource.Status != nil:
+		return "MEDIUM"
+	default:
+		return "LOW"
 	}
 }
