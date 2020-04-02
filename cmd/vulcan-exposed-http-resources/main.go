@@ -111,20 +111,19 @@ func main() {
 			}
 		}
 
-		vuln, checked, err := exposedResources(logger, targetURL, resources)
-		if err != nil {
-			return err
+		vuln, checked := exposedResources(logger, targetURL, resources)
+
+		if vuln == nil {
+			return nil
 		}
 
-		if vuln != nil {
-			if len(vuln.Resources) > 0 {
-				err = filterFalsePositives(vuln, checked)
-				if err != nil {
-					return err
-				}
+		if len(vuln.Resources) > 0 {
+			err = filterFalsePositives(vuln, checked)
+			if err != nil {
+				return err
 			}
-			state.AddVulnerabilities(*vuln)
 		}
+		state.AddVulnerabilities(*vuln)
 
 		return nil
 	}
@@ -133,7 +132,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int, error) {
+func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int) {
 	var vuln *report.Vulnerability
 	vulnResources := []map[string]string{}
 	checkedResources := map[string]int{}
@@ -141,10 +140,7 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 	for _, httpResource := range httpResources {
 		checkedResources[rankConfidence(httpResource)]++
 
-		foundResource, err := checkResource(l, targetURL, httpResource)
-		if err != nil {
-			return nil, nil, err
-		}
+		foundResource := checkResource(l, targetURL, httpResource)
 		if foundResource != nil {
 			vulnResources = append(vulnResources, foundResource)
 		}
@@ -155,10 +151,10 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 		vuln.Resources[0].Rows = vulnResources
 	}
 
-	return vuln, checkedResources, nil
+	return vuln, checkedResources
 }
 
-func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (map[string]string, error) {
+func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) map[string]string {
 	foundPathsChan := make(chan string)
 
 	go func() {
@@ -167,6 +163,8 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (
 		for _, p := range httpResource.Paths {
 			wg.Add(1)
 			go func() {
+				defer wg.Done()
+
 				err := limiter.Wait(context.Background())
 				if err != nil {
 					l.Error(err)
@@ -193,10 +191,9 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (
 				if positive {
 					foundPathsChan <- targetResource.String()
 				}
-
-				wg.Done()
 			}()
 		}
+
 		wg.Wait()
 		close(foundPathsChan)
 	}()
@@ -206,27 +203,27 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) (
 		foundPaths = append(foundPaths, foundPath)
 	}
 
-	if len(foundPaths) > 0 {
-		var severityRank string
-		if httpResource.Severity != nil {
-			if *httpResource.Severity > exposedVuln.Score {
-				exposedVuln.Score = *httpResource.Severity
-			}
-			severityRank = rankSeverity(*httpResource.Severity)
-		} else {
-			severityRank = rankSeverity(report.SeverityThresholdHigh)
-		}
-
-		return map[string]string{
-			"Score":       fmt.Sprintf("%.01f", *httpResource.Severity),
-			"Severity":    severityRank,
-			"Confidence":  rankConfidence(httpResource),
-			"Description": httpResource.Description,
-			"URL":         strings.Join(foundPaths, "\n"),
-		}, nil
+	if len(foundPaths) < 1 {
+		return nil
 	}
 
-	return nil, nil
+	var severityRank string
+	if httpResource.Severity != nil {
+		if *httpResource.Severity > exposedVuln.Score {
+			exposedVuln.Score = *httpResource.Severity
+		}
+		severityRank = rankSeverity(*httpResource.Severity)
+	} else {
+		severityRank = rankSeverity(report.SeverityThresholdHigh)
+	}
+
+	return map[string]string{
+		"Score":       fmt.Sprintf("%.01f", *httpResource.Severity),
+		"Severity":    severityRank,
+		"Confidence":  rankConfidence(httpResource),
+		"Description": httpResource.Description,
+		"URL":         strings.Join(foundPaths, "\n"),
+	}
 }
 
 func checkPath(l *logrus.Entry, targetResource *url.URL, httpResource Resource) (bool, error) {
