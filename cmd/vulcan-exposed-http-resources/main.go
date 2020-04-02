@@ -75,6 +75,8 @@ var (
 		},
 		CWEID: 538, // File and Directory Information Exposure
 	}
+
+	logger *logrus.Entry
 )
 
 func init() {
@@ -84,7 +86,7 @@ func init() {
 
 func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
-		logger := check.NewCheckLog(checkName)
+		logger = check.NewCheckLog(checkName)
 		logger = logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
 		targetURL, err := url.Parse(target)
@@ -111,7 +113,7 @@ func main() {
 			}
 		}
 
-		vuln, checked := exposedResources(logger, targetURL, resources)
+		vuln, checked := exposedResources(targetURL, resources)
 
 		if vuln == nil {
 			return nil
@@ -132,7 +134,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int) {
+func exposedResources(targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int) {
 	var vuln *report.Vulnerability
 	vulnResources := []map[string]string{}
 	checkedResources := map[string]int{}
@@ -140,7 +142,7 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 	for _, httpResource := range httpResources {
 		checkedResources[rankConfidence(httpResource)]++
 
-		foundResource := checkResource(l, targetURL, httpResource)
+		foundResource := checkResource(targetURL, httpResource)
 		if foundResource != nil {
 			vulnResources = append(vulnResources, foundResource)
 		}
@@ -154,7 +156,7 @@ func exposedResources(l *logrus.Entry, targetURL *url.URL, httpResources []Resou
 	return vuln, checkedResources
 }
 
-func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) map[string]string {
+func checkResource(targetURL *url.URL, httpResource Resource) map[string]string {
 	foundPathsChan := make(chan string)
 
 	go func() {
@@ -167,13 +169,13 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) m
 
 				err := limiter.Wait(context.Background())
 				if err != nil {
-					l.Error(err)
+					logger.Error(err)
 					return
 				}
 
 				targetResource, err := url.Parse(targetURL.String())
 				if err != nil {
-					l.Error(err)
+					logger.Error(err)
 					return
 				}
 
@@ -182,9 +184,9 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) m
 					targetResource.Path += "/"
 				}
 
-				positive, err := checkPath(l, targetResource, httpResource)
+				positive, err := checkPath(targetResource, httpResource)
 				if err != nil {
-					l.Error(err)
+					logger.Error(err)
 					return
 				}
 
@@ -226,14 +228,14 @@ func checkResource(l *logrus.Entry, targetURL *url.URL, httpResource Resource) m
 	}
 }
 
-func checkPath(l *logrus.Entry, targetResource *url.URL, httpResource Resource) (bool, error) {
+func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
 	client := http.DefaultClient
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 	resp, err := client.Get(targetResource.String())
 	if err != nil {
-		l.Debugf("path not reachable: %s, reason %v", targetResource.String(), err)
+		logger.Debugf("path not reachable: %s, reason %v", targetResource.String(), err)
 		return false, nil
 	}
 	defer resp.Body.Close() // nolint
@@ -267,6 +269,11 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 }
 
 func filterFalsePositives(vuln *report.Vulnerability, checkedStats map[string]int) error {
+	// False positives will only be filtered if a minimum of resources are checked.
+	if checkedStats["LOW"]+checkedStats["MEDIUM"] < falsePositiveMinimumResources {
+		return nil
+	}
+
 	vulnStats := map[string]int{}
 	highConfidenceScore := 0.0
 	for _, resource := range vuln.Resources[0].Rows {
@@ -285,11 +292,7 @@ func filterFalsePositives(vuln *report.Vulnerability, checkedStats map[string]in
 		vulnStats[confidence]++
 	}
 
-	// False positives will only be filtered if a minimum of resources are checked.
-	if checkedStats["LOW"]+checkedStats["MEDIUM"] < falsePositiveMinimumResources {
-		return nil
-	}
-
+	// We check if the ratio of low or medium confidence matches exceeds the defined threshold.
 	if float64(vulnStats["LOW"]+vulnStats["MEDIUM"])/float64(checkedStats["LOW"]+checkedStats["MEDIUM"]) > falsePositiveThreshold {
 		vuln.Score = float32(highConfidenceScore)
 		vuln.Details = fmt.Sprintf(
