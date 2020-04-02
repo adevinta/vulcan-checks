@@ -51,3 +51,12 @@ go run _testdata/server.go _testdata/www_ko/ &
 ```
 vulcan-exposed-http-resources -t
 ```
+
+## Thanks
+
+This check was developed from two previous checks with similar goals and complementing features.
+
+We would like to thank their respective authors:
+
+- Ståle Pettersen (from the Schibsted Security Team) for his work on the `vulcan-exposed-files` check.
+- Oscar Mira (from the Adevinta Security Team) and his team for their work on the `vulcan-exposed-http-endpoint` check.
