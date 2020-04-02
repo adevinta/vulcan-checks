@@ -4,10 +4,8 @@ github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41 h1:MFhC+
 github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41/go.mod h1:Y00ZD1FNSMTFSqW2BeVIivVCIV4XcF7u3tJzq4YwZ5I=
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f h1:I74NfMCY6nR2+/u1VfrGeKtXI2ghQf+i2AHJ6oOiSb4=
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
-github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee h1:bRuRfE5WvXf4btWcQOJdxGMPpfUPq/LhaLCjk9OI20U=
-github.com/adevinta/restuss v0.0.0-20190819135751-1e5c4325e9ee/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
-github.com/adevinta/restuss v0.0.0-20191122105535-9cd10ccfaada h1:dIU1SRSIy3N4sVdaNDdRFTowUQoYqtUGb7+0FAe0fy0=
-github.com/adevinta/restuss v0.0.0-20191122105535-9cd10ccfaada/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
+github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21 h1:UTCSVBGTK78jV0F/pDsYLIKRzmJD7pkz/vqP0OVOHfM=
+github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200213111412-a3538deba0c1 h1:E9PBlvoHDgwIpqDYEALiSx0HVuMD6RD2R+kafoe+jL0=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200213111412-a3538deba0c1/go.mod h1:uOsuYrehTDYR27uxYwXYkxh2CNaieE6oqYSFnquhYjs=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7 h1:/EB/vCnImtb6mHevPI/0iMlyzQwucMtl4yW6TsEhQq8=
