@@ -1,5 +1,5 @@
 FROM scratch
-ADD vulcan-exposed-http-resources /vulcan-exposed-http-resources
-ADD resources.yaml
 WORKDIR /
+ADD vulcan-exposed-http-resources .
+ADD resources.yaml .
 CMD ["/vulcan-exposed-http-resources"]
