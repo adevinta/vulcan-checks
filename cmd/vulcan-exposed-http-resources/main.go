@@ -91,11 +91,15 @@ func main() {
 
 		targetURL, err := url.Parse(target)
 		if err != nil {
+			// TODO: If the target is malformed perhaps we should
+			// not return an error but only log it and exit.
 			return err
 		}
 
 		var opt Options
 		if optJSON != "" {
+			// TODO: If the options are malformed perhaps we should
+			// not return an error but only log it and exit.
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
