@@ -2,6 +2,8 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200219095047-7628272c3434 h1:v9Tp8RXoJAP610LJd/fAzbWzrNodAQbW/I//F7btVfc=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200219095047-7628272c3434/go.mod h1:uOsuYrehTDYR27uxYwXYkxh2CNaieE6oqYSFnquhYjs=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7 h1:/EB/vCnImtb6mHevPI/0iMlyzQwucMtl4yW6TsEhQq8=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7/go.mod h1:uOsuYrehTDYR27uxYwXYkxh2CNaieE6oqYSFnquhYjs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff h1:ZazuZSOfV8oo70SWdjLQi+In4GSmJCA2rwsliyz9KNs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff/go.mod h1:GtAon6TymHFTOPwRdR7SHun/TSM1kyPMQYXxGLTR8eQ=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca h1:Cp5Y1tHSwf7JLeMzSDuSmqAEsWx2aHPDoszERMKspQQ=
