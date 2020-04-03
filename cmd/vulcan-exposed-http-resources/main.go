@@ -37,7 +37,7 @@ type Options struct {
 }
 
 const (
-	checkName = "vulcan-exposed-http-resource"
+	checkName = "vulcan-exposed-http-resources"
 
 	// falsePositiveMessage is the message that will be displayed
 	// in the details section if the exposed resources of the check
@@ -65,7 +65,7 @@ var (
 		Description:     "Private resources are publicly accessible through an HTTP server.",
 		ImpactDetails:   "Through the exposed resources, an external attacker may be able to obtain sensitive information (credentials, source code, user data...), interact with sensitive features (content administration, database management...) or have access to additional attack surface.",
 		Score:           report.SeverityThresholdHigh,
-		Recommendations: []string{"Remove file from web server.", "Forbid access to the reported paths.", "Rotate any leaked credentials."},
+		Recommendations: []string{"Remove the resource from web server.", "Forbid access to the reported paths.", "Rotate any leaked credentials."},
 		Resources: []report.ResourcesGroup{
 			report.ResourcesGroup{
 				Name:   "Exposed Resources",
@@ -75,6 +75,7 @@ var (
 		},
 		CWEID: 538, // File and Directory Information Exposure
 	}
+	checkedResources = map[string]int{}
 
 	logger *logrus.Entry
 )
@@ -88,13 +89,6 @@ func main() {
 	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
 		logger = check.NewCheckLog(checkName)
 		logger = logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
-
-		targetURL, err := url.Parse(target)
-		if err != nil {
-			// TODO: If the target is malformed perhaps we should
-			// not return an error but only log it and exit.
-			return err
-		}
 
 		var opt Options
 		if optJSON != "" {
@@ -117,19 +111,32 @@ func main() {
 			}
 		}
 
-		vuln, checked := exposedResources(targetURL, resources)
+		targetURL := &url.URL{}
+		// Check if the target is already an URL.
+		targetURL, err = url.Parse(target)
+		// If it is not, try to process it as a hostname.
+		if err != nil {
+			targetURL.Host = target
+			// We check if a web server is exposed on the common schemes.
+			for _, scheme := range []string{"https", "http"} {
+				targetURL.Scheme = scheme
+				_, err := http.Get(targetURL.String())
+				if err == nil {
+					break
+				}
 
-		if vuln == nil {
-			return nil
+				vulnResources := exposedResources(targetURL, resources)
+				exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
+			}
 		}
 
-		if len(vuln.Resources) > 0 {
-			err = filterFalsePositives(vuln, checked)
+		if len(exposedVuln.Resources[0].Rows) > 0 {
+			err = filterFalsePositives(exposedVuln, checkedResources)
 			if err != nil {
 				return err
 			}
+			state.AddVulnerabilities(exposedVuln)
 		}
-		state.AddVulnerabilities(*vuln)
 
 		return nil
 	}
@@ -138,12 +145,11 @@ func main() {
 	c.RunAndServe()
 }
 
-func exposedResources(targetURL *url.URL, httpResources []Resource) (*report.Vulnerability, map[string]int) {
-	var vuln *report.Vulnerability
+func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string]string {
 	vulnResources := []map[string]string{}
-	checkedResources := map[string]int{}
 
 	for _, httpResource := range httpResources {
+		// We keep track of the resources checked by severity in a global variable.
 		checkedResources[rankConfidence(httpResource)]++
 
 		foundResource := checkResource(targetURL, httpResource)
@@ -152,12 +158,7 @@ func exposedResources(targetURL *url.URL, httpResources []Resource) (*report.Vul
 		}
 	}
 
-	if len(vulnResources) > 0 {
-		vuln = &exposedVuln
-		vuln.Resources[0].Rows = vulnResources
-	}
-
-	return vuln, checkedResources
+	return vulnResources
 }
 
 func checkResource(targetURL *url.URL, httpResource Resource) map[string]string {
@@ -272,9 +273,9 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 	return regexp.Match(regex, contents)
 }
 
-func filterFalsePositives(vuln *report.Vulnerability, checkedStats map[string]int) error {
+func filterFalsePositives(vuln report.Vulnerability, checkedResources map[string]int) error {
 	// False positives will only be filtered if a minimum of resources are checked.
-	if checkedStats["LOW"]+checkedStats["MEDIUM"] < falsePositiveMinimumResources {
+	if checkedResources["LOW"]+checkedResources["MEDIUM"] < falsePositiveMinimumResources {
 		return nil
 	}
 
@@ -297,12 +298,12 @@ func filterFalsePositives(vuln *report.Vulnerability, checkedStats map[string]in
 	}
 
 	// We check if the ratio of low or medium confidence matches exceeds the defined threshold.
-	if float64(vulnStats["LOW"]+vulnStats["MEDIUM"])/float64(checkedStats["LOW"]+checkedStats["MEDIUM"]) > falsePositiveThreshold {
+	if float64(vulnStats["LOW"]+vulnStats["MEDIUM"])/float64(checkedResources["LOW"]+checkedResources["MEDIUM"]) > falsePositiveThreshold {
 		vuln.Score = float32(highConfidenceScore)
 		vuln.Details = fmt.Sprintf(
 			falsePositiveMessage,
 			vulnStats["LOW"]+vulnStats["MEDIUM"],
-			checkedStats["LOW"]+checkedStats["MEDIUM"],
+			checkedResources["LOW"]+checkedResources["MEDIUM"],
 		)
 	}
 
