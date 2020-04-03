@@ -115,19 +115,25 @@ func main() {
 		// Check if the target is already an URL.
 		targetURL, err = url.Parse(target)
 		// If it is not, try to process it as a hostname.
-		if err != nil {
-			targetURL.Host = target
+		if err != nil || (targetURL.Scheme != "http" && targetURL.Scheme != "https") {
+			logger.Info("Target does not seem to be a web address.")
+			targetURL = &url.URL{Host: target}
 			// We check if a web server is exposed on the common schemes.
 			for _, scheme := range []string{"https", "http"} {
+				logger.Infof("Testing for web server in default %s port.", strings.ToUpper(scheme))
 				targetURL.Scheme = scheme
 				_, err := http.Get(targetURL.String())
-				if err == nil {
-					break
+				if err != nil {
+					logger.Infof("Server not found in default %s port.", strings.ToUpper(scheme))
+					continue
 				}
 
+				logger.Infof("Server found in default %s port.", strings.ToUpper(scheme))
 				vulnResources := exposedResources(targetURL, resources)
 				exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
 			}
+		} else {
+			logger.Info("Target seems to be a web address.")
 		}
 
 		if len(exposedVuln.Resources[0].Rows) > 0 {
@@ -148,6 +154,7 @@ func main() {
 func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string]string {
 	vulnResources := []map[string]string{}
 
+	logger.WithFields(logrus.Fields{"url": targetURL.String()}).Info("Checking for exposed resources.")
 	for _, httpResource := range httpResources {
 		// We keep track of the resources checked by severity in a global variable.
 		checkedResources[rankConfidence(httpResource)]++
@@ -196,6 +203,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 				}
 
 				if positive {
+					logger.WithFields(logrus.Fields{"url": targetURL.String()}).Info("Found exposed resource in URL.")
 					foundPathsChan <- targetResource.String()
 				}
 			}()
@@ -240,7 +248,7 @@ func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
 	}
 	resp, err := client.Get(targetResource.String())
 	if err != nil {
-		logger.Debugf("path not reachable: %s, reason %v", targetResource.String(), err)
+		logger.WithFields(logrus.Fields{"path": targetResource.String()}).Debugf("Path not reachable: %v", err)
 		return false, nil
 	}
 	defer resp.Body.Close() // nolint
@@ -274,8 +282,9 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 }
 
 func filterFalsePositives(vuln report.Vulnerability, checkedResources map[string]int) error {
-	// False positives will only be filtered if a minimum of resources are checked.
-	if checkedResources["LOW"]+checkedResources["MEDIUM"] < falsePositiveMinimumResources {
+	// False positives will only be filtered if a minimum of unreliable resources are checked.
+	unreliableResources := float64(checkedResources["LOW"] + checkedResources["MEDIUM"])
+	if unreliableResources < falsePositiveMinimumResources {
 		return nil
 	}
 
@@ -298,13 +307,14 @@ func filterFalsePositives(vuln report.Vulnerability, checkedResources map[string
 	}
 
 	// We check if the ratio of low or medium confidence matches exceeds the defined threshold.
-	if float64(vulnStats["LOW"]+vulnStats["MEDIUM"])/float64(checkedResources["LOW"]+checkedResources["MEDIUM"]) > falsePositiveThreshold {
+	potentialFalsePositives := float64(vulnStats["LOW"] + vulnStats["MEDIUM"])
+	if potentialFalsePositives/unreliableResources > falsePositiveThreshold {
+		logger.WithFields(logrus.Fields{
+			"potential_false_positives": potentialFalsePositives,
+			"unreliable_resources":      unreliableResources,
+		}).Infof("False positive detection triggered.")
 		vuln.Score = float32(highConfidenceScore)
-		vuln.Details = fmt.Sprintf(
-			falsePositiveMessage,
-			vulnStats["LOW"]+vulnStats["MEDIUM"],
-			checkedResources["LOW"]+checkedResources["MEDIUM"],
-		)
+		vuln.Details = fmt.Sprintf(falsePositiveMessage, potentialFalsePositives, unreliableResources)
 	}
 
 	return nil
