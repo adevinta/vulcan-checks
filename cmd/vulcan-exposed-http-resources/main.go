@@ -175,6 +175,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 		limiter := rate.NewLimiter(rate.Limit(rateLimit), burst)
 		var wg sync.WaitGroup
 		for _, p := range httpResource.Paths {
+			p := p
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -237,7 +238,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 		"Severity":    severityRank,
 		"Confidence":  rankConfidence(httpResource),
 		"Description": httpResource.Description,
-		"URL":         strings.Join(foundPaths, "\n"),
+		"URL":         strings.Join(foundPaths, "\n\n"),
 	}
 }
 

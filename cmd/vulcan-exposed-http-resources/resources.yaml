@@ -88,7 +88,7 @@
 
 - paths:
   - ".git/config"
-  regex: "[core]"
+  regex: "\\[core\\]"
   status: 200
   severity: 6.9
   description: Exposed Git configuration file.
@@ -124,6 +124,7 @@
   - ".htaccess.old"
   - ".htaccess.orig"
   regex: "(AuthType|Header|ErrorDocument|RewriteCond|Redirect|deny from|allow from)"
+  status: 200
   severity: 8.9
   description: Exposed Apache access file.
 
@@ -384,20 +385,24 @@
 
 - paths:
   - "config/databases.yml"
-  regex: "(param|class)"
+  # Regular expression is too broad:
+  # regex: "(param|class)"
   status: 200
   severity: 8.9
   description: Exposed Symfony database configuration file.
 
 - paths:
   - "config/database.yml"
-  regex: "(adapter|database)"
+  # Regular expression is too broad:
+  # regex: "(adapter|database)"
   status: 200
   severity: 8.9
   description: Exposed Rails database configuration file.
 
 - paths:
   - "settings.py"
+  # Regular expression is too broad:
+  # regex: "(SECRET_KEY|USER|PASSWORD)"
   regex: "(SECRET_KEY|USER|PASSWORD)"
   status: 200
   severity: 8.9
