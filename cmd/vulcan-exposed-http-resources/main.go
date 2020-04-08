@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
@@ -39,24 +40,22 @@ type Options struct {
 const (
 	checkName = "vulcan-exposed-http-resources"
 
+	// falsePositiveMinimumRequests is the minimum number of requests
+	// the check must do in order for the false positive filtering to take place.
+	falsePositiveMinimumRequests = 10
+	// falsePositiveOKThreshold is the ratio of 200 OK responses
+	// necessary to consider that the HTTP server is consistently returning
+	// false OK statuses and flag the found resources as a false positives.
+	falsePositiveOKThreshold = 0.80
 	// falsePositiveMessage is the message that will be displayed
 	// in the details section if the exposed resources of the check
 	// are flagged as false positives.
-	falsePositiveMessage = "The check found %v out of %v resources without reliable detection mechanisms. Flagged as false positive."
-	// falsePositiveThreshold is the ratio of found resources
-	// found with low or medium confidence necessary to consider
-	// that the HTTP server is returning false OK statuses and
-	// flag the found resources as a false positives.
-	falsePositiveThreshold = 0.80
-	// falsePositiveMinimum resources is the minimum number of resources
-	// with low or medium confidence that the check must be looking
-	// for in order for the false positive filtering to take place.
-	falsePositiveMinimumResources = 20
+	falsePositiveMessage = "The check found that %v out of %v requests returned an OK response status. The check considered the web server response statuses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported."
 
 	// burst is the maximum number of simultaneous connections to the target.
 	burst = 5
-	// rateLimit is the maximum rate of simultaneous connections per second.
-	rateLimit = 10
+	// rateLimit is the maximum rate of connections per second.
+	rateLimit = 20
 )
 
 var (
@@ -64,7 +63,7 @@ var (
 		Summary:         "Exposed HTTP Resources",
 		Description:     "Private resources are publicly accessible through an HTTP server.",
 		ImpactDetails:   "Through the exposed resources, an external attacker may be able to obtain sensitive information (credentials, source code, user data...), interact with sensitive features (content administration, database management...) or have access to additional attack surface.",
-		Score:           report.SeverityThresholdHigh,
+		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Remove the resource from web server.", "Forbid access to the reported paths.", "Rotate any leaked credentials."},
 		Resources: []report.ResourcesGroup{
 			report.ResourcesGroup{
@@ -75,7 +74,12 @@ var (
 		},
 		CWEID: 538, // File and Directory Information Exposure
 	}
-	checkedResources = map[string]int{}
+
+	responseCount = struct {
+		ok    int
+		total int
+		mutex sync.RWMutex
+	}{}
 
 	logger *logrus.Entry
 )
@@ -83,6 +87,8 @@ var (
 func init() {
 	// We don't want to verify certificates in this check.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	// We want to abort connections that are taking too long.
+	http.DefaultClient.Timeout = 3 * time.Second
 }
 
 func main() {
@@ -137,7 +143,7 @@ func main() {
 		}
 
 		if len(exposedVuln.Resources[0].Rows) > 0 {
-			err = filterFalsePositives(exposedVuln, checkedResources)
+			err = filterFalsePositives(&exposedVuln)
 			if err != nil {
 				return err
 			}
@@ -156,9 +162,6 @@ func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string
 
 	logger.WithFields(logrus.Fields{"url": targetURL.String()}).Info("Checking for exposed resources.")
 	for _, httpResource := range httpResources {
-		// We keep track of the resources checked by severity in a global variable.
-		checkedResources[rankConfidence(httpResource)]++
-
 		foundResource := checkResource(targetURL, httpResource)
 		if foundResource != nil {
 			vulnResources = append(vulnResources, foundResource)
@@ -204,7 +207,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 				}
 
 				if positive {
-					logger.WithFields(logrus.Fields{"url": targetURL.String()}).Info("Found exposed resource in URL.")
+					logger.WithFields(logrus.Fields{"url": targetResource.String()}).Info("Found exposed resource in URL.")
 					foundPathsChan <- targetResource.String()
 				}
 			}()
@@ -238,7 +241,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 		"Severity":    severityRank,
 		"Confidence":  rankConfidence(httpResource),
 		"Description": httpResource.Description,
-		"URL":         strings.Join(foundPaths, "\n\n"),
+		"URL":         strings.Join(foundPaths, ", "),
 	}
 }
 
@@ -248,14 +251,26 @@ func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
 		return http.ErrUseLastResponse
 	}
 	resp, err := client.Get(targetResource.String())
-	if err != nil {
+	if err != nil && !err.(*url.Error).Timeout() {
 		logger.WithFields(logrus.Fields{"path": targetResource.String()}).Debugf("Path not reachable: %v", err)
 		return false, nil
 	}
 	defer resp.Body.Close() // nolint
 
-	// By default we consider any response to be a positive.
-	positive := true
+	positive := false
+
+	// By default we consider any non-nil response to be a positive.
+	if resp.StatusCode != 0 {
+		positive = true
+	}
+
+	// Count response status.
+	responseCount.mutex.Lock()
+	if resp.StatusCode == http.StatusOK {
+		responseCount.ok++
+	}
+	responseCount.total++
+	responseCount.mutex.Unlock()
 
 	// If a status is set, only that response status will be a positive.
 	if httpResource.Status != nil {
@@ -282,14 +297,30 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 	return regexp.Match(regex, contents)
 }
 
-func filterFalsePositives(vuln report.Vulnerability, checkedResources map[string]int) error {
-	// False positives will only be filtered if a minimum of unreliable resources are checked.
-	unreliableResources := float64(checkedResources["LOW"] + checkedResources["MEDIUM"])
-	if unreliableResources < falsePositiveMinimumResources {
+func filterFalsePositives(vuln *report.Vulnerability) error {
+	// False positives will only be filtered if a minimum number of requests are made.
+	if responseCount.total < falsePositiveMinimumRequests {
+		return nil
+		logger.WithFields(logrus.Fields{
+			"responses_ok":    responseCount.ok,
+			"responses_total": responseCount.total,
+		}).Infof("False positive detection skipped.")
+	}
+
+	// We check for an abnormal rate of OK responses.
+	if float32(responseCount.ok)/float32(responseCount.total) < falsePositiveOKThreshold {
+		logger.WithFields(logrus.Fields{
+			"responses_ok":    responseCount.ok,
+			"responses_total": responseCount.total,
+		}).Infof("False positive threshold not met.")
 		return nil
 	}
 
-	vulnStats := map[string]int{}
+	logger.WithFields(logrus.Fields{
+		"responses_ok":    responseCount.ok,
+		"responses_total": responseCount.total,
+	}).Infof("False positive threshold met.")
+
 	highConfidenceScore := 0.0
 	for _, resource := range vuln.Resources[0].Rows {
 		confidence := resource["Confidence"]
@@ -302,21 +333,10 @@ func filterFalsePositives(vuln report.Vulnerability, checkedResources map[string
 			// We store the highest score with high confidence.
 			highConfidenceScore = score
 		}
-
-		// We count the number of resources found for each confidence type.
-		vulnStats[confidence]++
 	}
 
-	// We check if the ratio of low or medium confidence matches exceeds the defined threshold.
-	potentialFalsePositives := float64(vulnStats["LOW"] + vulnStats["MEDIUM"])
-	if potentialFalsePositives/unreliableResources > falsePositiveThreshold {
-		logger.WithFields(logrus.Fields{
-			"potential_false_positives": potentialFalsePositives,
-			"unreliable_resources":      unreliableResources,
-		}).Infof("False positive detection triggered.")
-		vuln.Score = float32(highConfidenceScore)
-		vuln.Details = fmt.Sprintf(falsePositiveMessage, potentialFalsePositives, unreliableResources)
-	}
+	vuln.Score = float32(highConfidenceScore)
+	vuln.Details = fmt.Sprintf(falsePositiveMessage, responseCount.ok, responseCount.total)
 
 	return nil
 }
