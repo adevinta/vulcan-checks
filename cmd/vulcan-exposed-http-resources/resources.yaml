@@ -96,19 +96,19 @@
 - paths:
   - "phpinfo.php"
   regex: "PHP Version =>"
-  severity: 4.9
+  severity: 3.9
   description: Exposed PHP information page.
 
 - paths:
   - ".idea/WebServers.xml"
   regex: "name=\"WebServers\""
-  severity: 4.9
+  severity: 3.9
   description: Exposed IntelliJ configuration file.
 
 - paths:
   - ".DS_Store"
   regex: "\x00\x00\x00\x01Bud1"
-  severity: 4.9
+  severity: 3.9
   description: Exposed Mac/OSX directory metadata file.
 
 - paths:
@@ -123,9 +123,9 @@
   - ".htaccess.bak"
   - ".htaccess.old"
   - ".htaccess.orig"
-  regex: "(AuthType|Header|ErrorDocument|RewriteCond|Redirect|deny from|allow from)"
+  regex: "(AuthType|ErrorDocument|RewriteCond|RewriteRule|IfModule)"
   status: 200
-  severity: 8.9
+  severity: 6.9
   description: Exposed Apache access file.
 
 - paths:
@@ -133,7 +133,8 @@
   - ".htpasswd.bak"
   - ".htpasswd.old"
   - ".htpasswd.orig"
-  regex: "^.*?:.*"
+  regex: "^.*?:(\\{|\\$)"
+  status: 200
   severity: 8.9
   description: Exposed Apache password file.
 
@@ -363,7 +364,7 @@
   - "phpMyAdmin-3/"
   - "phpMyAdmin-4/"
   status: 200
-  severity: 10
+  severity: 8.9
   description: Potentially exposed MySQL management page.
 
 - paths:
@@ -403,7 +404,6 @@
   - "settings.py"
   # Regular expression is too broad:
   # regex: "(SECRET_KEY|USER|PASSWORD)"
-  regex: "(SECRET_KEY|USER|PASSWORD)"
   status: 200
   severity: 8.9
   description: Exposed Django configuration file.
@@ -411,11 +411,11 @@
 - paths:
   - "xmlrpc.php"
   regex: "XML-RPC server accepts POST requests only."
-  severity: 4.9
+  severity: 3.9
   description: Exposed WordPress insecure XML RPC.
 
 - paths:
   - "wp-admin/admin.php"
   status: 200
-  severity: 4.9
+  severity: 5.0
   description: Potentially exposed WordPress administration login page.

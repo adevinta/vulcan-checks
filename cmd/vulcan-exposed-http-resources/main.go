@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,10 +48,13 @@ const (
 	// necessary to consider that the HTTP server is consistently returning
 	// false OK statuses and flag the found resources as a false positives.
 	falsePositiveOKThreshold = 0.80
+	// falsePositiveMaximumResources is the maximum number of exposed resources
+	// the check is expected to find except for false positives.
+	falsePositiveMaximumResources = 20
 	// falsePositiveMessage is the message that will be displayed
 	// in the details section if the exposed resources of the check
 	// are flagged as false positives.
-	falsePositiveMessage = "The check found that %v out of %v requests returned an OK response status. The check considered the web server response statuses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported."
+	falsePositiveMessage = "The check found %v exposed resources and %v out of %v requests returned an OK response status. The check considered the web server responses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported."
 
 	// burst is the maximum number of simultaneous connections to the target.
 	burst = 5
@@ -147,6 +151,30 @@ func main() {
 			if err != nil {
 				return err
 			}
+
+			// Sort rows by severity and then confidence.
+			sort.Slice(exposedVuln.Resources[0].Rows, func(i, j int) bool {
+				si, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[i]["Score"], 32)
+				if err != nil {
+					return false
+				}
+				sj, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[j]["Score"], 32)
+				if err != nil {
+					return true
+				}
+				switch {
+				case si != sj:
+					return si > sj
+				case exposedVuln.Resources[0].Rows[i]["Confidence"] == "HIGH":
+					return true
+				case exposedVuln.Resources[0].Rows[i]["Confidence"] == "MEDIUM" &&
+					exposedVuln.Resources[0].Rows[j]["Confidence"] == "LOW":
+					return true
+				default:
+					return false
+				}
+			})
+
 			state.AddVulnerabilities(exposedVuln)
 		}
 
@@ -162,16 +190,16 @@ func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string
 
 	logger.WithFields(logrus.Fields{"url": targetURL.String()}).Info("Checking for exposed resources.")
 	for _, httpResource := range httpResources {
-		foundResource := checkResource(targetURL, httpResource)
-		if foundResource != nil {
-			vulnResources = append(vulnResources, foundResource)
+		foundResources := checkResource(targetURL, httpResource)
+		if foundResources != nil {
+			vulnResources = append(vulnResources, foundResources...)
 		}
 	}
 
 	return vulnResources
 }
 
-func checkResource(targetURL *url.URL, httpResource Resource) map[string]string {
+func checkResource(targetURL *url.URL, httpResource Resource) []map[string]string {
 	foundPathsChan := make(chan string)
 
 	go func() {
@@ -236,13 +264,18 @@ func checkResource(targetURL *url.URL, httpResource Resource) map[string]string 
 		severityRank = rankSeverity(report.SeverityThresholdHigh)
 	}
 
-	return map[string]string{
-		"Score":       fmt.Sprintf("%.01f", *httpResource.Severity),
-		"Severity":    severityRank,
-		"Confidence":  rankConfidence(httpResource),
-		"Description": httpResource.Description,
-		"URL":         strings.Join(foundPaths, ", "),
+	var foundResources []map[string]string
+	for _, path := range foundPaths {
+		foundResources = append(foundResources, map[string]string{
+			"Score":       fmt.Sprintf("%.01f", *httpResource.Severity),
+			"Severity":    severityRank,
+			"Confidence":  rankConfidence(httpResource),
+			"Description": httpResource.Description,
+			"URL":         path,
+		})
 	}
+
+	return foundResources
 }
 
 func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
@@ -308,18 +341,25 @@ func filterFalsePositives(vuln *report.Vulnerability) error {
 	}
 
 	// We check for an abnormal rate of OK responses.
-	if float32(responseCount.ok)/float32(responseCount.total) < falsePositiveOKThreshold {
+	if float32(responseCount.ok)/float32(responseCount.total) > falsePositiveOKThreshold {
 		logger.WithFields(logrus.Fields{
 			"responses_ok":    responseCount.ok,
 			"responses_total": responseCount.total,
-		}).Infof("False positive threshold not met.")
+		}).Info("False positive threshold met.")
+	} else if len(vuln.Resources[0].Rows) > falsePositiveMaximumResources {
+		logger.WithFields(logrus.Fields{
+			"resources_found":   len(vuln.Resources[0].Rows),
+			"resources_maximum": falsePositiveMaximumResources,
+		}).Info("False positive found resources maximum met.")
+	} else {
+		logger.WithFields(logrus.Fields{
+			"responses_ok":      responseCount.ok,
+			"responses_total":   responseCount.total,
+			"resources_found":   len(vuln.Resources[0].Rows),
+			"resources_maximum": falsePositiveMaximumResources,
+		}).Info("False positive not identified.")
 		return nil
 	}
-
-	logger.WithFields(logrus.Fields{
-		"responses_ok":    responseCount.ok,
-		"responses_total": responseCount.total,
-	}).Infof("False positive threshold met.")
 
 	highConfidenceScore := 0.0
 	for _, resource := range vuln.Resources[0].Rows {
@@ -336,7 +376,7 @@ func filterFalsePositives(vuln *report.Vulnerability) error {
 	}
 
 	vuln.Score = float32(highConfidenceScore)
-	vuln.Details = fmt.Sprintf(falsePositiveMessage, responseCount.ok, responseCount.total)
+	vuln.Details = fmt.Sprintf(falsePositiveMessage, len(vuln.Resources[0].Rows), responseCount.ok, responseCount.total)
 
 	return nil
 }
