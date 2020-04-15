@@ -250,7 +250,7 @@ func getOtherVulnerabilities(failures []string) []report.Vulnerability {
 			v.Summary = "Cipher Suite Order Not Compliant"
 			v.Description = "The order of the supported ciphersuites is not compliant with the modern level."
 			v.ImpactDetails = "Since stronger ciphersuites are not prioritized over weaker ones it is possible that, under some circumstances, a client will use a weaker ciphersuite over some available and suitable stronger ones."
-		case strings.Contains(failure, "enforce server side ordering"):
+		case strings.Contains(failure, "enforce") && strings.Contains(failure, "side ordering"):
 			v.Summary = "Cipher Suite Ordering Not Enforced"
 			v.Description = "This site does not enforce a specific priority order for its supported ciphersuites."
 			v.ImpactDetails = "Since stronger ciphersuites are not prioritized over weaker ones it is possible that, under some circumstances, a client will use a weaker ciphersuite over some available and suitable stronger ones."
