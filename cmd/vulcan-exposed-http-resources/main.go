@@ -292,7 +292,7 @@ func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
 		return http.ErrUseLastResponse
 	}
 	resp, err := client.Get(targetResource.String())
-	if err != nil && !err.(*url.Error).Timeout() {
+	if (err != nil && !err.(*url.Error).Timeout()) || resp == nil {
 		logger.WithFields(logrus.Fields{"path": targetResource.String()}).Debugf("Path not reachable: %v", err)
 		return false, nil
 	}
