@@ -144,6 +144,14 @@ func main() {
 			}
 		} else {
 			logger.Info("Target seems to be a web address.")
+			_, err := http.Get(targetURL.String())
+			if err != nil {
+				logger.Infof("Server not found in target web address.")
+				return nil
+			}
+
+			vulnResources := exposedResources(targetURL, resources)
+			exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
 		}
 
 		if len(exposedVuln.Resources[0].Rows) > 0 {
