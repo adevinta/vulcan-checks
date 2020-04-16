@@ -1,0 +1,3 @@
+Description = "This checks looks for a well known or custom list of exposed resources in an HTTP address"
+AssetTypes = ["Hostname", "WebAddress"]
+Timeout = 240
