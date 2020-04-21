@@ -16,6 +16,10 @@ build_options:
     packages: 
       - mysql-client
       - mysql-dev
+  - name: nmap
+    packages:
+      - nmap
+      - nmap-scripts
 welcome_message: |
   You have created a new function which uses Golang 1.11 and the Classic
   OpenFaaS template.

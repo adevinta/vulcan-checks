@@ -37,7 +37,10 @@ RUN CGO_ENABLED=${CGO_ENABLED} GOOS=linux \
     go build --ldflags "-s -w" -a -installsuffix cgo -o handler .
 
 FROM alpine:3.11
-RUN apk --no-cache add ca-certificates \
+
+ARG ADDITIONAL_PACKAGE
+
+RUN apk --no-cache add ca-certificates ${ADDITIONAL_PACKAGE} \
     && addgroup -S app && adduser -S -g app app \
     && mkdir -p /home/app \
     && chown app /home/app
@@ -47,6 +50,8 @@ WORKDIR /home/app
 COPY --from=builder /usr/bin/fwatchdog         .
 COPY --from=builder /go/src/handler/function/  .
 # COPY --from=builder /go/src/handler/handler    .
+
+RUN find . -name 'faas_*.sh' -print | xargs sh
 
 RUN chown -R app /home/app
 
