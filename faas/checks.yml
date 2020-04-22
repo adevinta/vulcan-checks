@@ -103,10 +103,10 @@ functions:
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-services
     build_options:
     - nmap
-  vulcan-exposed-ssh: # ALERT: ruby:2.4-alpine
-    lang: check-go-env
-    handler: ../cmd/vulcan-exposed-ssh
-    image: ${DOCKER_USER:-adevinta}/vulcan-exposed-ssh
+  # vulcan-exposed-ssh: # ALERT: ruby:2.4-alpine
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-exposed-ssh
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-exposed-ssh
   vulcan-exposed-varnish:
     lang: check-go-env
     handler: ../cmd/vulcan-exposed-varnish
@@ -125,10 +125,10 @@ functions:
     image: ${DOCKER_USER:-adevinta}/vulcan-host-discovery
     build_options:
     - nmap
-  vulcan-http-headers: # ALERT: python:3.6.4-slim-stretch + customs.
-    lang: check-go-env
-    handler: ../cmd/vulcan-http-headers
-    image: ${DOCKER_USER:-adevinta}/vulcan-http-headers
+  # vulcan-http-headers: # ALERT: python:3.6.4-slim-stretch + customs.
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-http-headers
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-http-headers
   vulcan-ipv6:
     lang: check-go-env
     handler: ../cmd/vulcan-ipv6
@@ -137,10 +137,10 @@ functions:
     lang: check-go-env
     handler: ../cmd/vulcan-lucky
     image: ${DOCKER_USER:-adevinta}/vulcan-lucky
-  vulcan-masscan: # WARNING: faas_build.sh
-    lang: check-go-env
-    handler: ../cmd/vulcan-masscan
-    image: ${DOCKER_USER:-adevinta}/vulcan-masscan
+  # vulcan-masscan: # WARNING: faas_build.sh
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-masscan
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-masscan
   vulcan-mx:
     lang: check-go-env
     handler: ../cmd/vulcan-mx
@@ -153,18 +153,18 @@ functions:
     lang: check-go-env
     handler: ../cmd/vulcan-results-load-test
     image: ${DOCKER_USER:-adevinta}/vulcan-results-load-test
-  vulcan-retirejs:  # ALERT: node:alpine
-    lang: check-go-env
-    handler: ../cmd/vulcan-retirejs
-    image: ${DOCKER_USER:-adevinta}/vulcan-retirejs
+  # vulcan-retirejs:  # ALERT: node:alpine
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-retirejs
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-retirejs
   vulcan-s3-takeover:
     lang: check-go-env
     handler: ../cmd/vulcan-s3-takeover
     image: ${DOCKER_USER:-adevinta}/vulcan-s3-takeover
-  vulcan-seekret: # WARNING: faas_build.sh
-    lang: check-go-env
-    handler: ../cmd/vulcan-seekret
-    image: ${DOCKER_USER:-adevinta}/vulcan-seekret
+  # vulcan-seekret: # WARNING: faas_build.sh
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-seekret
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-seekret
   vulcan-sleep:
     lang: check-go-env
     handler: ../cmd/vulcan-sleep
@@ -179,14 +179,14 @@ functions:
     lang: check-go-env
     handler: ../cmd/vulcan-spf
     image: ${DOCKER_USER:-adevinta}/vulcan-spf
-  vulcan-tls: # ALERT:  debian:stretch-slim  + custom
-    lang: check-go-env
-    handler: ../cmd/vulcan-tls
-    image: ${DOCKER_USER:-adevinta}/vulcan-tls
-  vulcan-trivy: # ALERT: Custom dependency build
-    lang: check-go-env
-    handler: ../cmd/vulcan-trivy
-    image: ${DOCKER_USER:-adevinta}/vulcan-trivy
+  # vulcan-tls: # ALERT:  debian:stretch-slim  + custom
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-tls
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-tls
+  # vulcan-trivy: # ALERT: Custom dependency build
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-trivy
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-trivy
   vulcan-unclassified:
     lang: check-go-env
     handler: ../cmd/vulcan-unclassified
@@ -197,11 +197,11 @@ functions:
     image: ${DOCKER_USER:-adevinta}/vulcan-vulners
     build_options:
     - nmap
-  vulcan-wpscan: # ALERT: wpscanteam/wpscan
-    lang: check-go-env
-    handler: ../cmd/vulcan-wpscan
-    image: ${DOCKER_USER:-adevinta}/vulcan-wpscan
-  vulcan-zap: # ALERT: owasp/zap2docker-stable
-    lang: check-go-env
-    handler: ../cmd/vulcan-zap
-    image: ${DOCKER_USER:-adevinta}/vulcan-zap
+  # vulcan-wpscan: # ALERT: wpscanteam/wpscan
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-wpscan
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-wpscan
+  # vulcan-zap: # ALERT: owasp/zap2docker-stable
+  #   lang: check-go-env
+  #   handler: ../cmd/vulcan-zap
+  #   image: ${DOCKER_USER:-adevinta}/vulcan-zap

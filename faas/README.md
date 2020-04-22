@@ -9,7 +9,6 @@ k3d create --server-arg "--no-deploy=traefik" --server-arg "--no-deploy=servicel
 export KUBECONFIG="$(k3d get-kubeconfig --name='k3s-default')"
 ```
 
-
 ## Setup Openfaas
 
 Many options, here just one that works.

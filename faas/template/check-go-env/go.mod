@@ -1,10 +1,6 @@
 module handler
 
-// module github.com/adevinta/vulcan-checks
-
 go 1.13
-
-replace handler/function => ./function
 
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
