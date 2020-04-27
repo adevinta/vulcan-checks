@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/sirupsen/logrus"
 
@@ -139,6 +141,8 @@ func scanAccount(opt options, target string, logger *logrus.Entry, state state.S
 		logger.Infof("waiting for checks to be refreshed. Sleeping for %d seconds ...", opt.RefreshTimeout)
 		time.Sleep(time.Duration(opt.RefreshTimeout) * time.Second)
 	}
+
+	var alias *string
 	for _, v := range checks.Checks {
 		// Ignore results if we can't know the category
 		if v.Category == nil {
@@ -227,11 +231,18 @@ func scanAccount(opt options, target string, logger *logrus.Entry, state state.S
 					logger.Debugf("resource with ResourceID: %s have been marked as excluded", *fr.ResourceId)
 					continue
 				}
-
-				header := []string{}
-				row := make(map[string]string)
+				// Get the alias of the account only if we did not get previously.
+				if alias == nil {
+					res, err := accountAlias(creds)
+					if err != nil {
+						return err
+					}
+					alias = &res
+				}
+				// Alias can not be nil because the protection before.
+				header := []string{"Account"}
+				row := map[string]string{"Account": *alias}
 				for i := 0; i < len(v.Metadata); i++ {
-
 					// TODO drop column STATUS
 					fieldName := ""
 					if v.Metadata[i] != nil {
@@ -349,4 +360,23 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 		assumeRoleResponse.AccessKey,
 		assumeRoleResponse.SecretAccessKey,
 		assumeRoleResponse.SessionToken), nil
+}
+
+// accountAlias gets one of the current aliases of the account that the
+// credentials passed belong to.
+func accountAlias(creds *credentials.Credentials) (string, error) {
+	svc := iam.New(session.New(&aws.Config{Credentials: creds}))
+	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
+	if err != nil {
+		return "", err
+	}
+	if len(resp.AccountAliases) == 0 {
+		// No aliases found for the aws account.
+		return "", nil
+	}
+	a := resp.AccountAliases[0]
+	if a == nil {
+		return "", errors.New("unexpected nil getting aliases for aws account")
+	}
+	return *a, nil
 }
