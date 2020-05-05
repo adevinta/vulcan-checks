@@ -38,6 +38,9 @@ fi
 # Download go dependencies
 go mod download
 
+# Log to registry
+dkr_login
+
 # Iterate over all checks
 for cf in cmd/*; do
     ts_start=$(date +"%s")
