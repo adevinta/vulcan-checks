@@ -15,6 +15,7 @@ dkr_env() {
     cat <<"EOF"
 export DKR_USERNAME=${DKR_USERNAME:-}
 export DKR_PASSWORD=${DKR_PASSWORD:-}
+export DKR_SERVER=${DKR_SERVER:-docker.io}
 export DKR_REGISTRY=${DKR_REGISTRY:-https://registry.hub.docker.com}
 export DKR_REGISTRY_VERSION=${DKR_REGISTRY_VERSION:-v2}
 EOF
@@ -29,9 +30,9 @@ EOF
 dkr_login() {
     local -r username="${DKR_USERNAME:?docker username required}"
     local -r password="${DKR_PASSWORD:?docker password required}"
-    local -r registry="${DKR_REGISTRY:?docker registry required}"
+    local -r server="${DKR_SERVER:?docker server required}"
 
-    echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${registry}"
+    echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${server}"
 }
 
 ########################
