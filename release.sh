@@ -29,8 +29,9 @@ dep_version=$(git_commit_id go.mod)
 dep_timestamp=$(git_timestamp go.mod)
 
 # Fetch branch and check mode (master or experimental)
-check_branch=$(git_branch .)
-check_mode=$(git_branch .)
+branch=$(git_branch .)
+check_branch=${TRAVIS_BRANCH:-$branch}
+check_mode=${TRAVIS_BRANCH:-$branch}
 if [ "$check_mode" != "master" ]; then
     check_mode="experimental"
 fi
