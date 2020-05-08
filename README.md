@@ -42,3 +42,5 @@ Currently there's no vendoring provided for this project.
 35. **vulcan-exposed-hdfs** - Checks if an EMR cluster is exposed to the Internet
 36. **vulcan-exposed-rdp** - Checks if an Microsoft Remote Desktop service is exposed to the Internet
 37. **vulcan-seekret** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
+38. **vulcan-trivy** - Checks if a Docker image uses vulnerable packages or dependencies using Trivy
+39. **vulcan-exposed-http-resources** - Checks if a web address exposes sensitive resources
