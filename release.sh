@@ -5,9 +5,12 @@
 
 # shellcheck disable=SC1091
 
-# Force build and push indepently if conditions are meet
+# Force build even if conditions are not meet
 # Force does not override EXCLUDE_LIST_FILE
-FORCE_BUILD_AND_PUSH="${FORCE_BUILD_AND_PUSH:-false}"
+FORCE_BUILD="${FORCE_BUILD:-false}"
+# Force push even if conditions are not meet
+# Force does not override EXCLUDE_LIST_FILE
+FORCE_PUSH="${FORCE_PUSH:-false}"
 # Add time metrics to output
 PRINT_METRICS="${PRINT_METRICS:-true}"
 # Checks to exclude from build and push
@@ -41,6 +44,9 @@ go mod download
 
 # Iterate over all checks
 for cf in cmd/*; do
+    do_build=true
+    do_push=true
+
     ts_start=$(date +"%s")
     # Verify only directories are processed
     if [ ! -d "$cf" ]; then
@@ -61,35 +67,63 @@ for cf in cmd/*; do
     if [[ $REGISTRY_RATE_LIMIT == true ]]; then sleep 1; fi
     pushed_by_check_code=$(dkr_image_exists "$check" "$check_version")
 
+    # Check has been already pushed to Registry
     if [[ $pushed_by_dependency == true && $pushed_by_check_code == true ]]; then
-        if [[ ! $FORCE_BUILD_AND_PUSH == true ]]; then
+        do_build=$FORCE_BUILD
+        do_push=$FORCE_PUSH
+        if [[ $do_build == false && $do_push == false ]]; then
             echo "Skip build and push for check: [$check] - ALREADY PUSHED"
             continue
         fi
-        echo "Check: [$check] - ALREADY PUSHED - FORCE_BUILD_AND_PUSH"
+        echo "Check: [$check] - ALREADY PUSHED - FORCE PUSH: $FORCE_PUSH"
+    fi
+
+    # Check if the image is available locally
+    local_by_dependency=$(dkr_local_image_exists "$check" "dep-$dep_version")
+    local_by_check_code=$(dkr_local_image_exists "$check" "$check_version")
+
+    # If exists locally, we should build only if forced
+    if [[ $local_by_dependency == true && $local_by_check_code == true ]]; then
+        if [[ ! $FORCE_BUILD == true ]]; then
+            do_build=false
+        fi
     fi
 
     echo "Processing: [$check] | ID: $check_version TS: $check_timestamp DEP_ID: $dep_version MODE: $check_mode"
     # Build go binaries
-    cd "$cf" || exit 1
-    ts_go_build_start=$(date +"%s")
-    CGO_ENABLED=0 go build .
-    ts_go_build_finish=$(date +"%s")
-    cd "$BASE_PATH" || exit 1
+    if [[ $do_build == true ]]; then
+        cd "$cf" || exit 1
+        ts_go_build_start=$(date +"%s")
+        CGO_ENABLED=0 go build .
+        ts_go_build_finish=$(date +"%s")
+        cd "$BASE_PATH" || exit 1
 
-    # Build docker image
-    ts_docker_build_start=$(date +"%s")
-    dkr_build "$cf" "$check"
-    ts_docker_build_finish=$(date +"%s")
+        # Build docker image
+        ts_docker_build_start=$(date +"%s")
+        dkr_build "$cf" "$check"
+        ts_docker_build_finish=$(date +"%s")
 
-    # Tag docker image
-    ts_docker_tag_start=$(date +"%s")
-    dkr_tag "$check" "latest,$check_version,$check_timestamp,dep-$dep_version,dep-$dep_timestamp,$check_branch,$check_mode"
-    ts_docker_tag_finish=$(date +"%s")
+        # Tag docker image
+        ts_docker_tag_start=$(date +"%s")
+        dkr_tag "$check" "latest,$check_version,$check_timestamp,dep-$dep_version,dep-$dep_timestamp,$check_branch,$check_mode"
+        ts_docker_tag_finish=$(date +"%s")
+    else
+        echo "Skip build process for check: [$check]"
+        ts_go_build_start=$(date +"%s")
+        ts_go_build_finish=$(date +"%s")
+        ts_docker_build_start=$(date +"%s")
+        ts_docker_build_finish=$(date +"%s")
+        ts_docker_tag_start=$(date +"%s")
+        ts_docker_tag_finish=$(date +"%s")
+    fi
 
     # Push docker image
     ts_docker_push_start=$(date +"%s")
-    dkr_push "$check"
+    if [[ $do_push == true ]]; then
+        dkr_push "$check"
+    else
+        echo "Skip push process for check: [$check]"
+    fi
     ts_docker_push_finish=$(date +"%s")
 
     ts_finish=$(date +"%s")
@@ -105,5 +139,6 @@ for cf in cmd/*; do
         echo "## $docker_build seconds : docker build process"
         echo "## $docker_tag seconds : docker tag process"
         echo "## $docker_push seconds : docker push process"
+        echo "### Stats: [$check] # Total: $total_process # Go Build: $go_build # Docker Build: $docker_build # Docker Tag: $docker_tag # Docker Push: $docker_push"
     fi
 done
