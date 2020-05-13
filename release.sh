@@ -30,7 +30,6 @@ eval "$(dkr_env)"
 
 # Fetch dependency version and modification timestamp
 dep_version=$(git_commit_id go.mod)
-dep_timestamp=$(git_timestamp go.mod)
 
 # Fetch branch and check mode (master or experimental)
 branch=$(git_branch .)
@@ -64,7 +63,6 @@ for cf in cmd/*; do
     fi
     # Fetch check version and modification timestamp
     check_version=$(git_commit_id "$cf")
-    check_timestamp=$(git_timestamp "$cf")
 
     # Check if check version (code+dep) has been already pushed to Registry
     already_pushed=$(dkr_image_exists "$check" "$check_version-$dep_version")
@@ -91,9 +89,9 @@ for cf in cmd/*; do
         fi
     fi
 
-    echo "Processing: [$check] | ID: $check_version-$dep_version TS: $check_timestamp MODE: $check_mode"
+    echo "Processing: [$check] | ID: $check_version-$dep_version MODE: $check_mode BRANCH: $check_branch"
     # List of tags to apply to check Docker image
-    tag_list="latest,$check_version-$dep_version,$check_timestamp,dep-$dep_timestamp,$check_branch,$check_mode"
+    tag_list="latest,$check_version-$dep_version,$check_branch,$check_mode"
     # Build check (Go binaries and Docker images + Tagging)
     if [[ $do_build == true ]]; then
         cd "$cf" || exit 1
