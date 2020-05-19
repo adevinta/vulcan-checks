@@ -4,6 +4,12 @@ go:
   - 1.13.4
 env:
   global:
+  - DKR_USERNAME=vulcansec
   - CGO_ENABLED=0
   - GO111MODULE=on
 go_import_path: github.com/adevinta/vulcan-checks
+deploy:
+  provider: script
+  script: bash release.sh
+  on:
+    all_branches: true
