@@ -5,203 +5,209 @@ provider:
 functions:
   vulcan-aws-alerts:
     lang: check-go-env
-    handler: ../cmd/vulcan-aws-alerts
+    handler: cmd/vulcan-aws-alerts
     image: ${DOCKER_USER:-adevinta}/vulcan-aws-alerts
   vulcan-certinfo:
     lang: check-go-env
-    handler: ../cmd/vulcan-certinfo
+    handler: cmd/vulcan-certinfo
     image: ${DOCKER_USER:-adevinta}/vulcan-certinfo
   vulcan-aws-alerts:
     lang: check-go-env
-    handler: ../cmd/vulcan-aws-alerts
+    handler: cmd/vulcan-aws-alerts
     image: ${DOCKER_USER:-adevinta}/vulcan-aws-alerts
   vulcan-aws-trusted-advisor:
     lang: check-go-env
-    handler: ../cmd/vulcan-aws-trusted-advisor
+    handler: cmd/vulcan-aws-trusted-advisor
     image: ${DOCKER_USER:-adevinta}/vulcan-aws-trusted-advisor
   vulcan-certinfo:
     lang: check-go-env
-    handler: ../cmd/vulcan-certinfo
+    handler: cmd/vulcan-certinfo
     image: ${DOCKER_USER:-adevinta}/vulcan-certinfo
   vulcan-dkim:
     lang: check-go-env
-    handler: ../cmd/vulcan-dkim
+    handler: cmd/vulcan-dkim
     image: ${DOCKER_USER:-adevinta}/vulcan-dkim
   vulcan-dmarc:
     lang: check-go-env
-    handler: ../cmd/vulcan-dmarc
+    handler: cmd/vulcan-dmarc
     image: ${DOCKER_USER:-adevinta}/vulcan-dmarc
   vulcan-docker-image:
     lang: check-go-env
-    handler: ../cmd/vulcan-docker-image
+    handler: cmd/vulcan-docker-image
     image: ${DOCKER_USER:-adevinta}/vulcan-docker-image
   vulcan-drupal:
     lang: check-go-env
-    handler: ../cmd/vulcan-drupal
+    handler: cmd/vulcan-drupal
     image: ${DOCKER_USER:-adevinta}/vulcan-drupal
   vulcan-exposed-amt:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-amt
+    handler: cmd/vulcan-exposed-amt
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-amt
+    environment:
+      read_timeout: 30
+      write_timeout: 300
   vulcan-exposed-bgp:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-bgp
+    handler: cmd/vulcan-exposed-bgp
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-bgp
   vulcan-exposed-db:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-db
+    handler: cmd/vulcan-exposed-db
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-db
     build_options:
     - nmap
   vulcan-exposed-files:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-files
+    handler: cmd/vulcan-exposed-files
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-files
   vulcan-exposed-ftp:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-ftp
+    handler: cmd/vulcan-exposed-ftp
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-ftp
     build_options:
     - nmap
   vulcan-exposed-hdfs:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-hdfs
+    handler: cmd/vulcan-exposed-hdfs
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-hdfs
     build_options:
     - nmap
   vulcan-exposed-http:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-http
+    handler: cmd/vulcan-exposed-http
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-http
     build_options:
     - nmap
   vulcan-exposed-http-endpoint:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-http-endpoint
+    handler: cmd/vulcan-exposed-http-endpoint
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-http-endpoint
   vulcan-exposed-http-resources:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-http-resources
+    handler: cmd/vulcan-exposed-http-resources
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-http-resources
   vulcan-exposed-memcached:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-memcached
+    handler: cmd/vulcan-exposed-memcached
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-memcached
   vulcan-exposed-rdp:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-rdp
+    handler: cmd/vulcan-exposed-rdp
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-rdp
   vulcan-exposed-router-ports:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-router-ports
+    handler: cmd/vulcan-exposed-router-ports
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-router-ports
     build_options:
     - nmap
   vulcan-exposed-services:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-services
+    handler: cmd/vulcan-exposed-services
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-services
     build_options:
     - nmap
   # vulcan-exposed-ssh: # ALERT: ruby:2.4-alpine
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-exposed-ssh
+  #   handler: cmd/vulcan-exposed-ssh
   #   image: ${DOCKER_USER:-adevinta}/vulcan-exposed-ssh
   vulcan-exposed-varnish:
     lang: check-go-env
-    handler: ../cmd/vulcan-exposed-varnish
+    handler: cmd/vulcan-exposed-varnish
     image: ${DOCKER_USER:-adevinta}/vulcan-exposed-varnish
   vulcan-gozuul:
     lang: check-go-env
-    handler: ../cmd/vulcan-gozuul
+    handler: cmd/vulcan-gozuul
     image: ${DOCKER_USER:-adevinta}/vulcan-gozuul
   vulcan-heartbleed:
     lang: check-go-env
-    handler: ../cmd/vulcan-heartbleed
+    handler: cmd/vulcan-heartbleed
     image: ${DOCKER_USER:-adevinta}/vulcan-heartbleed
   vulcan-host-discovery:
     lang: check-go-env
-    handler: ../cmd/vulcan-host-discovery
+    handler: cmd/vulcan-host-discovery
     image: ${DOCKER_USER:-adevinta}/vulcan-host-discovery
     build_options:
     - nmap
   # vulcan-http-headers: # ALERT: python:3.6.4-slim-stretch + customs.
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-http-headers
+  #   handler: cmd/vulcan-http-headers
   #   image: ${DOCKER_USER:-adevinta}/vulcan-http-headers
   vulcan-ipv6:
     lang: check-go-env
-    handler: ../cmd/vulcan-ipv6
+    handler: cmd/vulcan-ipv6
     image: ${DOCKER_USER:-adevinta}/vulcan-ipv6
   vulcan-lucky:
     lang: check-go-env
-    handler: ../cmd/vulcan-lucky
+    handler: cmd/vulcan-lucky
     image: ${DOCKER_USER:-adevinta}/vulcan-lucky
   # vulcan-masscan: # WARNING: faas_build.sh
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-masscan
+  #   handler: cmd/vulcan-masscan
   #   image: ${DOCKER_USER:-adevinta}/vulcan-masscan
   vulcan-mx:
     lang: check-go-env
-    handler: ../cmd/vulcan-mx
+    handler: cmd/vulcan-mx
     image: ${DOCKER_USER:-adevinta}/vulcan-mx
   vulcan-nessus:
     lang: check-go-env
-    handler: ../cmd/vulcan-nessus
+    handler: cmd/vulcan-nessus
     image: ${DOCKER_USER:-adevinta}/vulcan-nessus
   vulcan-results-load-test:
     lang: check-go-env
-    handler: ../cmd/vulcan-results-load-test
+    handler: cmd/vulcan-results-load-test
     image: ${DOCKER_USER:-adevinta}/vulcan-results-load-test
   # vulcan-retirejs:  # ALERT: node:alpine
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-retirejs
+  #   handler: cmd/vulcan-retirejs
   #   image: ${DOCKER_USER:-adevinta}/vulcan-retirejs
   vulcan-s3-takeover:
     lang: check-go-env
-    handler: ../cmd/vulcan-s3-takeover
+    handler: cmd/vulcan-s3-takeover
     image: ${DOCKER_USER:-adevinta}/vulcan-s3-takeover
   # vulcan-seekret: # WARNING: faas_build.sh
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-seekret
+  #   handler: cmd/vulcan-seekret
   #   image: ${DOCKER_USER:-adevinta}/vulcan-seekret
   vulcan-sleep:
     lang: check-go-env
-    handler: ../cmd/vulcan-sleep
+    handler: cmd/vulcan-sleep
     image: ${DOCKER_USER:-adevinta}/vulcan-sleep
   vulcan-smtp-open-relay:
     lang: check-go-env
-    handler: ../cmd/vulcan-smtp-open-relay
+    handler: cmd/vulcan-smtp-open-relay
     image: ${DOCKER_USER:-adevinta}/vulcan-smtp-open-relay
     build_options:
     - nmap
   vulcan-spf:
     lang: check-go-env
-    handler: ../cmd/vulcan-spf
+    handler: cmd/vulcan-spf
     image: ${DOCKER_USER:-adevinta}/vulcan-spf
   # vulcan-tls: # ALERT:  debian:stretch-slim  + custom
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-tls
+  #   handler: cmd/vulcan-tls
   #   image: ${DOCKER_USER:-adevinta}/vulcan-tls
   # vulcan-trivy: # ALERT: Custom dependency build
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-trivy
+  #   handler: cmd/vulcan-trivy
   #   image: ${DOCKER_USER:-adevinta}/vulcan-trivy
   vulcan-unclassified:
     lang: check-go-env
-    handler: ../cmd/vulcan-unclassified
+    handler: cmd/vulcan-unclassified
     image: ${DOCKER_USER:-adevinta}/vulcan-unclassified
   vulcan-vulners:
     lang: check-go-env
-    handler: ../cmd/vulcan-vulners
+    handler: cmd/vulcan-vulners
     image: ${DOCKER_USER:-adevinta}/vulcan-vulners
     build_options:
     - nmap
+    environment:
+      read_timeout: 30
+      write_timeout: 300
   # vulcan-wpscan: # ALERT: wpscanteam/wpscan
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-wpscan
+  #   handler: cmd/vulcan-wpscan
   #   image: ${DOCKER_USER:-adevinta}/vulcan-wpscan
   # vulcan-zap: # ALERT: owasp/zap2docker-stable
   #   lang: check-go-env
-  #   handler: ../cmd/vulcan-zap
+  #   handler: cmd/vulcan-zap
   #   image: ${DOCKER_USER:-adevinta}/vulcan-zap

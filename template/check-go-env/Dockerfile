@@ -1,4 +1,4 @@
-FROM jesusfcr/classic-watchdog:envs as watchdog
+FROM jesusfcr/classic-watchdog-env as watchdog
 FROM golang:1.13-alpine3.11 as builder
 
 # Allows you to add additional packages via build-arg
