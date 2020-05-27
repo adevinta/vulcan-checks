@@ -58,31 +58,32 @@ def format_response(resp):
 
     return (body, statusCode, headers)
 
-def notify(event, context, status="RUNNING"):
-    json= event.json
-    b= {
+def format_notification(event, context, status="RUNNING"):
+    return {
             "progress": 1,
             "report": {
-                "check_id": json["VULCAN_CHECK_ID"],
-                "checktype_name": json["VULCAN_CHECKTYPE_NAME"],
-                "checktype_version": json["VULCAN_CHECKTYPE_VERSION"],
+                "check_id": event.check_id,
+                "checktype_name": event.checktype_name,
+                "checktype_version": event.checktype_version,
                 "data": event.data,
                 "end_time": datetime.utcnow().isoformat()+'Z',
                 "error": event.error,
                 "notes": event.notes,
-                "options": json["VULCAN_CHECK_OPTIONS"],
+                "options": event.check_options,
                 "start_time": event.start.isoformat()+'Z',
                 "status": status,
                 "tag": event.tag,
-                "target": json["VULCAN_CHECK_TARGET"],
+                "target": event.target,
                 "vulnerabilities": event.vulnerabilities
             },
             "status": status
         }
 
-    url = "http://{}/check/{}".format(json["VULCAN_AGENT_ADDRESS"], json["VULCAN_CHECK_ID"])
-    r = requests.patch(url, json=b)
-    r.status_code
+def notify(event, context, status="RUNNING"):
+    if event.notify:
+        b = format_notification(event, context, status)
+        r = requests.patch(event.notify_url, json=b)
+        r.status_code
 
 @app.route('/', defaults={'path': ''}, methods=['GET', 'PUT', 'POST', 'PATCH', 'DELETE'])
 @app.route('/<path:path>', methods=['GET', 'PUT', 'POST', 'PATCH', 'DELETE'])
@@ -90,7 +91,32 @@ def call_handler(path):
     event = Event()
     context = Context()
 
-    event.json = json.loads(event.body)
+    try:
+        event.json = json.loads(event.body)
+    except ValueError as err:
+        return format_response({
+            "statusCode": 400,
+            "body": "json decode error: {}".format(err)
+        })
+
+    try:
+        event.target = event.json["VULCAN_CHECK_TARGET"]
+        event.check_id = event.json["VULCAN_CHECK_ID"]
+        event.checktype_name = event.json["VULCAN_CHECKTYPE_NAME"]
+        event.checktype_version = event.json["VULCAN_CHECKTYPE_VERSION"]
+        event.check_options = event.json["VULCAN_CHECK_OPTIONS"]
+    except KeyError as err:
+        return format_response({
+            "statusCode": 400,
+            "body": "Missing parameter: {}".format(err)
+        })
+
+    if "VULCAN_AGENT_ADDRESS" in event.json:
+        event.notify_url = "http://{}/check/{}".format(event.json["VULCAN_AGENT_ADDRESS"], event.check_id)
+        event.notify = True
+    else:
+        event.notify = False
+
     event.start = datetime.utcnow()
     event.error = None
     event.notes = None
@@ -101,8 +127,11 @@ def call_handler(path):
     notify(event, context)
 
     response_data = handler.handle(event, context)
-    
-    notify(event, context, "FINISHED")
+
+    if event.notify:
+        notify(event, context, "FINISHED")
+    else:
+        response_data["body"] = format_notification(event, context, "FINISHED")
 
     resp = format_response(response_data)
     return resp

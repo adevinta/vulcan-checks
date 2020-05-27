@@ -1,7 +1,5 @@
-from index import notify
-
 def handle(event, context):
-    target = event.json["VULCAN_CHECK_TARGET"]
+    target = event.target
 
     if "666" in target:
         event.notes = "Found vulnerability"
