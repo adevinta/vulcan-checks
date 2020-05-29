@@ -8,7 +8,7 @@ RUN go mod download
 
 RUN apk add --no-cache --virtual .build-deps gcc musl-dev libc6-compat
 
-COPY vulcan-trivy.go .
+COPY main.go .
 
 RUN GOOS=linux CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' .
 
