@@ -6,198 +6,198 @@ functions:
   vulcan-aws-alerts:
     lang: check-go-env
     handler: cmd/vulcan-aws-alerts
-    image: $DOCKER_USER/vulcan-aws-alerts
+    image: ${DOCKER_USER}/vulcan-aws-alerts
   vulcan-certinfo:
     lang: check-go-env
     handler: cmd/vulcan-certinfo
-    image: $DOCKER_USER/vulcan-certinfo
+    image: ${DOCKER_USER}/vulcan-certinfo
   vulcan-aws-alerts:
     lang: check-go-env
     handler: cmd/vulcan-aws-alerts
-    image: $DOCKER_USER/vulcan-aws-alerts
+    image: ${DOCKER_USER}/vulcan-aws-alerts
   vulcan-aws-trusted-advisor:
     lang: check-go-env
     handler: cmd/vulcan-aws-trusted-advisor
-    image: $DOCKER_USER/vulcan-aws-trusted-advisor
+    image: ${DOCKER_USER}/vulcan-aws-trusted-advisor
   vulcan-certinfo:
     lang: check-go-env
     handler: cmd/vulcan-certinfo
-    image: $DOCKER_USER/vulcan-certinfo
+    image: ${DOCKER_USER}/vulcan-certinfo
   vulcan-dkim:
     lang: check-go-env
     handler: cmd/vulcan-dkim
-    image: $DOCKER_USER/vulcan-dkim
+    image: ${DOCKER_USER}/vulcan-dkim
   vulcan-dmarc:
     lang: check-go-env
     handler: cmd/vulcan-dmarc
-    image: $DOCKER_USER/vulcan-dmarc
+    image: ${DOCKER_USER}/vulcan-dmarc
   vulcan-docker-image:
     lang: check-go-env
     handler: cmd/vulcan-docker-image
-    image: $DOCKER_USER/vulcan-docker-image
+    image: ${DOCKER_USER}/vulcan-docker-image
   vulcan-drupal:
     lang: check-go-env
     handler: cmd/vulcan-drupal
-    image: $DOCKER_USER/vulcan-drupal
+    image: ${DOCKER_USER}/vulcan-drupal
   vulcan-exposed-amt:
     lang: check-go-env
     handler: cmd/vulcan-exposed-amt
-    image: $DOCKER_USER/vulcan-exposed-amt
+    image: ${DOCKER_USER}/vulcan-exposed-amt
     environment:
       read_timeout: 30
       write_timeout: 300
   vulcan-exposed-bgp:
     lang: check-go-env
     handler: cmd/vulcan-exposed-bgp
-    image: $DOCKER_USER/vulcan-exposed-bgp
+    image: ${DOCKER_USER}/vulcan-exposed-bgp
   vulcan-exposed-db:
     lang: check-go-env
     handler: cmd/vulcan-exposed-db
-    image: $DOCKER_USER/vulcan-exposed-db
+    image: ${DOCKER_USER}/vulcan-exposed-db
     build_options:
     - nmap
   vulcan-exposed-files:
     lang: check-go-env
     handler: cmd/vulcan-exposed-files
-    image: $DOCKER_USER/vulcan-exposed-files
+    image: ${DOCKER_USER}/vulcan-exposed-files
   vulcan-exposed-ftp:
     lang: check-go-env
     handler: cmd/vulcan-exposed-ftp
-    image: $DOCKER_USER/vulcan-exposed-ftp
+    image: ${DOCKER_USER}/vulcan-exposed-ftp
     build_options:
     - nmap
   vulcan-exposed-hdfs:
     lang: check-go-env
     handler: cmd/vulcan-exposed-hdfs
-    image: $DOCKER_USER/vulcan-exposed-hdfs
+    image: ${DOCKER_USER}/vulcan-exposed-hdfs
     build_options:
     - nmap
   vulcan-exposed-http:
     lang: check-go-env
     handler: cmd/vulcan-exposed-http
-    image: $DOCKER_USER/vulcan-exposed-http
+    image: ${DOCKER_USER}/vulcan-exposed-http
     build_options:
     - nmap
   vulcan-exposed-http-endpoint:
     lang: check-go-env
     handler: cmd/vulcan-exposed-http-endpoint
-    image: $DOCKER_USER/vulcan-exposed-http-endpoint
+    image: ${DOCKER_USER}/vulcan-exposed-http-endpoint
   vulcan-exposed-http-resources:
     lang: check-go-env
     handler: cmd/vulcan-exposed-http-resources
-    image: $DOCKER_USER/vulcan-exposed-http-resources
+    image: ${DOCKER_USER}/vulcan-exposed-http-resources
   vulcan-exposed-memcached:
     lang: check-go-env
     handler: cmd/vulcan-exposed-memcached
-    image: $DOCKER_USER/vulcan-exposed-memcached
+    image: ${DOCKER_USER}/vulcan-exposed-memcached
   vulcan-exposed-rdp:
     lang: check-go-env
     handler: cmd/vulcan-exposed-rdp
-    image: $DOCKER_USER/vulcan-exposed-rdp
+    image: ${DOCKER_USER}/vulcan-exposed-rdp
   vulcan-exposed-router-ports:
     lang: check-go-env
     handler: cmd/vulcan-exposed-router-ports
-    image: $DOCKER_USER/vulcan-exposed-router-ports
+    image: ${DOCKER_USER}/vulcan-exposed-router-ports
     build_options:
     - nmap
   vulcan-exposed-services:
     lang: check-go-env
     handler: cmd/vulcan-exposed-services
-    image: $DOCKER_USER/vulcan-exposed-services
+    image: ${DOCKER_USER}/vulcan-exposed-services
     build_options:
     - nmap
   # vulcan-exposed-ssh: # ALERT: ruby:2.4-alpine
   #   lang: check-go-env
   #   handler: cmd/vulcan-exposed-ssh
-  #   image: $DOCKER_USER/vulcan-exposed-ssh
+  #   image: ${DOCKER_USER}/vulcan-exposed-ssh
   vulcan-exposed-varnish:
     lang: check-go-env
     handler: cmd/vulcan-exposed-varnish
-    image: $DOCKER_USER/vulcan-exposed-varnish
+    image: ${DOCKER_USER}/vulcan-exposed-varnish
   vulcan-gozuul:
     lang: check-go-env
     handler: cmd/vulcan-gozuul
-    image: $DOCKER_USER/vulcan-gozuul
+    image: ${DOCKER_USER}/vulcan-gozuul
   vulcan-heartbleed:
     lang: check-go-env
     handler: cmd/vulcan-heartbleed
-    image: $DOCKER_USER/vulcan-heartbleed
+    image: ${DOCKER_USER}/vulcan-heartbleed
   vulcan-host-discovery:
     lang: check-go-env
     handler: cmd/vulcan-host-discovery
-    image: $DOCKER_USER/vulcan-host-discovery
+    image: ${DOCKER_USER}/vulcan-host-discovery
     build_options:
     - nmap
   # vulcan-http-headers: # ALERT: python:3.6.4-slim-stretch + customs.
   #   lang: check-go-env
   #   handler: cmd/vulcan-http-headers
-  #   image: $DOCKER_USER/vulcan-http-headers
+  #   image: ${DOCKER_USER}/vulcan-http-headers
   vulcan-ipv6:
     lang: check-go-env
     handler: cmd/vulcan-ipv6
-    image: $DOCKER_USER/vulcan-ipv6
+    image: ${DOCKER_USER}/vulcan-ipv6
   vulcan-lucky:
     lang: check-go-env
     handler: cmd/vulcan-lucky
-    image: $DOCKER_USER/vulcan-lucky
+    image: ${DOCKER_USER}/vulcan-lucky
   # vulcan-masscan: # WARNING: faas_build.sh
   #   lang: check-go-env
   #   handler: cmd/vulcan-masscan
-  #   image: $DOCKER_USER/vulcan-masscan
+  #   image: ${DOCKER_USER}/vulcan-masscan
   vulcan-mx:
     lang: check-go-env
     handler: cmd/vulcan-mx
-    image: $DOCKER_USER/vulcan-mx
+    image: ${DOCKER_USER}/vulcan-mx
   vulcan-nessus:
     lang: check-go-env
     handler: cmd/vulcan-nessus
-    image: $DOCKER_USER/vulcan-nessus
+    image: ${DOCKER_USER}/vulcan-nessus
   vulcan-results-load-test:
     lang: check-go-env
     handler: cmd/vulcan-results-load-test
-    image: $DOCKER_USER/vulcan-results-load-test
+    image: ${DOCKER_USER}/vulcan-results-load-test
   # vulcan-retirejs:  # ALERT: node:alpine
   #   lang: check-go-env
   #   handler: cmd/vulcan-retirejs
-  #   image: $DOCKER_USER/vulcan-retirejs
+  #   image: ${DOCKER_USER}/vulcan-retirejs
   vulcan-s3-takeover:
     lang: check-go-env
     handler: cmd/vulcan-s3-takeover
-    image: $DOCKER_USER/vulcan-s3-takeover
+    image: ${DOCKER_USER}/vulcan-s3-takeover
   # vulcan-seekret: # WARNING: faas_build.sh
   #   lang: check-go-env
   #   handler: cmd/vulcan-seekret
-  #   image: $DOCKER_USER/vulcan-seekret
+  #   image: ${DOCKER_USER}/vulcan-seekret
   vulcan-sleep:
     lang: check-go-env
     handler: cmd/vulcan-sleep
-    image: $DOCKER_USER/vulcan-sleep
+    image: ${DOCKER_USER}/vulcan-sleep
   vulcan-smtp-open-relay:
     lang: check-go-env
     handler: cmd/vulcan-smtp-open-relay
-    image: $DOCKER_USER/vulcan-smtp-open-relay
+    image: ${DOCKER_USER}/vulcan-smtp-open-relay
     build_options:
     - nmap
   vulcan-spf:
     lang: check-go-env
     handler: cmd/vulcan-spf
-    image: $DOCKER_USER/vulcan-spf
+    image: ${DOCKER_USER}/vulcan-spf
   # vulcan-tls: # ALERT:  debian:stretch-slim  + custom
   #   lang: check-go-env
   #   handler: cmd/vulcan-tls
-  #   image: $DOCKER_USER/vulcan-tls
+  #   image: ${DOCKER_USER}/vulcan-tls
   # vulcan-trivy: # ALERT: Custom dependency build
   #   lang: check-go-env
   #   handler: cmd/vulcan-trivy
-  #   image: $DOCKER_USER/vulcan-trivy
+  #   image: ${DOCKER_USER}/vulcan-trivy
   vulcan-unclassified:
     lang: check-go-env
     handler: cmd/vulcan-unclassified
-    image: $DOCKER_USER/vulcan-unclassified
+    image: ${DOCKER_USER}/vulcan-unclassified
   vulcan-vulners:
     lang: check-go-env
     handler: cmd/vulcan-vulners
-    image: $DOCKER_USER/vulcan-vulners
+    image: ${DOCKER_USER}/vulcan-vulners
     build_options:
     - nmap
     environment:
@@ -206,9 +206,9 @@ functions:
   # vulcan-wpscan: # ALERT: wpscanteam/wpscan
   #   lang: check-go-env
   #   handler: cmd/vulcan-wpscan
-  #   image: $DOCKER_USER/vulcan-wpscan
+  #   image: ${DOCKER_USER}/vulcan-wpscan
   # vulcan-zap: # ALERT: owasp/zap2docker-stable
   #   lang: check-go-env
   #   handler: cmd/vulcan-zap
-  #   image: $DOCKER_USER/vulcan-zap
+  #   image: ${DOCKER_USER}/vulcan-zap
 
