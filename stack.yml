@@ -106,10 +106,12 @@ functions:
     image: ${DOCKER_USER}/vulcan-exposed-services
     build_options:
     - nmap
-  # vulcan-exposed-ssh: # ALERT: ruby:2.4-alpine
-  #   lang: check-go-env
-  #   handler: cmd/vulcan-exposed-ssh
-  #   image: ${DOCKER_USER}/vulcan-exposed-ssh
+  vulcan-exposed-ssh:
+    lang: check-go-env
+    handler: cmd/vulcan-exposed-ssh
+    image: ${DOCKER_USER}/vulcan-exposed-ssh
+    build_args:
+      BASE_IMAGE: ruby:2.4-alpine
   vulcan-exposed-varnish:
     lang: check-go-env
     handler: cmd/vulcan-exposed-varnish

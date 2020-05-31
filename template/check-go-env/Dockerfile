@@ -1,3 +1,5 @@
+ARG BASE_IMAGE=alpine:3.11
+
 FROM jesusfcr/classic-watchdog-env as watchdog
 FROM golang:1.13-alpine3.11 as builder
 
@@ -36,7 +38,7 @@ WORKDIR /go/src/handler/function
 RUN CGO_ENABLED=${CGO_ENABLED} GOOS=linux \
     go build --ldflags "-s -w" -a -installsuffix cgo -o handler .
 
-FROM alpine:3.11
+FROM ${BASE_IMAGE}
 
 ARG ADDITIONAL_PACKAGE
 
