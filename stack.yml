@@ -158,10 +158,12 @@ functions:
     lang: check-go-env
     handler: cmd/vulcan-results-load-test
     image: ${DOCKER_USER}/vulcan-results-load-test
-  # vulcan-retirejs:  # ALERT: node:alpine
-  #   lang: check-go-env
-  #   handler: cmd/vulcan-retirejs
-  #   image: ${DOCKER_USER}/vulcan-retirejs
+  vulcan-retirejs:
+    lang: check-go-env
+    handler: cmd/vulcan-retirejs
+    image: ${DOCKER_USER}/vulcan-retirejs
+    build_args:
+      BASE_IMAGE: node:alpine
   vulcan-s3-takeover:
     lang: check-go-env
     handler: cmd/vulcan-s3-takeover
