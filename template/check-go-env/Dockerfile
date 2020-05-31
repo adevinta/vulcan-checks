@@ -1,4 +1,5 @@
 ARG BASE_IMAGE=alpine:3.11
+ARG USER=app
 
 FROM jesusfcr/classic-watchdog-env as watchdog
 FROM golang:1.13-alpine3.11 as builder
@@ -57,7 +58,7 @@ RUN find . -name 'faas_*.sh' -print | xargs sh
 
 RUN chown -R app /home/app
 
-USER app
+USER ${USER}
 
 ENV fprocess="./handler"
 EXPOSE 8080

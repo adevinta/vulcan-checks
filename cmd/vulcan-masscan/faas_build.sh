@@ -12,4 +12,5 @@ apk update && apk add \
 git clone https://github.com/robertdavidgraham/masscan && \
     cd ./masscan && \
     make -j && \
-    cp -av ./bin/masscan /usr/local/bin
+    cp -av ./bin/masscan /usr/local/bin && \
+	cd .. && rm -rf ./masscan

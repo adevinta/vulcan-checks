@@ -142,10 +142,15 @@ functions:
     lang: check-go-env
     handler: cmd/vulcan-lucky
     image: ${DOCKER_USER}/vulcan-lucky
-  # vulcan-masscan: # WARNING: faas_build.sh
-  #   lang: check-go-env
-  #   handler: cmd/vulcan-masscan
-  #   image: ${DOCKER_USER}/vulcan-masscan
+  vulcan-masscan:
+    lang: check-go-env
+    handler: cmd/vulcan-masscan
+    image: ${DOCKER_USER}/vulcan-masscan
+    build_args:
+      USER: root
+    environment:
+      read_timeout: 30
+      write_timeout: 3600
   vulcan-mx:
     lang: check-go-env
     handler: cmd/vulcan-mx

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -154,6 +155,13 @@ func main() {
 			portRange = defaultPortRange
 		}
 
+		file, err := ioutil.TempFile("", "results.*.json")
+		if err != nil {
+			e.WithError(err).Error("Unable to create temp file")
+			return err
+		}
+		defer os.Remove(file.Name())
+
 		var scanner dumbScanner
 		checker := check.NewProcessChecker(
 			masscanBin,
@@ -161,7 +169,7 @@ func main() {
 				dest,
 				fmt.Sprintf("-p%s", portRange),
 				"-oJ",
-				"/results.json",
+				file.Name(),
 			},
 			bufio.ScanLines,
 			&scanner,
@@ -171,7 +179,7 @@ func main() {
 			return err
 		}
 
-		content, err := ioutil.ReadFile("/results.json")
+		content, err := ioutil.ReadFile(file.Name())
 		if err != nil {
 			e.WithError(err).Error("results file not found")
 			return err
