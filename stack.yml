@@ -168,10 +168,10 @@ functions:
     lang: check-go-env
     handler: cmd/vulcan-s3-takeover
     image: ${DOCKER_USER}/vulcan-s3-takeover
-  # vulcan-seekret: # WARNING: faas_build.sh
-  #   lang: check-go-env
-  #   handler: cmd/vulcan-seekret
-  #   image: ${DOCKER_USER}/vulcan-seekret
+  vulcan-seekret:
+    lang: check-go-env
+    handler: cmd/vulcan-seekret
+    image: ${DOCKER_USER}/vulcan-seekret
   vulcan-sleep:
     lang: check-go-env
     handler: cmd/vulcan-sleep

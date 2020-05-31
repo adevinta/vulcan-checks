@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -93,10 +94,11 @@ func main() {
 			}
 		}
 
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
-		if err := os.Mkdir(repoPath, 0755); err != nil {
+		repoPath, err := ioutil.TempDir("", "repo")
+		if err != nil {
 			return err
 		}
+		defer os.RemoveAll(repoPath)
 
 		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
 			URL:   target,
