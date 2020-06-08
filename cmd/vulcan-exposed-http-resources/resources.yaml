@@ -178,7 +178,6 @@
   description: Potentially exposed source backups.
 
 - paths:
-  - "dump"
   - "dump.7z"
   - "dump.log"
   - "dump.old"
