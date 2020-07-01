@@ -105,19 +105,17 @@ func severity(score float32) string {
 	}
 }
 
-type vulnerFinding struct {
-	Score    float32
-	Resource report.ResourcesGroup
+type vulnersFinding struct {
+	Score     float32
+	Resources report.ResourcesGroup
 }
 
 // buildVulnerFinding builds a vulner Finding querying the vulners.com API. The
 // resources of the finding contain the CVE'S found for the software component.
 // The Score of the finding contains the highest score found in the all the
 // CVE's.
-func buildVulnerFinding(p, s, v, t string) (*vulnerFinding, error) {
-
+func buildVulnerFinding(p, s, v, t string) (*vulnersFinding, error) {
 	client := &http.Client{}
-
 	endpoint := apiEndpoint(s, v, t)
 	logger.Debugf("Using %s as endpoint", endpoint)
 
@@ -207,16 +205,16 @@ func buildVulnerFinding(p, s, v, t string) (*vulnerFinding, error) {
 	})
 	gr.Rows = rows
 
-	f := vulnerFinding{
-		Resource: gr,
-		Score:    score,
+	f := vulnersFinding{
+		Resources: gr,
+		Score:     score,
 	}
-	logger.WithFields(logrus.Fields{"vulnerFinfingAdded": f}).Debug("vulner finding added")
+	logger.WithFields(logrus.Fields{"vulnerFindingAdded": f}).Debug("vulner finding added")
 
 	return &f, nil
 }
 
-func findingByCPE(CPE string) (*vulnerFinding, error) {
+func findingByCPE(CPE string) (*vulnersFinding, error) {
 	if !cpeRegex.MatchString(CPE) {
 		return nil, fmt.Errorf("the CPE %s doesn't match the regex %s", CPE, cpeRegex)
 	}
@@ -232,7 +230,7 @@ func findingByCPE(CPE string) (*vulnerFinding, error) {
 	return buildVulnerFinding(parts[3], CPE, parts[4], "cpe")
 }
 
-func findingByProdVers(s, v, t string) (*vulnerFinding, error) {
+func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
 	return buildVulnerFinding(s, s, v, t)
 }
 
@@ -272,7 +270,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 				}
 				if _, ok := v.CPEs[string(cpe)]; !ok {
 					v.CPEs[string(cpe)] = struct{}{}
-					v.Vuln.Resources = append(v.Vuln.Resources, f.Resource)
+					v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
 					uniqueVulns[summary] = v
 					if f.Score > v.Vuln.Score {
 						v.Vuln.Score = f.Score
@@ -312,7 +310,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			productID := port.Service.Product + port.Service.Version
 			if _, ok := v.Products[productID]; !ok {
 				v.CPEs[productID] = struct{}{}
-				v.Vuln.Resources = append(v.Vuln.Resources, f.Resource)
+				v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
 				uniqueVulns[summary] = v
 				if f.Score > v.Vuln.Score {
 					v.Vuln.Score = f.Score
