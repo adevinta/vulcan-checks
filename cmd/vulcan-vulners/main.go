@@ -105,10 +105,17 @@ func severity(score float32) string {
 	}
 }
 
-// vulnerabilities retrieves the vulnerabilities affecting a software component from the vulners.com API.
-func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
-	client := &http.Client{}
+type vulnersFinding struct {
+	Score     float32
+	Resources report.ResourcesGroup
+}
 
+// buildVulnersFinding builds a vulners finding querying the vulners.com API. The
+// resources of the finding contain the CVE'S found for the software component.
+// The Score of the finding contains the highest score found in the all the
+// CVE's.
+func buildVulnersFinding(s, v, t string) (*vulnersFinding, error) {
+	client := &http.Client{}
 	endpoint := apiEndpoint(s, v, t)
 	logger.Debugf("Using %s as endpoint", endpoint)
 
@@ -145,8 +152,6 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 		return nil, nil
 	}
 
-	vuln := vulnersVuln
-
 	gr := report.ResourcesGroup{
 		Name: "Findings",
 		Header: []string{
@@ -159,6 +164,7 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 
 	add := false
 	var rows []map[string]string
+	var score float32
 	for _, e := range b.Data.Search {
 		// NOTE (julianvilas): for now support just the CVE type. But would be good
 		// to evaluate other types.
@@ -168,18 +174,19 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 
 		add = true
 
-		finding := map[string]string{
+		r := map[string]string{
 			"CVE":      e.Source.ID,
 			"Severity": severity(float32(e.Source.CVSS.Score)),
 			"Score":    fmt.Sprintf("%.2f", e.Source.CVSS.Score),
 			"Link":     e.Source.Href,
 		}
-		rows = append(rows, finding)
+		rows = append(rows, r)
 
-		logger.WithFields(logrus.Fields{"resource": finding}).Debug("Resource added")
+		logger.WithFields(logrus.Fields{"resource": r}).Debug("Resource added")
 
-		if float32(e.Source.CVSS.Score) > vuln.Score {
-			vuln.Score = float32(e.Source.CVSS.Score)
+		// score contains the max score found in all the CVE's of the finding.
+		if float32(e.Source.CVSS.Score) > score {
+			score = float32(e.Source.CVSS.Score)
 		}
 	}
 
@@ -198,13 +205,16 @@ func vulnerabilities(p, s, v, t string) (*report.Vulnerability, error) {
 	})
 	gr.Rows = rows
 
-	vuln.Resources = append(vuln.Resources, gr)
-	logger.WithFields(logrus.Fields{"vulnerability": vuln}).Debug("Vulnerability added")
+	f := vulnersFinding{
+		Resources: gr,
+		Score:     score,
+	}
+	logger.WithFields(logrus.Fields{"vulnersFindingAdded": f}).Debug("vulners finding added")
 
-	return &vuln, nil
+	return &f, nil
 }
 
-func vulnerabilitiesByCPE(CPE string) (*report.Vulnerability, error) {
+func findingByCPE(CPE string) (*vulnersFinding, error) {
 	if !cpeRegex.MatchString(CPE) {
 		return nil, fmt.Errorf("the CPE %s doesn't match the regex %s", CPE, cpeRegex)
 	}
@@ -217,15 +227,21 @@ func vulnerabilitiesByCPE(CPE string) (*report.Vulnerability, error) {
 		return nil, nil
 	}
 
-	return vulnerabilities(parts[3], CPE, parts[4], "cpe")
+	return buildVulnersFinding(CPE, parts[4], "cpe")
 }
 
-func vulnerabilitiesByProdVers(s, v, t string) (*report.Vulnerability, error) {
-	return vulnerabilities(s, s, v, t)
+func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
+	return buildVulnersFinding(s, v, t)
 }
 
 func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerability, error) {
-	var vulns []report.Vulnerability
+	type vulnData struct {
+		Vuln     report.Vulnerability
+		CPEs     map[string]struct{}
+		Products map[string]struct{}
+	}
+	uniqueVulns := map[string]vulnData{}
+
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			logger.Debugf("Port detected: %d/%s", port.PortId, port.Protocol)
@@ -234,19 +250,35 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			for _, cpe := range port.Service.CPEs {
 				logger.Debugf("CPE found: %v", cpe)
 				done = true
-
-				v, err := vulnerabilitiesByCPE(string(cpe))
+				f, err := findingByCPE(string(cpe))
 				if err != nil {
 					return nil, err
 				}
-
-				if v != nil {
-					v.Summary = fmt.Sprintf(v.Summary, port.Service.Product)
-					v.Description = fmt.Sprintf(v.Description, port.Service.Product)
-					v.Details = fmt.Sprintf("Found at port %d/%s", port.PortId, port.Protocol)
-
-					vulns = append(vulns, *v)
+				if f == nil {
+					continue
 				}
+				summary := fmt.Sprintf(vulnersVuln.Summary, port.Service.Product)
+				v, ok := uniqueVulns[summary]
+				if !ok {
+					v.Vuln = report.Vulnerability{
+						Summary:         summary,
+						Description:     fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
+						Recommendations: vulnersVuln.Recommendations,
+					}
+					v.CPEs = map[string]struct{}{}
+					uniqueVulns[summary] = v
+				}
+				if _, ok := v.CPEs[string(cpe)]; !ok {
+					v.CPEs[string(cpe)] = struct{}{}
+					v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
+					uniqueVulns[summary] = v
+					if f.Score > v.Vuln.Score {
+						v.Vuln.Score = f.Score
+					}
+				}
+				v.Vuln.Details = fmt.Sprintf("%sFound in %s at port %d/%s\n", v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol)
+
+				uniqueVulns[summary] = v
 			}
 			if done {
 				continue
@@ -259,20 +291,39 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 				continue
 			}
 
-			v, err := vulnerabilitiesByProdVers(port.Service.Product, port.Service.Version, "software")
+			f, err := findingByProdVers(port.Service.Product, port.Service.Version, "software")
 			if err != nil {
 				return nil, err
 			}
-			if v != nil {
-				v.Summary = fmt.Sprintf(v.Summary, port.Service.Product)
-				v.Description = fmt.Sprintf(v.Description, port.Service.Product)
-				v.Details = fmt.Sprintf("Found at %d", port.PortId)
-
-				vulns = append(vulns, *v)
+			summary := fmt.Sprintf(vulnersVuln.Summary, port.Service.Product)
+			v, ok := uniqueVulns[summary]
+			if !ok {
+				v.Vuln = report.Vulnerability{
+					Summary:         summary,
+					Description:     fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
+					Score:           f.Score,
+					Recommendations: vulnersVuln.Recommendations,
+				}
+				v.CPEs = map[string]struct{}{}
+				uniqueVulns[summary] = v
 			}
+			productID := port.Service.Product + port.Service.Version
+			if _, ok := v.Products[productID]; !ok {
+				v.CPEs[productID] = struct{}{}
+				v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
+				uniqueVulns[summary] = v
+				if f.Score > v.Vuln.Score {
+					v.Vuln.Score = f.Score
+				}
+			}
+			v.Vuln.Details = fmt.Sprintf("%sFound in %s at port %d/%s\n", v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol)
+			uniqueVulns[summary] = v
 		}
 	}
-
+	var vulns []report.Vulnerability
+	for _, v := range uniqueVulns {
+		vulns = append(vulns, v.Vuln)
+	}
 	return vulns, nil
 }
 
