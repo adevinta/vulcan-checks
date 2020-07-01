@@ -110,7 +110,7 @@ type vulnersFinding struct {
 	Resources report.ResourcesGroup
 }
 
-// buildVulnersFinding builds a vulner Finding querying the vulners.com API. The
+// buildVulnersFinding builds a vulners finding querying the vulners.com API. The
 // resources of the finding contain the CVE'S found for the software component.
 // The Score of the finding contains the highest score found in the all the
 // CVE's.
