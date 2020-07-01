@@ -119,6 +119,9 @@ func main() {
 		}
 
 		endpoint := os.Getenv(envEndpoint)
+		if endpoint == "" {
+			return fmt.Errorf("%s env var must have a non-empty value", envEndpoint)
+		}
 		role := os.Getenv(envRole)
 
 		logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
