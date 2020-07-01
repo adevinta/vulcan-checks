@@ -114,7 +114,7 @@ type vulnersFinding struct {
 // resources of the finding contain the CVE'S found for the software component.
 // The Score of the finding contains the highest score found in the all the
 // CVE's.
-func buildVulnersFinding(p, s, v, t string) (*vulnersFinding, error) {
+func buildVulnersFinding(s, v, t string) (*vulnersFinding, error) {
 	client := &http.Client{}
 	endpoint := apiEndpoint(s, v, t)
 	logger.Debugf("Using %s as endpoint", endpoint)
@@ -227,11 +227,11 @@ func findingByCPE(CPE string) (*vulnersFinding, error) {
 		return nil, nil
 	}
 
-	return buildVulnersFinding(parts[3], CPE, parts[4], "cpe")
+	return buildVulnersFinding(CPE, parts[4], "cpe")
 }
 
 func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
-	return buildVulnersFinding(s, s, v, t)
+	return buildVulnersFinding(s, v, t)
 }
 
 func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerability, error) {
