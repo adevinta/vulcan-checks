@@ -110,11 +110,11 @@ type vulnersFinding struct {
 	Resources report.ResourcesGroup
 }
 
-// buildVulnerFinding builds a vulner Finding querying the vulners.com API. The
+// buildVulnersFinding builds a vulner Finding querying the vulners.com API. The
 // resources of the finding contain the CVE'S found for the software component.
 // The Score of the finding contains the highest score found in the all the
 // CVE's.
-func buildVulnerFinding(p, s, v, t string) (*vulnersFinding, error) {
+func buildVulnersFinding(p, s, v, t string) (*vulnersFinding, error) {
 	client := &http.Client{}
 	endpoint := apiEndpoint(s, v, t)
 	logger.Debugf("Using %s as endpoint", endpoint)
@@ -209,7 +209,7 @@ func buildVulnerFinding(p, s, v, t string) (*vulnersFinding, error) {
 		Resources: gr,
 		Score:     score,
 	}
-	logger.WithFields(logrus.Fields{"vulnerFindingAdded": f}).Debug("vulner finding added")
+	logger.WithFields(logrus.Fields{"vulnersFindingAdded": f}).Debug("vulners finding added")
 
 	return &f, nil
 }
@@ -227,11 +227,11 @@ func findingByCPE(CPE string) (*vulnersFinding, error) {
 		return nil, nil
 	}
 
-	return buildVulnerFinding(parts[3], CPE, parts[4], "cpe")
+	return buildVulnersFinding(parts[3], CPE, parts[4], "cpe")
 }
 
 func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
-	return buildVulnerFinding(s, s, v, t)
+	return buildVulnersFinding(s, s, v, t)
 }
 
 func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerability, error) {
