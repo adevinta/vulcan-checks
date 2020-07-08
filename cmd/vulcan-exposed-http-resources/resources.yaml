@@ -191,7 +191,6 @@
   - "dump.tar.gz"
   - "dump.tgz"
   - "dump.zip"
-  - "dump/"
   - "database.sql"
   - "1.sql"
   - "backup.sql"
