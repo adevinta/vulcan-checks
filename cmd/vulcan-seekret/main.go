@@ -155,7 +155,7 @@ func main() {
 					continue
 				}
 
-				// Truncate line to 30 characters and replace non-ASCII characters with "?".
+				// Truncate line to 30 characters and replace non-printable characters with "?".
 				// This is done to avoid both processing and presentation issues.
 				lineSummary := ""
 				for i := range secret.Line {
@@ -164,10 +164,11 @@ func main() {
 						break
 					}
 
-					if secret.Line[i] > unicode.MaxASCII {
+					char := rune(secret.Line[i])
+					if char > unicode.MaxASCII || !unicode.IsPrint(char) {
 						lineSummary += "?"
 					} else {
-						lineSummary += string(secret.Line[i])
+						lineSummary += string(char)
 					}
 				}
 
