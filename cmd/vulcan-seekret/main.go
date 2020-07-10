@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
@@ -154,9 +155,21 @@ func main() {
 					continue
 				}
 
-				lineSummary := secret.Line
-				if len(lineSummary) > 30 {
-					lineSummary = lineSummary[0:29] + "..."
+				// Truncate line to 30 characters and replace non-printable characters with "?".
+				// This is done to avoid both processing and presentation issues.
+				lineSummary := ""
+				for i := range secret.Line {
+					if i >= 30 {
+						lineSummary += "..."
+						break
+					}
+
+					char := rune(secret.Line[i])
+					if char > unicode.MaxASCII || !unicode.IsPrint(char) {
+						lineSummary += "?"
+					} else {
+						lineSummary += string(char)
+					}
 				}
 
 				ruleScore := float32(report.SeverityThresholdHigh)
