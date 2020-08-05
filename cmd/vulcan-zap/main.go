@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os/exec"
 	"strconv"
 	"time"
@@ -76,7 +77,10 @@ func main() {
 
 		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
 
-		targetURL := hostnameToURL(target, opt.Port)
+		targetURL, err := url.Parse(target)
+		if err != nil {
+			return fmt.Errorf("error parsing target URL: %v", err)
+		}
 
 		if opt.Username != "" {
 			auth := client.Authentication()
