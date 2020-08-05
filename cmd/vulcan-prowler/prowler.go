@@ -37,17 +37,17 @@ type entry struct {
 		prowler -r eu-west-1 -g cislevel1 -T 3600 -M json
 */
 
-func buildParams(opts options) []string {
+func buildParams(region string, groups []string) []string {
 	return []string{
-		"-r", opts.Region,
-		"-g", strings.Join(opts.Groups, ","),
+		"-r", region,
+		"-g", strings.Join(groups, ","),
 		"-M", reportFormat,
 	}
 }
 
-func runProwler(ctx context.Context, opts options) (*prowlerReport, error) {
-	logger.Infof("using options: %#v", opts)
-	params := buildParams(opts)
+func runProwler(ctx context.Context, region string, groups []string) (*prowlerReport, error) {
+	logger.Infof("using region: %+v, and groups: %+v", region, groups)
+	params := buildParams(region, groups)
 
 	version, _, err := command.Execute(ctx, logger, prowlerCmd, "-V")
 	if err != nil {
