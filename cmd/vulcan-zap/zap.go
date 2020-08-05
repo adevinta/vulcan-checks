@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -71,7 +72,9 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	if err != nil {
 		return report.Vulnerability{}, fmt.Errorf("Error converting CWE ID for \"%v\".", v.Summary)
 	}
-	v.CWEID = uint32(cweIDInt)
+	if cweIDInt < math.MaxInt32 {
+		v.CWEID = uint32(cweIDInt)
+	}
 
 	resMethod, ok := a["method"].(string)
 	if !ok {
