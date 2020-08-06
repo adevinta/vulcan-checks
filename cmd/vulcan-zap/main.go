@@ -120,18 +120,19 @@ func main() {
 			time.Sleep(10 * time.Second)
 			resp, err := client.Spider().Status(scanid)
 			if err != nil {
-				return fmt.Errorf("error getting the status of the scan: %v", err)
+				return fmt.Errorf("error getting the status of the spider: %v", err)
 			}
 
 			v, ok := resp["status"]
 			if !ok {
 				// In this case if we can not get the status let's fail.
-				return errors.New("can not retrieve the status of the scan")
+				return errors.New("can not retrieve the status of the spider")
 			}
 			status, ok := v.(string)
 			if !ok {
 				return errors.New("status is present in response body when calling Spider().Scatus() but it is not a string")
 			}
+
 			progress, err := strconv.Atoi(status)
 			if err != nil {
 				return fmt.Errorf("can not convert status value %s into an int", status)
@@ -146,6 +147,39 @@ func main() {
 			}
 
 			if progress >= 100 {
+				break
+			}
+		}
+
+		logger.Debug("Waiting for spider results...")
+		time.Sleep(5 * time.Second)
+
+		logger.Debugf("Running AJAX spider %v levels deep...", opt.Depth)
+
+		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
+		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", "", "")
+		if err != nil {
+			return fmt.Errorf("error executing the AJAX spider: %v", err)
+		}
+
+		for {
+			time.Sleep(10 * time.Second)
+			resp, err := client.AjaxSpider().Status()
+			if err != nil {
+				return fmt.Errorf("error getting the status of the AJAX spider: %v", err)
+			}
+
+			v, ok := resp["status"]
+			if !ok {
+				// In this case if we can not get the status let's fail.
+				return errors.New("can not retrieve the status of the AJAX spider")
+			}
+			status, ok := v.(string)
+			if !ok {
+				return errors.New("status is present in response body when calling AjaxSpider().Scatus() but it is not a string")
+			}
+
+			if status >= "running" {
 				break
 			}
 		}

@@ -72,7 +72,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	if err != nil {
 		return report.Vulnerability{}, fmt.Errorf("Error converting CWE ID for \"%v\".", v.Summary)
 	}
-	if cweIDInt < math.MaxInt32 {
+	if cweIDInt < math.MaxInt32-1 {
 		v.CWEID = uint32(cweIDInt)
 	}
 
