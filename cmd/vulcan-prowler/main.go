@@ -45,7 +45,7 @@ var (
 	CISCompliance = report.Vulnerability{
 		Summary: "Compliance With CIS AWS Foundations Benchmark (BETA)",
 		Description: `<p>
-			The check did not received the security classification level
+			The check did not receive the security classification
 			of the AWS account so the benchmark has been executed against the
 			CIS Level 2.
 			The CIS AWS Foundations Benchmark provides prescriptive
@@ -55,8 +55,8 @@ var (
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			The provided recommendations are provided as a result of controls included in
-			the CIS Level 2.
+			Recommendations are provided in order to comply with all the controls required 
+			by the CIS Level 2.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
@@ -84,8 +84,8 @@ var (
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			The provided recommendations are provided as a result controls included in
-			the CIS Level 1.
+			Recommendations are provided in order to comply with all the controls required 
+			by the CIS Level 1.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
@@ -114,8 +114,8 @@ var (
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			The provided recommendations are provided as a result of controls included in
-			the CIS Level 2.
+			Recommendations are provided in order to comply with all the controls required 
+			by the CIS Level 2.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
@@ -130,9 +130,9 @@ var (
 	}
 
 	CISComplianceInfo = report.Vulnerability{
-		Summary: "Information about CIS AWS Foundations Benchmark (BETA)",
+		Summary: "Information About CIS AWS Foundations Benchmark (BETA)",
 		Description: `<p>
-			     Information gathered by executing the CIS benchmark about the account.
+			     Information gathered by executing the CIS benchmark on the account.
 		</p>
 			`,
 		References: []string{
@@ -147,7 +147,7 @@ var (
 type options struct {
 	Region          string   `json:"region"`
 	Groups          []string `json:"groups"`
-	SessionDuration int      `json:"sessionDuration"` // In secs.
+	SessionDuration int      `json:"session_duration"` // In secs.
 	SecurityLevel   *byte    `json:"security_level"`
 }
 
@@ -248,13 +248,13 @@ func main() {
 }
 
 func groupsFromOpts(opts options) ([]string, error) {
-	// If ROLFP level is specified then it defines the group to use.
+	// If the security level is specified then it defines the group to use.
 	if opts.SecurityLevel == nil {
 		return opts.Groups, nil
 	}
 	level := *opts.SecurityLevel
 	if level < 0 || level > 2 {
-		return nil, errors.New("invalid rolfp level value")
+		return nil, errors.New("invalid security level value")
 	}
 
 	if level == 0 || level == 1 {
