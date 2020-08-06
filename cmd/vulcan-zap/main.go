@@ -53,8 +53,8 @@ func main() {
 		}()
 
 		// Wait for ZAP to be available.
+		logger.Debug("Waiting for ZAP proxy...")
 		for {
-			logger.Debug("Waiting for ZAP proxy...")
 			time.Sleep(time.Second)
 			conn, _ := net.DialTimeout("tcp", "127.0.0.1:8080", time.Second)
 			if conn != nil {
@@ -117,7 +117,7 @@ func main() {
 		}
 
 		for {
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Second)
 			resp, err := client.Spider().Status(scanid)
 			if err != nil {
 				return fmt.Errorf("error getting the status of the scan: %v", err)
@@ -173,7 +173,7 @@ func main() {
 			}
 
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(5 * time.Minute)
 
 				ascan := client.Ascan()
 
