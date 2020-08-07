@@ -1,4 +1,4 @@
-FROM owasp/zap2docker-weekly
+FROM owasp/zap2docker-weekly:w2020-08-03
 
 USER root
 RUN chown -R zap /zap/
