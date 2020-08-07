@@ -72,14 +72,14 @@ func main() {
 		}
 		client, err := zap.NewClient(cfg)
 		if err != nil {
-			return fmt.Errorf("error configuring the ZAP proxy client: %v", err)
+			return fmt.Errorf("error configuring the ZAP proxy client: %w", err)
 		}
 
 		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
 
 		targetURL, err := url.Parse(target)
 		if err != nil {
-			return fmt.Errorf("error parsing target URL: %v", err)
+			return fmt.Errorf("error parsing target URL: %w", err)
 		}
 
 		if opt.Username != "" {
@@ -97,7 +97,7 @@ func main() {
 		client.Spider().SetOptionMaxDepth(opt.Depth)
 		resp, err := client.Spider().Scan(targetURL.String(), "", "", "", "")
 		if err != nil {
-			return fmt.Errorf("error executing the spider: %v", err)
+			return fmt.Errorf("error executing the spider: %w", err)
 		}
 
 		v, ok := resp["scan"]
@@ -120,7 +120,7 @@ func main() {
 			time.Sleep(10 * time.Second)
 			resp, err := client.Spider().Status(scanid)
 			if err != nil {
-				return fmt.Errorf("error getting the status of the spider: %v", err)
+				return fmt.Errorf("error getting the status of the spider: %w", err)
 			}
 
 			v, ok := resp["status"]
@@ -159,14 +159,14 @@ func main() {
 		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
 		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", "", "")
 		if err != nil {
-			return fmt.Errorf("error executing the AJAX spider: %v", err)
+			return fmt.Errorf("error executing the AJAX spider: %w", err)
 		}
 
 		for {
 			time.Sleep(10 * time.Second)
 			resp, err := client.AjaxSpider().Status()
 			if err != nil {
-				return fmt.Errorf("error getting the status of the AJAX spider: %v", err)
+				return fmt.Errorf("error getting the status of the AJAX spider: %w", err)
 			}
 
 			v, ok := resp["status"]
@@ -193,7 +193,7 @@ func main() {
 
 			resp, err = client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
 			if err != nil {
-				return fmt.Errorf("error executing the active scan: %v", err)
+				return fmt.Errorf("error executing the active scan: %w", err)
 			}
 
 			v, ok := resp["scan"]
@@ -213,7 +213,7 @@ func main() {
 
 				resp, err := ascan.Status(scanid)
 				if err != nil {
-					return fmt.Errorf("error getting the status of the scan: %v", err)
+					return fmt.Errorf("error getting the status of the scan: %w", err)
 				}
 
 				v, ok := resp["status"]
