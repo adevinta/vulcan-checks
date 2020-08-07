@@ -21,6 +21,8 @@ import (
 var (
 	checkName = "vulcan-zap"
 	logger    = check.NewCheckLog(checkName)
+	client    zap.Interface
+	err       error
 )
 
 type options struct {
@@ -70,7 +72,7 @@ func main() {
 			Base:      "http://127.0.0.1:8080/JSON/",
 			BaseOther: "http://127.0.0.1:8080/OTHER/",
 		}
-		client, err := zap.NewClient(cfg)
+		client, err = zap.NewClient(cfg)
 		if err != nil {
 			return fmt.Errorf("error configuring the ZAP proxy client: %w", err)
 		}
@@ -190,54 +192,10 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Debug("Running active scan...")
-
-			resp, err = client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
+			err := activeScan(targetURL, state)
 			if err != nil {
-				return fmt.Errorf("error executing the active scan: %w", err)
+				return err
 			}
-
-			v, ok := resp["scan"]
-			if !ok {
-				return fmt.Errorf("scan is not present in response body when calling Ascan().Scan()")
-			}
-
-			scanid, ok := v.(string)
-			if !ok {
-				return errors.New("scan is present in response body when calling Ascan().Scan() but it is not a string")
-			}
-
-			for {
-				time.Sleep(5 * time.Minute)
-
-				ascan := client.Ascan()
-
-				resp, err := ascan.Status(scanid)
-				if err != nil {
-					return fmt.Errorf("error getting the status of the scan: %w", err)
-				}
-
-				v, ok := resp["status"]
-				if !ok {
-					// In this case if we can not get the status let's fail.
-					return errors.New("can not retrieve the status of the scan")
-				}
-				status, ok := v.(string)
-				if !ok {
-					return errors.New("status is present in response body when calling Ascan().Scatus() but it is not a string")
-				}
-				progress, err := strconv.Atoi(status)
-				if err != nil {
-					return fmt.Errorf("can not convert status value %s into an int", status)
-				}
-
-				state.SetProgress((1 + float32(progress)) / 200)
-
-				logger.Debugf("Active scan at %v progress.", progress)
-				if progress >= 100 {
-					break
-				}
-			}
-
 			logger.Debug("Waiting for active scan results...")
 			time.Sleep(5 * time.Second)
 		}
@@ -285,4 +243,55 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+func activeScan(targetURL *url.URL, state state.State) error {
+	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
+	if err != nil {
+		return fmt.Errorf("error executing the active scan: %w", err)
+	}
+
+	v, ok := resp["scan"]
+	if !ok {
+		return fmt.Errorf("scan is not present in response body when calling Ascan().Scan()")
+	}
+
+	scanid, ok := v.(string)
+	if !ok {
+		return errors.New("scan is present in response body when calling Ascan().Scan() but it is not a string")
+	}
+
+	for {
+		time.Sleep(5 * time.Minute)
+
+		ascan := client.Ascan()
+
+		resp, err := ascan.Status(scanid)
+		if err != nil {
+			return fmt.Errorf("error getting the status of the scan: %w", err)
+		}
+
+		v, ok := resp["status"]
+		if !ok {
+			// In this case if we can not get the status let's fail.
+			return errors.New("can not retrieve the status of the scan")
+		}
+		status, ok := v.(string)
+		if !ok {
+			return errors.New("status is present in response body when calling Ascan().Scatus() but it is not a string")
+		}
+		progress, err := strconv.Atoi(status)
+		if err != nil {
+			return fmt.Errorf("can not convert status value %s into an int", status)
+		}
+
+		state.SetProgress((1 + float32(progress)) / 200)
+
+		logger.Debugf("Active scan at %v progress.", progress)
+		if progress >= 100 {
+			break
+		}
+	}
+
+	return nil
 }
