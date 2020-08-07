@@ -184,7 +184,7 @@ func main() {
 			}
 		}
 
-		logger.Debug("Waiting for spider results...")
+		logger.Debug("Waiting for AJAX spider results...")
 		time.Sleep(5 * time.Second)
 
 		// Scan actively only if explicitly indicated.
