@@ -121,8 +121,6 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/xanzy/ssh-agent v0.2.1 h1:TCbipTQL2JiiCprBWx9frJ2eJlCYT00NmctrHxVAr70=
 github.com/xanzy/ssh-agent v0.2.1/go.mod h1:mLlQY/MoOhWBj+gOGMQkOeiEvkx+8pJSI+0Bx9h2kr4=
-github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992 h1:1bcuck5Gp81nV9YQ2/V8KzmQLOEpng0JlnHSqUsV7/Q=
-github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992/go.mod h1:lBqVZ0hGhjkg0sL/0O7IG1QE+kv3sRQMtpKuyZi5llY=
 github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae h1:HB5NPea57rppW36a/QhoMCQ50YQZjMZG+ghUr36uNso=
 github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae/go.mod h1:lBqVZ0hGhjkg0sL/0O7IG1QE+kv3sRQMtpKuyZi5llY=
 golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
