@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
+	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
 	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7

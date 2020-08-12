@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -145,6 +146,14 @@ var (
 	}
 )
 
+// CISControl holds the info related to AWS CIS control.
+type CISControl struct {
+	ID              string  `json:"id"`
+	Severity        float32 `json:"severity"`
+	SeverityLiteral string  `json:"severity_literal"`
+	Remediation     string  `json:"remediation"`
+}
+
 type options struct {
 	Region          string   `json:"region"`
 	Groups          []string `json:"groups"`
@@ -209,6 +218,16 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Load AWS CIS controls information.
+		content, err := ioutil.ReadFile("cis_controls.json")
+		if err != nil {
+			return err
+		}
+		controls := map[string]CISControl{}
+		err = json.Unmarshal(content, &controls)
+		if err != nil {
+			return err
+		}
 		r, err := runProwler(ctx, opts.Region, groups)
 		if err != nil {
 			return err
@@ -223,7 +242,7 @@ func main() {
 		} else {
 			v = CISLevel2Compliance
 		}
-		fv, err := fillCisLevelVuln(&v, r, alias, opts.SecurityLevel)
+		fv, err := fillCisLevelVuln(&v, r, alias, opts.SecurityLevel, controls)
 		if err != nil {
 			return err
 		}
@@ -291,7 +310,6 @@ func buildInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnera
 			infoTable.Rows = append(infoTable.Rows, row)
 		}
 	}
-
 	v.Resources = append(CISCompliance.Resources, infoTable)
 
 	v.Details = fmt.Sprintf("Account: %s\n", alias)
@@ -304,19 +322,30 @@ func buildInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnera
 	return v, nil
 }
 
-func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, slevel *byte) (*report.Vulnerability, error) {
+func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, slevel *byte, controls map[string]CISControl) (*report.Vulnerability, error) {
+
+	type controlRow struct {
+		row   map[string]string
+		score float32
+	}
 	var (
-		failed []entry
+		total       int
+		maxSeverity float32
+		rows        []controlRow
+		failed      []entry
 	)
 	fcTable := report.ResourcesGroup{
 		Name: "Failed Controls",
 		Header: []string{
 			"Control",
 			"Description",
+			"Severity",
 			"Region",
 			"Message",
+			"Remediation",
 		},
 	}
+
 	for _, e := range r.entries {
 		switch e.Status {
 		case "FAIL":
@@ -325,16 +354,34 @@ func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			if err != nil {
 				return nil, err
 			}
+			cinfo, ok := controls[control]
+			if !ok {
+				return nil, fmt.Errorf("no information for control %s", control)
+			}
+			if cinfo.Severity > maxSeverity {
+				maxSeverity = cinfo.Severity
+			}
 			row := map[string]string{
 				"Control":     control,
 				"Description": description,
+				"Severity":    cinfo.SeverityLiteral,
 				"Region":      e.Region,
 				"Message":     e.Message,
+				"Remediation": fmt.Sprintf("<a href=\"%s\">Reference</a>", cinfo.Remediation),
 			}
-			fcTable.Rows = append(fcTable.Rows, row)
+			c := controlRow{row, cinfo.Severity}
+			rows = append(rows, c)
+			fallthrough
+		default:
+			total++
 		}
 	}
-
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].score > rows[j].score
+	})
+	for _, r := range rows {
+		fcTable.Rows = append(fcTable.Rows, r.row)
+	}
 	v.Resources = append(CISCompliance.Resources, fcTable)
 
 	v.Details = fmt.Sprintf("Account: %s\n", alias)
@@ -343,10 +390,12 @@ func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 	}
 	v.Details += "\n"
 	v.Details += fmt.Sprintf("Failed Controls: %d\n", len(failed))
+	v.Details += fmt.Sprintf("Total Controls: %d\n", total)
 	// The vuln only makes sense when there is, at least, one failed check.
 	if len(failed) < 1 {
 		return nil, nil
 	}
+	v.Score = maxSeverity
 	return v, nil
 }
 
@@ -360,6 +409,8 @@ func parseControl(raw string) (control string, description string, err error) {
 	// parts[0] = [check13 .
 	control = strings.Replace(parts[0], "[check", "", -1)
 	// control = 13 .
+	control = control[:1] + "." + control[1:]
+	// control = 1.13
 	// description = Ensure credentials unused for 90 days or greater are
 	// disabled (Scored)
 	description = strings.Replace(parts[1], "(Scored)", "", -1)
