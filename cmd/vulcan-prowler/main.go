@@ -67,6 +67,7 @@ var (
 			"https://github.com/toniblyx/prowler",
 			"https://www.cisecurity.org/benchmark/amazon_web_services/",
 		},
+		Score: report.SeverityThresholdMedium,
 	}
 
 	CISLevel1Compliance = report.Vulnerability{
@@ -217,12 +218,9 @@ func main() {
 		if opts.SecurityLevel == nil {
 			v = CISCompliance
 
-		}
-		if *opts.SecurityLevel == 0 || *opts.SecurityLevel == 1 {
+		} else if *opts.SecurityLevel == 0 || *opts.SecurityLevel == 1 {
 			v = CISLevel1Compliance
-		}
-
-		if *opts.SecurityLevel == 2 {
+		} else {
 			v = CISLevel2Compliance
 		}
 		fv, err := fillCisLevelVuln(&v, r, alias, opts.SecurityLevel)
