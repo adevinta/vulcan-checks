@@ -67,6 +67,7 @@ var (
 			"https://github.com/toniblyx/prowler",
 			"https://www.cisecurity.org/benchmark/amazon_web_services/",
 		},
+		Score: report.SeverityThresholdMedium,
 	}
 
 	CISLevel1Compliance = report.Vulnerability{
