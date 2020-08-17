@@ -242,11 +242,11 @@ func main() {
 		} else {
 			v = CISLevel2Compliance
 		}
-		fv, err := fillCisLevelVuln(&v, r, alias, opts.SecurityLevel, controls)
+		fv, err := fillCISLevelVuln(&v, r, alias, opts.SecurityLevel, controls)
 		if err != nil {
 			return err
 		}
-		infov, err := buildInfoVuln(r, alias, opts.SecurityLevel)
+		infov, err := buildCISInfoVuln(r, alias, opts.SecurityLevel)
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func groupsFromOpts(opts options) ([]string, error) {
 
 }
 
-func buildInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnerability, error) {
+func buildCISInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnerability, error) {
 	v := CISComplianceInfo
 	var info []entry
 	infoTable := report.ResourcesGroup{
@@ -322,17 +322,15 @@ func buildInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnera
 	return v, nil
 }
 
-func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, slevel *byte, controls map[string]CISControl) (*report.Vulnerability, error) {
-
+func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, slevel *byte, controls map[string]CISControl) (*report.Vulnerability, error) {
 	type controlRow struct {
 		row   map[string]string
 		score float32
 	}
 	var (
-		total       int
-		maxSeverity float32
-		rows        []controlRow
-		failed      []entry
+		total  int
+		rows   []controlRow
+		failed []entry
 	)
 	fcTable := report.ResourcesGroup{
 		Name: "Failed Controls",
@@ -357,9 +355,6 @@ func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			cinfo, ok := controls[control]
 			if !ok {
 				return nil, fmt.Errorf("no information for control %s", control)
-			}
-			if cinfo.Severity > maxSeverity {
-				maxSeverity = cinfo.Severity
 			}
 			row := map[string]string{
 				"Control":     control,
@@ -391,11 +386,10 @@ func fillCisLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 	v.Details += "\n"
 	v.Details += fmt.Sprintf("Failed Controls: %d\n", len(failed))
 	v.Details += fmt.Sprintf("Total Controls: %d\n", total)
-	// The vuln only makes sense when there is, at least, one failed check.
+	// This vulnerability only makes sense when there is, at least, one failed check.
 	if len(failed) < 1 {
 		return nil, nil
 	}
-	v.Score = maxSeverity
 	return v, nil
 }
 
