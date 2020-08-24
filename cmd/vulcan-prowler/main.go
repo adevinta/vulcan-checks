@@ -409,6 +409,9 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 }
 
 func parseControl(raw string) (control string, description string, err error) {
+	if raw == "" {
+		return "", "", fmt.Errorf("error parsing raw control, unexpected format %s", raw)
+	}
 	// Raw format example: "[check13] Ensure credentials unused for 90 days or
 	// greater are disabled (Scored)""
 	parts := strings.Split(raw, "] ")
