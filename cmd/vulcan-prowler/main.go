@@ -321,7 +321,7 @@ func buildCISInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vuln
 			infoTable.Rows = append(infoTable.Rows, row)
 		}
 	}
-	v.Resources = append(CISCompliance.Resources, infoTable)
+	v.Resources = append(v.Resources, infoTable)
 
 	v.Details = fmt.Sprintf("Account: %s\n", alias)
 	if slevel != nil {
