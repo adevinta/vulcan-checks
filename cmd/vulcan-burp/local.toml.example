@@ -1,0 +1,5 @@
+[Check]
+Target = "https://example.com"
+Options =  '{"type": "passive"}'
+[RequiredVars]
+BURP_API_ENDPOINT = "http://localhost:1337"

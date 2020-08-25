@@ -1,0 +1,4 @@
+Description = "Runs a Burp passive or active scan"
+Timeout = 7200 # 2 hour. Expressed in seconds as an integer.
+AssetTypes = ["WebAddress"]
+Options = '{"type": "active"}'
