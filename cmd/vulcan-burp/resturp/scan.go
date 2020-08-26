@@ -2,6 +2,14 @@ package resturp
 
 import "fmt"
 
+// ScanStatus defines the info returned by the Burp API when querying the status
+// of a scan.
+type ScanStatus struct {
+	TaskID      string       `json:"task_id"`
+	Status      string       `json:"scan_status"`
+	IssueEvents []IssueEvent `json:"issue_events"`
+}
+
 // Scan defines the information required by the BURP API to create a scan.
 type Scan struct {
 	ApplicationLogins  []ApplicationLogin  `json:"application_logins,omitempty"`

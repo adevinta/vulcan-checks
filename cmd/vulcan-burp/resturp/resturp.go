@@ -48,6 +48,12 @@ func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
 	sURL := u.String()
 	fmt.Printf("create scan url: %s", sURL)
 	var sconfigs []ScanConfiguration
+	for _, s := range configs {
+		sconfigs = append(sconfigs, ScanConfiguration{
+			Type: "NamedConfiguration",
+			Name: s,
+		})
+	}
 	s := Scan{
 		ScanConfigurations: sconfigs,
 		Urls:               []string{webURL},
@@ -100,6 +106,38 @@ func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
 	return 0, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
 }
 
-func (r *Resturp) GetScanStatus() (uint, error) {
+// GetScanStatus returns the status of a scan.
+func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
+	u := *r.burpURL
+	id := strconv.Itoa(int(ID))
+	u.Path = fmt.Sprintf("%sscan/%s", u.Path, id)
+	sURL := u.String()
+	fmt.Printf("get scan status urls: %s", sURL)
 
+	req, err := http.NewRequest(http.MethodGet, sURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := r.doer.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		stat := new(ScanStatus)
+		err = json.Unmarshal(b, stat)
+		if err != nil {
+			return nil, err
+		}
+		return stat, nil
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
 }

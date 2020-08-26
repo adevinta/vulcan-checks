@@ -1,5 +1,5 @@
 [Check]
 Target = "https://example.com"
-Options =  '{"type": "passive"}'
+Options =  '{"vulcan_burp.scan_mode": "passive"}'
 [RequiredVars]
 BURP_API_ENDPOINT = "http://localhost:1337"
