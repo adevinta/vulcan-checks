@@ -46,7 +46,6 @@ func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
 	u := *r.burpURL
 	u.Path = u.Path + "scan"
 	sURL := u.String()
-	fmt.Printf("create scan url: %s", sURL)
 	var sconfigs []ScanConfiguration
 	for _, s := range configs {
 		sconfigs = append(sconfigs, ScanConfiguration{
@@ -63,7 +62,6 @@ func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
 		return 0, err
 	}
 	preader := strings.NewReader(string(payload))
-	fmt.Printf("payload %s", string(payload))
 	req, err := http.NewRequest(http.MethodPost, sURL, preader)
 	if err != nil {
 		return 0, err
@@ -112,8 +110,6 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 	id := strconv.Itoa(int(ID))
 	u.Path = fmt.Sprintf("%sscan/%s", u.Path, id)
 	sURL := u.String()
-	fmt.Printf("get scan status urls: %s", sURL)
-
 	req, err := http.NewRequest(http.MethodGet, sURL, nil)
 	if err != nil {
 		return nil, err
@@ -140,4 +136,39 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 		return nil, err
 	}
 	return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
+}
+
+// GetIssueDefinitions gets the current defined issues in burp.
+func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
+	u := *r.burpURL
+	u.Path = fmt.Sprintf("%sknowledge_base/issue_definitions", u.Path)
+	sURL := u.String()
+	req, err := http.NewRequest(http.MethodGet, sURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := r.doer.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var defs []IssueDefinition
+	err = json.Unmarshal(b, &defs)
+	if err != nil {
+		return nil, err
+	}
+	return defs, nil
+
 }

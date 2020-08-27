@@ -6,6 +6,15 @@ type IssueEvent struct {
 	Issue Issue  `json:"issue"`
 }
 
+type IssueDefinition struct {
+	IssueTypeID                  string `json:"issue_type_id"`
+	Name                         string `json:"name"`
+	Description                  string `json:"description"`
+	Remediation                  string `json:"remediation"`
+	References                   string `json:"references"`
+	VulnerabilityClassifications string `json:"vulnerability_classifications"`
+}
+
 type Issue struct {
 	Caption      string     `json:"caption"`
 	Confidence   string     `json:"confidence"`

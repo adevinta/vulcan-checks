@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -33,11 +34,12 @@ var (
 	// ErrInvalidScanMode is returned when an invalid scan mode was specified.
 	ErrInvalidScanMode = errors.New("invalid scan mode")
 
-	defaultTimeout = 30 * time.Minute
+	defaultTimeout = 300 * time.Minute
 )
 
 type options struct {
 	ScanMode ScanMode `json:"vulcan_burp.scan_mode"`
+	ScanID   uint     `json:"vulcan_burp.scan_id"`
 }
 
 // ScanMode possible scan modes are: "active" and "passive".
@@ -46,11 +48,11 @@ type ScanMode string
 func (s ScanMode) toBurpConfigs() ([]string, error) {
 	if s == "passive" || s == "" {
 		return []string{"Crawl limit - 10 minutes", "Audit checks - passive"}, nil
-		// return []string{"CustomCrawling4", "Audit checks - passive"}, nil
 	}
 
 	if s == "active" {
-		return []string{"Crawl limit - 10 minutes", "Audit coverage - maximum"}, nil
+		// return []string{"Crawl limit - 10 minutes", "Audit coverage - maximum"}, nil
+		return []string{}, nil
 	}
 
 	return nil, fmt.Errorf("%w, mode specified was %s, only valid modes are: active, passive", ErrInvalidScanMode, s)
@@ -89,15 +91,33 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	if err != nil {
 		return err
 	}
-	configs, err := opts.ScanMode.toBurpConfigs()
-	if err != nil {
-		return err
-	}
+
 	c, err := resturp.New(http.DefaultClient, api, "")
 	if err != nil {
 		return err
 	}
-	fmt.Printf("configs %+s\n", configs)
+
+	// If a scan id is specified try to generete the vulns
+	// from the corresponding already existent
+	if opts.ScanID != 0 {
+		s, err := c.GetScanStatus(opts.ScanID)
+		if err != nil {
+			return err
+		}
+		defs, err := c.GetIssueDefinitions()
+		if err != nil {
+			return err
+		}
+		vulns := fillVulns(s.IssueEvents, defs)
+		state.AddVulnerabilities(vulns...)
+		return nil
+	}
+
+	configs, err := opts.ScanMode.toBurpConfigs()
+	if err != nil {
+		return err
+	}
+
 	id, err := c.LaunchScan(target, configs)
 	if err != nil {
 		return err
@@ -106,7 +126,11 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	if err != nil {
 		return err
 	}
-	vulns := fillVulns(s.IssueEvents)
+	defs, err := c.GetIssueDefinitions()
+	if err != nil {
+		return err
+	}
+	vulns := fillVulns(s.IssueEvents, defs)
 	state.AddVulnerabilities(vulns...)
 	return nil
 }
@@ -133,71 +157,87 @@ LOOP:
 			break
 		case <-timeout.C:
 			err = errors.New("timeout waiting scan to finish")
-			break
+			break LOOP
 		}
 	}
 	return s, err
 }
 
-func fillVulns(ievents []resturp.IssueEvent) []report.Vulnerability {
-	var vulns []report.Vulnerability
+func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []report.Vulnerability {
+	// Index definitions by issue type ID.
+	defsIndex := map[string]resturp.IssueDefinition{}
+	for _, d := range defs {
+		defsIndex[d.IssueTypeID] = d
+	}
+	var cvulns = make(map[string]report.Vulnerability)
 	for _, i := range ievents {
 		if i.Type != "issue_found" {
 			continue
 		}
-		if i.Issue.Confidence == "Tentative" {
+		if i.Issue.Confidence == "tentative" {
 			continue
 		}
-		v := fillVuln(i.Issue)
+		// TODO: Check the issue exists in the index, and return an error if
+		// it doesn't.
+		id := strconv.Itoa(int(i.Issue.TypeIndex))
+		def := defsIndex[id]
+		v := cvulns[id]
+		v = fillVuln(i.Issue, def, v)
+		cvulns[id] = v
+	}
+	var vulns []report.Vulnerability
+	for _, v := range cvulns {
+		v := v
 		vulns = append(vulns, v)
 	}
 	return vulns
 }
 
-func fillVuln(i resturp.Issue) report.Vulnerability {
-	v := report.Vulnerability{}
-	v.Summary = i.Name
-	v.Description = i.Description
-	v.Details = i.InternalData
-
-	// TODO get issue info from  curl -vgw "\n" -X GET
-	// 'http://localhost:1337/api/v0.1/knowledge_base/issue_definitions' buy
-	// using the field type_index to index the issue_type_id.
-	// v.Recommendations = strings.Split(recommendations, "\n")
-	// references, ok := a["reference"].(string)
-	// v.References = strings.Split(references, "\n")
-	// v.CWEID = uint32(cweIDInt)
-
-	v.Score = severityToScore(i.Severity)
-	path := i.Path
-	// TODO fill evidences an other informations.
-	v.Resources = []report.ResourcesGroup{
-		report.ResourcesGroup{
-			Name: "Paths",
-			Header: []string{
-				"Path",
-			},
-			Rows: []map[string]string{
-				map[string]string{
-					"Path": path,
+func fillVuln(i resturp.Issue, def resturp.IssueDefinition, v report.Vulnerability) report.Vulnerability {
+	if v.Summary == "" {
+		v = report.Vulnerability{}
+		// We assume the severity is the same in all the paths the vulns has
+		// been found.
+		v.Summary = def.Name
+		v.Score = severityToScore(i.Severity)
+		v.Recommendations = []string{def.Remediation}
+		v.Description = def.Description
+		v.Resources = []report.ResourcesGroup{
+			{
+				Name: "Found In",
+				Header: []string{
+					"Path",
+					"Confidence",
+					"Description",
 				},
+				Rows: []map[string]string{},
 			},
-		},
+		}
 	}
+	score := severityToScore(i.Severity)
+	if score > v.Score {
+		v.Score = score
+	}
+	row := map[string]string{
+		"Path":        i.Path,
+		"Confidence":  i.Confidence,
+		"Description": i.Description,
+	}
+	v.Resources[0].Rows = append(v.Resources[0].Rows, row)
 	return v
 }
 
 func severityToScore(risk string) float32 {
 	switch risk {
 	case "info":
-		return float32(report.SeverityNone)
+		return report.SeverityThresholdNone
 	case "low":
-		return float32(report.SeverityLow)
+		return report.SeverityThresholdLow
 	case "medium":
-		return float32(report.SeverityMedium)
+		return report.SeverityThresholdMedium
 	case "high":
-		return float32(report.SeverityHigh)
+		return report.SeverityThresholdHigh
+	default:
+		return report.SeverityThresholdNone
 	}
-
-	return float32(report.SeverityNone)
 }
