@@ -1,54 +1,14 @@
 package main
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
+	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	report "github.com/adevinta/vulcan-report"
 )
-
-func hostnameToURL(hostname string, port int) url.URL {
-	u := url.URL{}
-	u.Path = "//"
-
-	if port != 0 {
-		u.Host = fmt.Sprintf("%v:%v", hostname, port)
-	} else {
-		u.Host = hostname
-	}
-
-	for _, scheme := range []string{"https", "http"} {
-		u.Scheme = scheme
-
-		timeout := 10 * time.Second
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		client := &http.Client{
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-			Transport: tr,
-			Timeout:   timeout,
-		}
-
-		_, err := client.Get(u.String())
-		if err != nil {
-			continue
-		}
-
-		return u
-	}
-
-	return url.URL{}
-}
 
 func riskToScore(risk string) float32 {
 	switch risk {
@@ -112,7 +72,10 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	if err != nil {
 		return report.Vulnerability{}, fmt.Errorf("Error converting CWE ID for \"%v\".", v.Summary)
 	}
-	v.CWEID = uint32(cweIDInt)
+	// ZAP uses 2^32-1 as CWE ID for vulnerabilities without a known CWE.
+	if cweIDInt < math.MaxInt32-1 {
+		v.CWEID = uint32(cweIDInt)
+	}
 
 	resMethod, ok := a["method"].(string)
 	if !ok {

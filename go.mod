@@ -21,7 +21,7 @@ require (
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/miekg/dns v1.1.27 // indirect
 	github.com/sirupsen/logrus v1.4.2
-	github.com/zaproxy/zap-api-go v0.0.0-20180130105416-8779ab35e992
+	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
 	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678 // indirect
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
