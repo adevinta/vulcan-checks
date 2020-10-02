@@ -107,7 +107,6 @@ func main() {
 
 		cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
 		var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, fmt.Sprintf(cleanGraphqlQuery, org, repo)))
-		fmt.Println(string(jsonData))
 		req, err := http.NewRequest("POST", githubURL.String(), bytes.NewBuffer(jsonData))
 		req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
 
@@ -127,8 +126,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println(alertsResponse)
 
 		packages := map[string][]ExtendedAdvisory{}
 		alerts := alertsResponse.Data.Repository.VulnerabilityAlerts.Details

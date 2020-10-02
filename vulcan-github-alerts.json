@@ -1,0 +1,1 @@
+{"check_id":"1e1642e0-dda7-40f8-90cf-53b543e08e25","checktype_name":"","checktype_version":"","status":"FAILED","target":"https://github.mpi-internal.com/heimdall/heimdall-admin","options":"","tag":"","start_time":"2020-10-02T14:14:27.559080077Z","end_time":"2020-10-02T14:14:27.559401668Z","vulnerabilities":null,"error":"Post \"/api/graphql\": unsupported protocol scheme \"\""}
