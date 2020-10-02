@@ -1,0 +1,2 @@
+[Check]
+Target = "https://github.com/adevinta/vulcan-checks" # The Github user used by Vulcan needs to be administrator of the repository.
