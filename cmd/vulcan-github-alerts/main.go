@@ -218,7 +218,7 @@ func main() {
 			}
 
 			rows = append(rows, map[string]string{
-				"Name":                     dependencyName,
+				"Dependency":               dependencyName,
 				"Ecosystem":                dependencyData.ecosystem,
 				"Vulnerabilities":          fmt.Sprintf("%v", dependencyData.vulnCount),
 				"Max. Severity":            dependencyData.maxSeverity,
@@ -241,14 +241,14 @@ func main() {
 				vj, _ := strconv.Atoi(rows[j]["Vulnerabilities"])
 				return vi > vj
 			default:
-				return rows[i]["Name"] < rows[j]["Name"]
+				return rows[i]["Dependency"] < rows[j]["Dependency"]
 			}
 		})
 
 		dependenciesResources := report.ResourcesGroup{
 			Name: "Vulnerable Dependencies",
 			Header: []string{
-				"Name",
+				"Dependency",
 				"Ecosystem",
 				"Vulnerabilities",
 				"Max. Severity",
