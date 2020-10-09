@@ -1,5 +1,5 @@
 Description = "Retrieves existing vulnerability alerts for a Github repository"
-Timeout = 600
+Timeout = 60
 AssetTypes = ["GitRepository"]
 RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
 Options = ""
