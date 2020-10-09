@@ -2,6 +2,9 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41 h1:MFhC+GK98qlnNBJWKHx2hcErBWV518xAklawIrICY4g=
 github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41/go.mod h1:Y00ZD1FNSMTFSqW2BeVIivVCIV4XcF7u3tJzq4YwZ5I=
+github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
+github.com/Masterminds/semver/v3 v3.1.0 h1:Y2lUDsFKVRSYGojLJ1yLxSXdMmMYTYls0rCvoqmMUQk=
+github.com/Masterminds/semver/v3 v3.1.0/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f h1:I74NfMCY6nR2+/u1VfrGeKtXI2ghQf+i2AHJ6oOiSb4=
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
 github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21 h1:UTCSVBGTK78jV0F/pDsYLIKRzmJD7pkz/vqP0OVOHfM=

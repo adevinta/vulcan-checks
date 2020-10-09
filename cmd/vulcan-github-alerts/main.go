@@ -10,21 +10,28 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
+	semver "github.com/Masterminds/semver/v3"
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
 const graphqlAPIPath = "/api/graphql"
+const graphqlFirstPageFilter = "first:100"
+const graphqlNextPagesFilter = `first:100, after:\"%v\"`
 const graphqlQuery = `
 query { 
 	repository(owner:\"%v\", name:\"%v\") {
-		vulnerabilityAlerts(last: 100) {
+		vulnerabilityAlerts(%v) {
 			number: totalCount
 			pagination: pageInfo { endCursor hasNextPage }
 			details: nodes {
+				vulnerableManifestFilename
+				vulnerableManifestPath
+				vulnerableRequirements
 				securityVulnerability {
 					advisory { summary description severity references { url } }
 					package { name ecosystem }
@@ -46,20 +53,24 @@ type alertsData struct {
 					EndCursor   string `json:"endCursor"`
 					HasNextPage bool   `json:"hasNextPage"`
 				} `json:"pagination"`
-				Details []struct {
-					SecurityVulnerability struct {
-						Advisory ExtendedAdvisory `json:"advisory"`
-						Package  struct {
-							Name      string `json:"name"`
-							Ecosystem string `json:"ecosystem"`
-						} `json:"package"`
-						VulnerableVersionRange string `json:"vulnerableVersionRange"`
-						FirstPatchedVersion    string `json:"firstPatchedVersion"`
-					} `json:"securityVulnerability"`
-				} `json:"details"`
+				Details []Details `json:"details"`
 			} `json:"vulnerabilityAlerts"`
 		} `json:"repository"`
 	} `json:"data"`
+}
+
+// Details contains the details of a security vulnerability.
+type Details struct {
+	SecurityVulnerability struct {
+		Advisory ExtendedAdvisory `json:"advisory"`
+		Package  struct {
+			Name      string `json:"name"`
+			Ecosystem string `json:"ecosystem"`
+		} `json:"package"`
+		VulnerableVersionRange string `json:"vulnerableVersionRange"`
+		// NOTE: Github currently always returns the FirstPatchedVersion field empty.
+		FirstPatchedVersion string `json:"firstPatchedVersion"`
+	} `json:"securityVulnerability"`
 }
 
 // ExtendedAdvisory adds the VulnerableVersionRange to the returned structure.
@@ -71,16 +82,30 @@ type ExtendedAdvisory struct {
 		URL string `json:"url"`
 	} `json:"references"`
 	VulnerableVersionRange string
-	FirstPatchedVersion    string
+	// NOTE: Github currently always returns the FirstPatchedVersion field empty.
+	FirstPatchedVersion string
+}
+
+type dependencyData struct {
+	version         string
+	ecosystem       string
+	vulnCount       int
+	maxSeverity     string
+	fixedVersion    *semver.Version
+	references      string
+	referencesCount int
 }
 
 var (
-	checkName = "vulcan-github-alerts"
-	baseVuln  = report.Vulnerability{
-		Description:     "",
+	checkName              = "vulcan-github-alerts"
+	vulnerableDependencies = report.Vulnerability{
+		Summary: "Vulnerable Code Dependencies in Github Repository",
+		Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
+You can find more specific information in the resources table for the repository.`,
+		ImpactDetails:   "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
 		CWEID:           937,
 		Score:           report.SeverityThresholdNone,
-		Recommendations: []string{"Update the dependency to a version higher than any of the vulnerable version ranges."},
+		Recommendations: []string{"Update all dependencies to at least the minimum recommended version in the resources table."},
 	}
 )
 
@@ -105,95 +130,129 @@ func main() {
 		}
 		githubURL.Path = graphqlAPIPath
 
-		cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
-		var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, fmt.Sprintf(cleanGraphqlQuery, org, repo)))
-		req, err := http.NewRequest("POST", githubURL.String(), bytes.NewBuffer(jsonData))
-		req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode >= 300 {
-			return fmt.Errorf("received status %v", resp.Status)
+		var alerts []Details
+		cursor := ""
+		hasNextPage := true
+		for hasNextPage {
+			var alertsPage []Details
+			alertsPage, hasNextPage, cursor, err = githubAlerts(githubURL.String(), org, repo, cursor)
+			if err != nil {
+				return err
+			}
+			alerts = append(alerts, alertsPage...)
 		}
 
-		var alertsResponse alertsData
-		err = json.NewDecoder(resp.Body).Decode(&alertsResponse)
-		if err != nil {
-			return err
+		if len(alerts) < 1 {
+			return nil
 		}
 
-		packages := map[string][]ExtendedAdvisory{}
-		alerts := alertsResponse.Data.Repository.VulnerabilityAlerts.Details
+		var maxScore float32
+		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
 			vuln := alert.SecurityVulnerability
 			vuln.Advisory.VulnerableVersionRange = vuln.VulnerableVersionRange
 			vuln.Advisory.FirstPatchedVersion = vuln.FirstPatchedVersion
-			if packages[vuln.Package.Name] != nil {
-				packages[vuln.Package.Name] = append(packages[vuln.Package.Name], vuln.Advisory)
+			advisoryScore := scoreSeverity(vuln.Advisory.Severity)
+
+			if dependencies[vuln.Package.Name] != nil {
+				dependencies[vuln.Package.Name].vulnCount++
+				if advisoryScore > scoreSeverity(dependencies[vuln.Package.Name].maxSeverity) {
+					dependencies[vuln.Package.Name].maxSeverity = vuln.Advisory.Severity
+				}
 			} else {
-				packages[vuln.Package.Name] = []ExtendedAdvisory{vuln.Advisory}
+				dependencies[vuln.Package.Name] = &dependencyData{
+					ecosystem:    vuln.Package.Ecosystem,
+					maxSeverity:  vuln.Advisory.Severity,
+					vulnCount:    1,
+					fixedVersion: &semver.Version{},
+				}
+			}
+
+			// NOTE: We should use the FirstPatchedVersion field whenever available.
+			// Currently, we are using the same method that the Github UI seems to be using.
+			// We determine the first fixed version if the advisory uses "<" for the upper bound.
+			// Otherwise, the first fixed version may not exist or be a minor or major release away.
+			splitRange := strings.Split(vuln.Advisory.VulnerableVersionRange, ", ")
+			if len(splitRange) > 0 {
+				lastVersion := splitRange[len(splitRange)-1]
+				// If the vulnerable range has a strict upper bound, then that version is fixed.
+				if strings.HasPrefix(lastVersion, "< ") {
+					fixedVersion, err := semver.NewVersion(strings.Split(lastVersion, " ")[1])
+					if err == nil {
+						// If another vulnerabilitu is fixed by a higher version, then that version
+						// is required in order to fix all of the vulnerabilities.
+						if fixedVersion.GreaterThan(dependencies[vuln.Package.Name].fixedVersion) {
+							dependencies[vuln.Package.Name].fixedVersion = fixedVersion
+						}
+					}
+				}
+			}
+
+			for i, reference := range vuln.Advisory.References {
+				if dependencies[vuln.Package.Name].referencesCount+i != 0 {
+					dependencies[vuln.Package.Name].references += ", "
+				}
+				dependencies[vuln.Package.Name].references += fmt.Sprintf("[%v](%v)", dependencies[vuln.Package.Name].referencesCount+1, reference.URL)
+				dependencies[vuln.Package.Name].referencesCount++
+			}
+
+			if advisoryScore > maxScore {
+				maxScore = advisoryScore
 			}
 		}
 
-		for packageName, packageAdvisories := range packages {
-			vuln := baseVuln
-			if len(packageAdvisories) > 1 {
-				vuln.Summary = fmt.Sprintf(`Multiple vulnerabilities in "%v" dependency`, packageName)
+		rows := []map[string]string{}
+		for dependencyName, dependencyData := range dependencies {
+			var recommendedVersion string
+			// If we were not able to determine a fixed version, it wil have a nil value.
+			if dependencyData.fixedVersion.String() == "0.0.0" {
+				recommendedVersion = "Unknown"
 			} else {
-				vuln.Summary = fmt.Sprintf(`Vulnerability in "%v" dependency`, packageName)
+				recommendedVersion = dependencyData.fixedVersion.String()
 			}
 
-			var rows []map[string]string
-			for i, advisory := range packageAdvisories {
-				vuln.Description += advisory.Description
-				if i != 0 {
-					vuln.Description += "\n\n"
-				}
-
-				for _, reference := range advisory.References {
-					vuln.References = append(vuln.References, reference.URL)
-				}
-
-				advisoryScore := scoreSeverity(advisory.Severity)
-				if advisoryScore > vuln.Score {
-					vuln.Score = advisoryScore
-				}
-
-				if advisory.FirstPatchedVersion == "" {
-					advisory.FirstPatchedVersion = "Unknown"
-				}
-				rows = append(rows, map[string]string{
-					"Severity":                 advisory.Severity,
-					"Vulnerable Version Range": advisory.VulnerableVersionRange,
-					"First Patched Version":    advisory.FirstPatchedVersion,
-				})
-			}
-
-			sort.Slice(rows, func(i, j int) bool {
-				si := scoreSeverity(rows[i]["Severity"])
-				sj := scoreSeverity(rows[j]["Severity"])
-				return si > sj
+			rows = append(rows, map[string]string{
+				"Name":                     dependencyName,
+				"Ecosystem":                dependencyData.ecosystem,
+				"Vulnerabilities":          fmt.Sprintf("%v", dependencyData.vulnCount),
+				"Max. Severity":            dependencyData.maxSeverity,
+				"Min. Recommended Version": recommendedVersion,
+				"References":               dependencyData.references,
 			})
-
-			versions := report.ResourcesGroup{
-				Name: "Affected Versions",
-				Header: []string{
-					"Severity",
-					"Vulnerable Version Range",
-					"First Patched Version",
-				},
-				Rows: rows,
-			}
-
-			vuln.Resources = []report.ResourcesGroup{versions}
-
-			state.AddVulnerabilities(vuln)
 		}
+
+		sort.Slice(rows, func(i, j int) bool {
+			si := scoreSeverity(rows[i]["Max. Severity"])
+			sj := scoreSeverity(rows[j]["Max. Severity"])
+			switch {
+			case si != sj:
+				return si > sj
+			case rows[i]["Vulnerabilities"] != rows[j]["Vulnerabilities"]:
+				// If for some reason not a number, then it is fine to sort it last.
+				vi, _ := strconv.Atoi(rows[i]["Vulnerabilities"])
+				vj, _ := strconv.Atoi(rows[j]["Vulnerabilities"])
+				return vi > vj
+			default:
+				return rows[i]["Name"] < rows[j]["Name"]
+			}
+		})
+
+		dependenciesResources := report.ResourcesGroup{
+			Name: "Vulnerable Dependencies",
+			Header: []string{
+				"Name",
+				"Ecosystem",
+				"Vulnerabilities",
+				"Max. Severity",
+				"Min. Recommended Version",
+				"References",
+			},
+			Rows: rows,
+		}
+
+		vulnerableDependencies.Resources = []report.ResourcesGroup{dependenciesResources}
+		vulnerableDependencies.Score = maxScore
+		state.AddVulnerabilities(vulnerableDependencies)
 
 		return nil
 	}
@@ -216,4 +275,40 @@ func scoreSeverity(githubSeverity string) float32 {
 	default:
 		return report.SeverityThresholdNone
 	}
+}
+
+func githubAlerts(graphqlURL string, org string, repo string, cursor string) (alerts []Details, hasNextPage bool, endCursor string, err error) {
+	cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
+	if cursor == "" {
+		cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, graphqlFirstPageFilter)
+	} else {
+		cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, fmt.Sprintf(graphqlNextPagesFilter, cursor))
+	}
+
+	var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
+
+	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return []Details{}, false, "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return []Details{}, false, "", fmt.Errorf("received status %v", resp.Status)
+	}
+
+	var alertsResponse alertsData
+	err = json.NewDecoder(resp.Body).Decode(&alertsResponse)
+	if err != nil {
+		return []Details{}, false, "", err
+	}
+
+	alerts = alertsResponse.Data.Repository.VulnerabilityAlerts.Details
+	hasNextPage = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.HasNextPage
+	endCursor = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.EndCursor
+	return alerts, hasNextPage, endCursor, nil
 }
