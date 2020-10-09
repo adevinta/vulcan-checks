@@ -82,6 +82,7 @@ type ExtendedAdvisory struct {
 	References  []struct {
 		URL string `json:"url"`
 	} `json:"references"`
+	WithdrawnAt            string `json:"withdrawnAt"`
 	VulnerableVersionRange string
 	// NOTE: Github currently always returns the FirstPatchedVersion field empty.
 	FirstPatchedVersion string
@@ -151,6 +152,12 @@ func main() {
 		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
 			vuln := alert.SecurityVulnerability
+
+			// If the advisory has been withdrawn, we will ignore it.
+			if vuln.Advisory.WithdrawnAt != "" {
+				continue
+			}
+
 			vuln.Advisory.VulnerableVersionRange = vuln.VulnerableVersionRange
 			vuln.Advisory.FirstPatchedVersion = vuln.FirstPatchedVersion
 			advisoryScore := scoreSeverity(vuln.Advisory.Severity)
