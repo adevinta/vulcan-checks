@@ -20,8 +20,9 @@ import (
 )
 
 const graphqlAPIPath = "/api/graphql"
-const graphqlFirstPageFilter = "first:100"
-const graphqlNextPagesFilter = `first:100, after:\"%v\"`
+const graphqlDefaultElements = 100
+const graphqlNumberFilter = "first:%v"
+const graphqlPageFilter = `after:\"%v\"`
 const graphqlQuery = `
 query { 
 	repository(owner:\"%v\", name:\"%v\") {
@@ -192,7 +193,12 @@ func main() {
 				if dependencies[vuln.Package.Name].referencesCount+i != 0 {
 					dependencies[vuln.Package.Name].references += ", "
 				}
-				dependencies[vuln.Package.Name].references += fmt.Sprintf("[%v](%v)", dependencies[vuln.Package.Name].referencesCount+1, reference.URL)
+				// References are numbered and linked with markdown in footnote format.
+				dependencies[vuln.Package.Name].references += fmt.Sprintf(
+					"[%v](%v)",
+					dependencies[vuln.Package.Name].referencesCount+1,
+					reference.URL,
+				)
 				dependencies[vuln.Package.Name].referencesCount++
 			}
 
@@ -221,6 +227,8 @@ func main() {
 			})
 		}
 
+		// We sort the table first by maximum severity, then by number of vulnerabilities
+		// and finally by name of the vulnerable dependency in alphabetical order.
 		sort.Slice(rows, func(i, j int) bool {
 			si := scoreSeverity(rows[i]["Max. Severity"])
 			sj := scoreSeverity(rows[j]["Max. Severity"])
@@ -277,13 +285,15 @@ func scoreSeverity(githubSeverity string) float32 {
 	}
 }
 
-func githubAlerts(graphqlURL string, org string, repo string, cursor string) (alerts []Details, hasNextPage bool, endCursor string, err error) {
+func githubAlerts(graphqlURL string, org string, repo string, cursor string) ([]Details, bool, string, error) {
+	// We replace all whitespace with spaces to avoid errors.
 	cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
-	if cursor == "" {
-		cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, graphqlFirstPageFilter)
-	} else {
-		cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, fmt.Sprintf(graphqlNextPagesFilter, cursor))
+
+	filter := fmt.Sprintf(graphqlNumberFilter, graphqlDefaultElements)
+	if cursor != "" {
+		filter = fmt.Sprintf("%v, %v", filter, fmt.Sprintf(graphqlPageFilter, cursor))
 	}
+	cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, filter)
 
 	var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
 
@@ -307,8 +317,8 @@ func githubAlerts(graphqlURL string, org string, repo string, cursor string) (al
 		return []Details{}, false, "", err
 	}
 
-	alerts = alertsResponse.Data.Repository.VulnerabilityAlerts.Details
-	hasNextPage = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.HasNextPage
-	endCursor = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.EndCursor
+	alerts := alertsResponse.Data.Repository.VulnerabilityAlerts.Details
+	hasNextPage := alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.HasNextPage
+	endCursor := alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.EndCursor
 	return alerts, hasNextPage, endCursor, nil
 }
