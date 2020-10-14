@@ -58,9 +58,10 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 
 	// HANDLE HERE CERTIFICATE WITH ERRORS
 	if err != nil {
-		// Don't fail the check if the target can not be accessed.
+		// If network connection can not be stablished to target,
+		// return ErrAssetUnreachable.
 		if _, ok := err.(*net.OpError); ok {
-			return nil
+			return state.ErrAssetUnreachable
 		}
 
 		if err.Error() == "x509: certificate has expired or is not yet valid" {
