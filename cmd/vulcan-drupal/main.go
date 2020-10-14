@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -76,6 +76,7 @@ func checkVersion(changelogURL string, log *logrus.Entry) (drupal bool, version 
 
 	resp, err := client.Do(req)
 	if err != nil {
+		err = fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
 		return false, "", err
 	}
 	defer resp.Body.Close()
@@ -108,7 +109,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) error {
+func run(ctx context.Context, target string, optJSON string, state checkstate.State) error {
 	logger := check.NewCheckLog(checkName)
 
 	u := url.URL{}
@@ -118,6 +119,8 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	var drupal bool
 	var version string
 	var err error
+
+	// Check for drupal and its version
 	for _, scheme := range []string{"http", "https"} {
 		u.Scheme = scheme
 		drupal, version, err = checkVersion(u.String(), logger)
@@ -134,23 +137,33 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 			"drupal":  drupal,
 			"version": version,
 		}).Info("attempted to identify Drupal version")
+
 		if drupal {
 			break
 		}
 	}
 
-	if drupal {
-		infoDrupal.Details = fmt.Sprintf("Drupal %v\nDetected in: %v", version, u.String())
-		state.AddVulnerabilities(infoDrupal)
-
-		vulnerabilities, err := detectVulnerabilities(version)
-		if err != nil {
+	if !drupal {
+		// If we were not able to check for drupal due to
+		// 'No route to host', return ErrAssetUnreachable.
+		// Otherwise don't return error.
+		if errors.Is(err, checkstate.ErrAssetUnreachable) {
 			return err
 		}
+		return nil
+	}
 
-		if len(vulnerabilities) > 0 {
-			state.AddVulnerabilities(vulnerabilities...)
-		}
+	// Scan drupal
+	infoDrupal.Details = fmt.Sprintf("Drupal %v\nDetected in: %v", version, u.String())
+	state.AddVulnerabilities(infoDrupal)
+
+	vulnerabilities, err := detectVulnerabilities(version)
+	if err != nil {
+		return err
+	}
+
+	if len(vulnerabilities) > 0 {
+		state.AddVulnerabilities(vulnerabilities...)
 	}
 
 	return nil
