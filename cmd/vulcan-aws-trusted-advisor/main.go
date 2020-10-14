@@ -342,6 +342,13 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 	}
 	defer resp.Body.Close()
 
+	// If we are not allowed to assume role on the
+	// target AWS account, check can not be executed
+	// on asset, so return ErrAssetUnreachable.
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, state.ErrAssetUnreachable
+	}
+
 	assumeRoleResponse := AssumeRoleResponse{}
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
