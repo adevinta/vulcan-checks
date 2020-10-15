@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	check "github.com/adevinta/vulcan-check-sdk"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
 )
 
 var (
@@ -39,12 +39,11 @@ var (
 func tcpConnect(target string, port int) error {
 
 	targetAddr := target + ":" + strconv.Itoa(port)
-	if _, err := net.ResolveTCPAddr("tcp", targetAddr); err != nil {
-		return err
-	}
-
 	conn, err := net.DialTimeout("tcp", targetAddr, defaultTimeout)
 	if err != nil {
+		if _, ok := err.(*net.OpError); ok {
+			err = fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
+		}
 		return err
 	}
 
@@ -57,7 +56,7 @@ func tcpConnect(target string, port int) error {
 
 func main() {
 
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) (err error) {
 		logger.Printf("Starting the %v check", checkName)
 
 		if target == "" {
@@ -68,6 +67,11 @@ func main() {
 			state.AddVulnerabilities(exposedBGP)
 		} else {
 			state.Notes = err.Error()
+			// If err is due to asset being unreachable, report
+			// that to SDK. Otherwise finish.
+			if errors.Is(err, checkstate.ErrAssetUnreachable) {
+				return err
+			}
 		}
 
 		return nil
