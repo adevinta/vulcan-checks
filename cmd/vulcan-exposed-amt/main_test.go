@@ -74,7 +74,7 @@ var isAmtExposedTestCases = []isAmtServerExposedTest{
 			port:   "3005",
 			target: "127.0.0.1",
 		},
-		wantErr: true,
+		wantErr: false,
 		// If a server is specified, there is no need to define args because are inferred from the server url.
 		want: false,
 	},
