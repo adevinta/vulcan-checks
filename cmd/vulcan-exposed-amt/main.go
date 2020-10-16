@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
-	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	report "github.com/adevinta/vulcan-report"
+	"github.com/adevinta/vulcan-report"
 )
 
 const timeout = 2
@@ -55,8 +56,14 @@ func isAmtServerExposed(client http.Client, target, port string) (bool, error) {
 	}
 	resp, err := client.Do(r)
 	if err != nil {
-		err = fmt.Errorf("%w: %s", state.ErrAssetUnreachable, err.Error())
-		return false, err
+		if urlErr, ok := err.(*url.Error); ok {
+			// There is an error in the url return it.
+			if strings.Contains(urlErr.Error(), "invalid URL") {
+				return false, err
+			}
+		}
+		// We consider other kinds of errors as the target no exposed so no vulnerable.
+		return false, nil
 	}
 
 	// Check server header in response for amt server token.
