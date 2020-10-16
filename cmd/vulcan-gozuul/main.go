@@ -11,7 +11,7 @@ import (
 
 	gozuul "github.com/adevinta/gozuul"
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	types "github.com/adevinta/vulcan-types"
 )
@@ -42,7 +42,7 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) (err error) {
 		var opt options
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -53,6 +53,12 @@ func main() {
 		urls, err := discoverURLs(target, opt.Schemes, opt.Ports)
 		if err != nil {
 			return err
+		}
+
+		if len(urls) == 0 {
+			// If no URL was reachable for service
+			// return Asset Unreachable error.
+			return checkstate.ErrAssetUnreachable
 		}
 
 		gr := report.ResourcesGroup{
