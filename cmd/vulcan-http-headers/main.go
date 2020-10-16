@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -14,7 +15,7 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -37,7 +38,7 @@ var behindOktaVuln = report.Vulnerability{
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) error {
 		logger := check.NewCheckLog(checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
@@ -45,12 +46,12 @@ func main() {
 			return errors.New("missing check target")
 		}
 
-		// TODO: This is maybe too concrete for the check as maybe there are some targets behind other kind of
-		// SSO.
+		// TODO: This is might be too concrete for the check as
+		// maybe there are some targets behind other kind of SSO.
 		u := hostnameToURL(target)
 		if u == nil {
 			e.Debug("No HTTP server on target")
-			return nil
+			return checkstate.ErrAssetUnreachable
 		}
 		behindSSO, redirectingTo, err := helpers.IsRedirectingTo(u.String(), helpers.OKTADomain)
 		if err != nil {
@@ -63,7 +64,9 @@ func main() {
 				return err
 			}
 
-			return nil
+			// Target was not reachable for specified timeout
+			// so return ErrAssetUnreachable to SDK.
+			return fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
 		}
 		if behindSSO {
 			v := buildBehindOktaVuln(target, redirectingTo)
@@ -124,7 +127,7 @@ func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
 	return behindOktaVuln
 }
 
-func processResults(r observatoryResult, s state.State) error {
+func processResults(r observatoryResult, s checkstate.State) error {
 	if r.Error != "" {
 		return errors.New(r.Error)
 	}
