@@ -453,6 +453,13 @@ func loadCredentials(url string, accountID, role string, sessionDuration int) er
 	}
 	defer resp.Body.Close()
 
+	// If we are not allowed to assume role on the
+	// target AWS account, check can not be executed
+	// on asset, so return ErrAssetUnreachable.
+	if resp.StatusCode == http.StatusForbidden {
+		return state.ErrAssetUnreachable
+	}
+
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
