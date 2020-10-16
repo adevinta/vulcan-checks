@@ -15,7 +15,7 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -31,7 +31,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) error {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
@@ -42,26 +42,30 @@ func main() {
 
 }
 
-func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state state.State, args []string) error {
+func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state checkstate.State, args []string) error {
 	target, err := resolveTarget(target)
 	if err != nil {
-		// Don't fail the check if the target can not be accessed.
+		// If target can not be accessed
+		// return ErrAssetUnreachable.
 		if _, ok := err.(*url.Error); ok {
-			return nil
+			return fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
 		}
 		return err
 	}
+
 	logger.Infof("Downloading javascript sources from %s", target)
 	os.RemoveAll("./temp")
 	os.MkdirAll("temp", os.ModePerm)
 	findScriptFiles(target)
 	findInlineScripts(target)
+
 	retireJsReport, err := runRetireJs(ctx, args)
 	if err != nil {
 		return err
 	}
 	addVulnsToState(state, retireJsReport)
 	os.RemoveAll("./temp")
+
 	return nil
 }
 
@@ -83,7 +87,7 @@ func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, erro
 	return report.Data, err
 }
 
-func addVulnsToState(state state.State, r []RetireJsFileResult) {
+func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 	vulns := make(map[string]report.Vulnerability)
 	for _, finding := range r {
 		for _, result := range finding.Results {
