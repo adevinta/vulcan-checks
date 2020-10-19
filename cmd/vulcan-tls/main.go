@@ -11,7 +11,7 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -53,7 +53,7 @@ type analyzeRunner struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) error {
 		var opt options
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -71,9 +71,10 @@ func main() {
 		// Check if the target accepts connections.
 		conn, err := net.DialTimeout("tcp", target, connTimeout)
 		if err != nil {
-			// Nothing is listening in the target port.
+			// Nothing is listening in the target port, so log error
+			// and report AssetUnreachable to SDK.
 			logger.WithError(err).Info("can not connect to the target port")
-			return nil
+			return fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
 		}
 		if err := conn.Close(); err != nil {
 			logger.WithError(err).Warn("test connection to the target port was not closed correctly")
