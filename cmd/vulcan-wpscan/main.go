@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -22,7 +22,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) error {
 		logger := check.NewCheckLog(checkName)
 		if target == "" {
 			return fmt.Errorf("check target missing")
@@ -35,8 +35,10 @@ func main() {
 
 		url, ok := resolveTarget(target)
 		if !ok {
+			// If target can not be resolved, log error
+			// and report Asset Unreachable to SDK.
 			logger.Info("target does not answer to http or https")
-			return nil
+			return checkstate.ErrAssetUnreachable
 		}
 
 		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
@@ -70,7 +72,7 @@ func resolveTarget(target string) (string, bool) {
 	return t, true
 }
 
-func addVulnsToState(state state.State, r *WpScanReport) {
+func addVulnsToState(state checkstate.State, r *WpScanReport) {
 	// Add informational vulnerability indicating the WordPress version.
 	if r.Version.Number != "" {
 		wpDetected := report.Vulnerability{
@@ -113,7 +115,7 @@ func getImpact(summary string) (float32, string) {
 	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
 }
 
-func addVulns(state state.State, src []Vulnerability) {
+func addVulns(state checkstate.State, src []Vulnerability) {
 	for _, v := range src {
 		impact, _ := getImpact(v.Title)
 
@@ -129,7 +131,7 @@ func addVulns(state state.State, src []Vulnerability) {
 	}
 }
 
-func addPluginVulns(state state.State, src []Vulnerability, plugin string, version *PluginVersion) {
+func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion) {
 	for _, v := range src {
 		title := strings.TrimSpace(v.Title)
 		var (
