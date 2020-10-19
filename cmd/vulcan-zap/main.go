@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os/exec"
 	"strconv"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
 	"github.com/zaproxy/zap-api-go/zap"
@@ -34,7 +36,7 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target string, optJSON string, state checkstate.State) (err error) {
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -79,9 +81,13 @@ func main() {
 
 		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
 
+		// Verify target format and reachability.
 		targetURL, err := url.Parse(target)
 		if err != nil {
 			return fmt.Errorf("error parsing target URL: %w", err)
+		}
+		if err = resolveTarget(targetURL); err != nil {
+			return fmt.Errorf("%w: %s", checkstate.ErrAssetUnreachable, err.Error())
 		}
 
 		if opt.Username != "" {
@@ -104,13 +110,12 @@ func main() {
 
 		v, ok := resp["scan"]
 		if !ok {
-			// Scan has not been executed. Due to the ZAP proxy behaviour
-			// (the request to the ZAP API does not return the status codes)
-			// we can not be sure whether it was because a non existant target
-			// or because an error accessing the ZAP API. Therefore, we will
-			// terminate the check without errors.
-			logger.WithFields(logrus.Fields{"resp": resp}).Warn("Scan not present in response body when calling Spider().Scan()")
-			return nil
+			// Scan has not been executed.
+			// We verified previously the reachability of the target, therefore
+			// we assume this is a Zap related error, so return execution error.
+			errMssg := "scan not present in response body when calling Spider().Scan()"
+			logger.WithFields(logrus.Fields{"resp": resp}).Warn(errMssg)
+			return errors.New(errMssg)
 		}
 
 		scanid, ok := v.(string)
@@ -245,7 +250,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func activeScan(targetURL *url.URL, state state.State) error {
+func activeScan(targetURL *url.URL, state checkstate.State) error {
 	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)
@@ -294,4 +299,20 @@ func activeScan(targetURL *url.URL, state state.State) error {
 	}
 
 	return nil
+}
+
+// resolveTarget tries to resolve the input target
+// by following redirects and without TLS verification.
+func resolveTarget(target *url.URL) error {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   timeout,
+	}
+
+	_, err := client.Get(target.String())
+	return err
 }
