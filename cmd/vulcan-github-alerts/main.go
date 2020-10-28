@@ -13,10 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	semver "github.com/Masterminds/semver/v3"
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
+
+	semver "github.com/Masterminds/semver/v3"
 )
 
 const graphqlAPIPath = "/api/graphql"
@@ -122,6 +123,8 @@ func main() {
 			return err
 		}
 
+		// We clean the URL to extract the organization and repository names.
+		targetURL.Path = strings.TrimSuffix(targetURL.Path, ".git")
 		splitPath := strings.Split(targetURL.Path, "/")
 		org, repo := splitPath[1], splitPath[2]
 
