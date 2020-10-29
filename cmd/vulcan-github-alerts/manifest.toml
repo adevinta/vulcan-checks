@@ -1,0 +1,7 @@
+Description = "Retrieves existing vulnerability alerts for a Github repository"
+Timeout = 60
+AssetTypes = ["GitRepository"]
+# The Github user used by Vulcan needs to be administrator of the repository or its organization.
+# Additionally, the Github token that Vulcan uses requires "repo:public_repo" permissions.
+# In order to work with private repositories, the token requires full "repo" permissions.
+RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]

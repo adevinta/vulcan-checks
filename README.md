@@ -45,3 +45,4 @@ Currently there's no vendoring provided for this project.
 38. **vulcan-trivy** - Checks if a Docker image uses vulnerable packages or dependencies using Trivy
 39. **vulcan-exposed-http-resources** - Checks if a web address exposes sensitive resources
 40. **vulcan-prowler** - Checks compliance against CIS AWS Foundations Benchmark
+41. **vulcan-github-alerts** - Retrieves existing vulnerability alerts for a Github repository
