@@ -6,9 +6,9 @@ import (
 
 	"github.com/FiloSottile/CVE-2016-2107/LuckyMinus20"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 const (
@@ -32,7 +32,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}

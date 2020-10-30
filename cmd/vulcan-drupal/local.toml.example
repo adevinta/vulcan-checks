@@ -1,4 +1,5 @@
 [Check]
 Target = "localhost"
+TargetType = "Hostname"
 [Log]
 LogLevel = "DEBUG"

@@ -16,7 +16,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
@@ -41,9 +41,9 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
 	logger := check.NewCheckLog(checkName)
-	e = logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
+	e = logger.WithFields(logrus.Fields{"target": target, "targetType": targetType, "options": optJSON})
 
 	if target == "" {
 		return errors.New("missing check target")

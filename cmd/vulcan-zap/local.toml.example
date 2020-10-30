@@ -1,3 +1,4 @@
 [Check]
-Target = "example.com"
+Target = "http://www.example.com"
+TargetType = "WebAddress"
 Options = "{\"depth\":2, \"active\":true}"

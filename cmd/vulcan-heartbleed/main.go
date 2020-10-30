@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	"github.com/FiloSottile/Heartbleed/heartbleed"
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 var (
@@ -45,7 +45,7 @@ func testHeartbleed(host string) (string, error) {
 
 func main() {
 
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}

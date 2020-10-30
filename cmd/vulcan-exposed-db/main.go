@@ -10,10 +10,10 @@ import (
 	gonmap "github.com/lair-framework/go-nmap"
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 type options struct {
@@ -103,7 +103,7 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 		logger := check.NewCheckLog(checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 

@@ -2,4 +2,5 @@
 LogLevel = "debug"
 [Check]
 Target = "example.com"
+TargetType = "Hostname"
 Options = "{\"ports\":[\"22\"], \"allowed\": true}"

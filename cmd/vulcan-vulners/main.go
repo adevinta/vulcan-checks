@@ -327,7 +327,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 	return vulns, nil
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 	if cpeRegex, err = regexp.Compile(cpeRegexStr); err != nil {
 		return fmt.Errorf("regex can not be compiled. regex: %s, error: %v", cpeRegexStr, err)
 	}

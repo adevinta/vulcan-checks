@@ -8,9 +8,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 	version "github.com/hashicorp/go-version"
 )
 
@@ -277,7 +277,7 @@ func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) 
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
 		var err error
 		bannerRE, err = regexp.Compile(`^SSH-[0-9A-Za-z.]+-libssh-([[:graph:]]+)[[:space:]]*`)
 		if err != nil {

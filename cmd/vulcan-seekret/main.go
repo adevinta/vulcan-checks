@@ -61,7 +61,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}

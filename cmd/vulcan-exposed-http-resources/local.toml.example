@@ -2,6 +2,7 @@
 LogLevel = "info"
 [Check]
 Target = "http://localhost:3000/"
+TargetType = "WebAddress"
 
 # This example will trigger the vulnerability:
 # Target="https://www.google.com"

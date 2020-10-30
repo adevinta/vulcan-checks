@@ -122,9 +122,9 @@ func isExposedRDP(host, port string, timeout int) []report.Vulnerability {
 	return nil
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 	l := check.NewCheckLog(checkName)
-	logger = l.WithFields(logrus.Fields{"target": target, "options": optJSON})
+	logger = l.WithFields(logrus.Fields{"target": target, "targetType": targetType, "options": optJSON})
 
 	if err := buildPDUs(); err != nil {
 		return err

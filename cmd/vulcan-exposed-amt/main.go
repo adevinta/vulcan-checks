@@ -11,9 +11,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 const timeout = 2
@@ -74,7 +74,7 @@ func isAmtServerExposed(client http.Client, target, port string) (bool, error) {
 	return exposed, nil
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 	logger := check.NewCheckLog(checkName)
 
 	var opt options

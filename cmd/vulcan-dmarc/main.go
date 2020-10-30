@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -15,7 +15,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
 		logger.WithFields(logrus.Fields{
 			"domain": target,
 		}).Debug("requesting domain")

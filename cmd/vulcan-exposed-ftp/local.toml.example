@@ -2,3 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "localhost"
+TargetType = "Hostname"

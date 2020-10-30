@@ -1,5 +1,6 @@
 [Check]
 Target = "localhost"
+TargetType = "Hostname"
 Options = '{"port":11211}'
 [Log]
 LogLevel = "DEBUG"

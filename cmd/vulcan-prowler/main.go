@@ -193,7 +193,7 @@ func buildOptions(optJSON string) (options, error) {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
 		if target == "" {
 			return errors.New("check target missing")
 		}

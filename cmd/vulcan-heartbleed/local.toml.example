@@ -1,2 +1,3 @@
 [Check]
 Target = "0.0.0.0"
+TargetType = "IP"
