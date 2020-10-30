@@ -10,8 +10,9 @@ import (
 	gonmap "github.com/lair-framework/go-nmap"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -33,6 +34,7 @@ type options struct {
 
 var (
 	checkName = "vulcan-exposed-services"
+	logger    = check.NewCheckLog(checkName)
 
 	defaultTiming = 3
 
@@ -109,12 +111,20 @@ func exposedPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabil
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		if opt.Timing == 0 {

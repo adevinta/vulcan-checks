@@ -23,7 +23,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/aws/aws-sdk-go/aws/arn"
 )
@@ -46,7 +47,7 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {
@@ -58,12 +59,7 @@ func main() {
 			return fmt.Errorf("check target missing")
 		}
 
-		parsedARN, err := arn.Parse(target)
-		if err != nil {
-			return err
-		}
-
-		return scanAccount(opt, parsedARN.AccountID, logger, state)
+		return scanAccount(opt, target, assetType, logger, state)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
@@ -85,7 +81,7 @@ func extractLinesFromHTML(htmlText string) []string {
 	return result
 }
 
-func scanAccount(opt options, target string, logger *logrus.Entry, state state.State) error {
+func scanAccount(opt options, target, assetType string, logger *logrus.Entry, state checkstate.State) error {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("us-east-1"),
 	})
@@ -93,7 +89,23 @@ func scanAccount(opt options, target string, logger *logrus.Entry, state state.S
 		return err
 	}
 
-	creds, err := getCredentials(os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT"), target, os.Getenv("ROLE_NAME"), logger)
+	assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
+	role := os.Getenv("ROLE_NAME")
+
+	isReachable, err := helpers.IsReachable(target, assetType,
+		helpers.NewAWSCreds(assumeRoleEndpoint, role))
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
+	}
+
+	parsedARN, err := arn.Parse(target)
+	if err != nil {
+		return err
+	}
+	creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
 	if err != nil {
 		return err
 	}

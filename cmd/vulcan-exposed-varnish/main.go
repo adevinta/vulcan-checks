@@ -11,7 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -110,8 +111,16 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 	logger := check.NewCheckLog(checkName)
+
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
+	}
 
 	var websites []string
 	for _, port := range httpPorts {

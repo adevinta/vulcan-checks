@@ -22,7 +22,8 @@ import (
 	"gopkg.in/yaml.v2"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -96,7 +97,7 @@ func init() {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger = check.NewCheckLog(checkName)
 		logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
@@ -107,6 +108,14 @@ func main() {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		resources := opt.Resources

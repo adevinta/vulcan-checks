@@ -6,12 +6,14 @@ import (
 
 	"github.com/FiloSottile/Heartbleed/heartbleed"
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
 var (
 	checkName  = "vulcan-heartbleed"
+	logger     = check.NewCheckLog(checkName)
 	payload    = []byte("VULCAN-PAYLOAD")
 	service    = "https"
 	skipVerify = true
@@ -45,9 +47,17 @@ func testHeartbleed(host string) (string, error) {
 
 func main() {
 
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		dump, err := testHeartbleed(target)

@@ -15,7 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/adevinta/restuss"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -30,12 +31,20 @@ type runner struct {
 	Delete              bool
 }
 
-func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 	var opt options
 	if optJSON != "" {
 		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 			return err
 		}
+	}
+
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
 	}
 
 	p, err := strconv.Atoi(os.Getenv("NESSUS_POLICY_ID"))

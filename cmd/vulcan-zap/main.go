@@ -12,7 +12,8 @@ import (
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
 	"github.com/zaproxy/zap-api-go/zap"
@@ -34,12 +35,20 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		// Execute ZAP daemon.
@@ -245,7 +254,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func activeScan(targetURL *url.URL, state state.State) error {
+func activeScan(targetURL *url.URL, state checkstate.State) error {
 	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)

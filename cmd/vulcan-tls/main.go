@@ -10,8 +10,9 @@ import (
 	"unicode"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -53,20 +54,29 @@ type analyzeRunner struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLog(name)
+
 		var opt options
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
 		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
+
 		if opt.Port != "" {
 			target = fmt.Sprintf("%v:%v", target, opt.Port)
 		} else {
 			target = fmt.Sprintf("%v:%v", target, defaultPort)
 		}
-
-		logger := check.NewCheckLog(name)
 
 		// Check if the target accepts connections.
 		conn, err := net.DialTimeout("tcp", target, connTimeout)

@@ -10,7 +10,9 @@ import (
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
 )
@@ -28,10 +30,19 @@ type FileCheck struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
+
 		return scanTarget(ctx, target, logger, state, nil)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
