@@ -153,7 +153,7 @@ func (checker *certificateChecker) extractCertificateInfo() error {
 }
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 		var opt options
 		logger.Printf("Starting the %v check", checkName)
 

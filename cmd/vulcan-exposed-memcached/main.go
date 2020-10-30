@@ -41,9 +41,9 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 	logger := check.NewCheckLog(checkName)
-	e = logger.WithFields(logrus.Fields{"target": target, "targetType": targetType, "options": optJSON})
+	e = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 	if target == "" {
 		return errors.New("missing check target")

@@ -46,7 +46,7 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {

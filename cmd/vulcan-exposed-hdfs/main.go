@@ -183,9 +183,9 @@ func checkHTTPWithScheme(client *http.Client, scheme, host, port, regex string) 
 	return m
 }
 
-func run(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 	l := check.NewCheckLog(checkName)
-	logger = l.WithFields(logrus.Fields{"target": target, "targetType": targetType, "options": optJSON})
+	logger = l.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 	var opt options
 	if optJSON != "" {

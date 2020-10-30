@@ -152,9 +152,9 @@ func checkBodyRegExp(resp *http.Response, exp string) (bool, error) {
 }
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 		logger := check.NewCheckLog(checkName)
-		logger = logger.WithFields(logrus.Fields{"target": target, "targetType": targetType, "options": optJSON})
+		logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 		addr, err := url.Parse(target)
 		if err != nil {
 			return err

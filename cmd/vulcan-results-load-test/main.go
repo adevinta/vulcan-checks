@@ -26,7 +26,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 	var opt options
 
 	logger.Debug("Validating params")

@@ -2,4 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "example.com"
-TargetType = "Hostname"
+AssetType = "Hostname"

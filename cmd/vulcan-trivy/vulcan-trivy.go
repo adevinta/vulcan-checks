@@ -74,7 +74,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 	var reportTruncated bool
 	// Load required env vars for docker registry authentication.
 	registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")

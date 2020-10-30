@@ -22,7 +22,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 		logger := check.NewCheckLog(checkName)
 		if target == "" {
 			return fmt.Errorf("check target missing")

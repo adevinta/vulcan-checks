@@ -2,7 +2,7 @@
 LogLevel = "debug"
 [Check]
 Target = "https://example.com"
-TargetType = "WebAddress"
+AssetType = "WebAddress"
 Options = "{\"paths\":[{\"path\":\"/\", \"reg_exp\": \"(?s)Transfer.*Alt\"}]}"
 
 # Other examples

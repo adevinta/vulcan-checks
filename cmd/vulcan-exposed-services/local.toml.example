@@ -2,5 +2,5 @@
 LogLevel = "debug"
 [Check]
 Target = "localhost"
-TargetType = "Hostname"
+AssetType = "Hostname"
 Options = '{"whitelisted_tcp_ports": [], "whitelisted_udp_ports": []}'

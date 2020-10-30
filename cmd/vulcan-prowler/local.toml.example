@@ -1,6 +1,6 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
-TargetType = "AWSAccount"
+AssetType = "AWSAccount"
 Options = '{"region":"eu-west-1","groups":["cislevel1"],"session_duration":3600}'
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT = "http://localhost:8080/assume"

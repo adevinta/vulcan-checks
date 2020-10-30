@@ -113,7 +113,7 @@ You can find more specific information in the resources table for the repository
 )
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}

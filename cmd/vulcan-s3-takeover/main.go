@@ -51,7 +51,7 @@ type s3Response struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, targetType string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 		logger := check.NewCheckLog(checkName)
 
 		// TODO: Also consider case of HTTPS sites.

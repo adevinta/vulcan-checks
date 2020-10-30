@@ -108,7 +108,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, targetType string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 	logger := check.NewCheckLog(checkName)
 
 	u := url.URL{}

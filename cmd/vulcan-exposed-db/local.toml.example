@@ -2,4 +2,4 @@
 LogLevel = "debug"
 [Check]
 Target = "localhost"
-TargetType = "Hostname"
+AssetType = "Hostname"

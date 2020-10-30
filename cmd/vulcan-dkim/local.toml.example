@@ -2,5 +2,5 @@
 LogLevel = "debug"
 [Check]
 Target = "example.com"
-TargetType = "DomainName"
+AssetType = "DomainName"
 Options = "{\"selectors\":[\"default\"]}"
