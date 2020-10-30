@@ -13,13 +13,12 @@ import (
 	"unicode"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	seekret "github.com/apuigsech/seekret"
 	sourcedir "github.com/apuigsech/seekret-source-dir"
 	"github.com/apuigsech/seekret/models"
-	git "gopkg.in/src-d/go-git.v4"
-	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 type options struct {
@@ -28,6 +27,7 @@ type options struct {
 
 var (
 	checkName    = "vulcan-seekret"
+	logger       = check.NewCheckLog(checkName)
 	leakedSecret = report.Vulnerability{
 		Summary:       "Secrets Leaked in Git Repository",
 		Description:   "Some secrets have been found stored in the Git repository. These secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as exceptions so that they are only reported informationally as documented in the references section.",
@@ -61,7 +61,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -81,31 +81,24 @@ func main() {
 		}
 
 		// TODO: Support multiple authenticated Github Enterprise instances.
+		var githubUser, githubToken string
 		githubURL, err := url.Parse(os.Getenv("GITHUB_ENTERPRISE_ENDPOINT"))
 		if err != nil {
 			return err
 		}
-
-		var auth *http.BasicAuth
 		if githubURL.Host != "" && targetURL.Host == githubURL.Host {
-			auth = &http.BasicAuth{
-				Username: "username", // Can be anything except blank.
-				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
-			}
+			githubUser = "username" // Can be anything except blank.
+			githubToken = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
 		}
 
 		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return err
-		}
-
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:   target,
-			Auth:  auth,
-			Depth: opt.Depth,
-		})
+		isReachable, err := helpers.IsGitRepoReachable(target, githubUser, githubToken,
+			repoPath, opt.Depth, false)
 		if err != nil {
-			return err
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		s := seekret.NewSeekret()
