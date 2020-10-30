@@ -10,10 +10,14 @@ github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7 h1:/EB/v
 github.com/adevinta/vulcan-check-sdk v0.0.0-20200401140623-e76035f8c5a7/go.mod h1:uOsuYrehTDYR27uxYwXYkxh2CNaieE6oqYSFnquhYjs=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20201030075246-56b3a53bca89 h1:OQTEhaZzY/Sm8I3QJ32CsJ/ZMeh201bx618gcLPveF4=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20201030075246-56b3a53bca89/go.mod h1:50wzZEhrt5sAcoIzAZQ9saT4n/Gv7iqP/jBx1jsDI+w=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20201030112417-6a935ba4bc8d h1:pdFAWk93k9raTd/ALooxvQHrQHhN0mnOF3rwmPzimm4=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20201030112417-6a935ba4bc8d/go.mod h1:uaUXwBqTeGMI7p+nmnhkloAv/Hwm+2xBMr/HfXSvWoI=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff h1:ZazuZSOfV8oo70SWdjLQi+In4GSmJCA2rwsliyz9KNs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff/go.mod h1:GtAon6TymHFTOPwRdR7SHun/TSM1kyPMQYXxGLTR8eQ=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca h1:Cp5Y1tHSwf7JLeMzSDuSmqAEsWx2aHPDoszERMKspQQ=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
+github.com/adevinta/vulcan-types v0.0.0-20200922093209-437fd6d5ab11 h1:BTW+HVwpnrSJ18KOJaQyh9AsRip1bWXRCmWuUcoECZo=
+github.com/adevinta/vulcan-types v0.0.0-20200922093209-437fd6d5ab11/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7/go.mod h1:6zEj6s6u/ghQa61ZWa/C2Aw3RkjiTBOix7dkqa1VLIs=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
