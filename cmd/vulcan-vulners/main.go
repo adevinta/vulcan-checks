@@ -276,8 +276,11 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 						v.Vuln.Score = f.Score
 					}
 				}
-				v.Vuln.Details = fmt.Sprintf("%sFound in %s at port %d/%s\n", v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol)
-
+				v.Vuln.Details = fmt.Sprintf(
+					"%sHost: %s\nPort: %d/%s\nProduct: %s\nVersion: %s\nCPEs: %v\n\n",
+					v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol,
+					port.Service.Product, port.Service.Version, port.Service.CPEs,
+				)
 				uniqueVulns[summary] = v
 			}
 			if done {
@@ -316,7 +319,11 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 					v.Vuln.Score = f.Score
 				}
 			}
-			v.Vuln.Details = fmt.Sprintf("%sFound in %s at port %d/%s\n", v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol)
+			v.Vuln.Details = fmt.Sprintf(
+				"%sHost: %s\nPort: %d/%s\nProduct: %s\nVersion: %s\nCPEs: %v\n\n",
+				v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol,
+				port.Service.Product, port.Service.Version, port.Service.CPEs,
+			)
 			uniqueVulns[summary] = v
 		}
 	}
