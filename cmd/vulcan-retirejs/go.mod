@@ -3,7 +3,7 @@ module github.com/adevinta/vulcan-checks/cmd/vulcan-retirejs
 go 1.13
 
 require (
-	github.com/adevinta/vulcan-check-sdk v0.0.0-20201102083903-2f84dd0116dc
+	github.com/adevinta/vulcan-check-sdk v0.0.0-20201102112251-2ec6e5943966
 	github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.4.2
