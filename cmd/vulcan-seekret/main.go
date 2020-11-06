@@ -19,6 +19,8 @@ import (
 	seekret "github.com/apuigsech/seekret"
 	sourcedir "github.com/apuigsech/seekret-source-dir"
 	"github.com/apuigsech/seekret/models"
+	git "gopkg.in/src-d/go-git.v4"
+	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 type options struct {
@@ -81,24 +83,44 @@ func main() {
 		}
 
 		// TODO: Support multiple authenticated Github Enterprise instances.
-		var githubUser, githubToken string
 		githubURL, err := url.Parse(os.Getenv("GITHUB_ENTERPRISE_ENDPOINT"))
 		if err != nil {
 			return err
 		}
+
+		var auth *http.BasicAuth
 		if githubURL.Host != "" && targetURL.Host == githubURL.Host {
-			githubUser = "username" // Can be anything except blank.
-			githubToken = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
+			auth = &http.BasicAuth{
+				Username: "username", // Can be anything except blank.
+				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
+			}
 		}
 
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
-		isReachable, err := helpers.IsGitRepoReachable(target, githubUser, githubToken,
-			repoPath, opt.Depth, false)
+		gitCreds := &helpers.GitCreds{}
+		if auth != nil {
+			gitCreds.User = auth.Username
+			gitCreds.Pass = auth.Password
+		}
+		isReachable, err := helpers.IsReachable(target, assetType, gitCreds)
 		if err != nil {
 			logger.Warnf("Can not check asset reachability: %v", err)
 		}
 		if !isReachable {
 			return checkstate.ErrAssetUnreachable
+		}
+
+		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
+		if err := os.Mkdir(repoPath, 0755); err != nil {
+			return err
+		}
+
+		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
+			URL:   target,
+			Auth:  auth,
+			Depth: opt.Depth,
+		})
+		if err != nil {
+			return err
 		}
 
 		s := seekret.NewSeekret()
