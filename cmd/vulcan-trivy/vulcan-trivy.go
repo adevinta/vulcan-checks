@@ -15,8 +15,7 @@ import (
 	report "github.com/adevinta/vulcan-report"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/helpers"
-	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/avast/retry-go"
 	"github.com/mcuadros/go-version"
 )
@@ -75,15 +74,15 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 	var reportTruncated bool
 	// Load required env vars for docker registry authentication.
 	registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
 	registryEnvUsername := os.Getenv("REGISTRY_USERNAME")
 	registryEnvPassword := os.Getenv("REGISTRY_PASSWORD")
 
-	// TODO: If options are "malformed" perhaps we should not
-	// return error but only log an error and return.
+	// TODO: If options are "malformed" perhaps we should not return error
+	// but only log and error and return.
 	var opt options
 	if optJSON != "" {
 		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -91,40 +90,25 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
-	// TODO: If target is "malformed" perhaps we should not
-	// return error but only log an error and return.
-	// slashSplit := strings.SplitAfterN(target, "/", 2)
-	// if len(slashSplit) <= 1 {
-	// 	return errors.New(target + " is not a valid target")
-	// }
-	// if len(targetSplit) != 2 {
-	// 	return errors.New(target + "is not a valid target")
-	// }
-
-	targetParts := strings.Split(target, "/")
-	if len(targetParts) == 0 {
-		// TODO: If target is "malformed" perhaps we should not
-		// return error but only log an error and return.
+	// TODO: If target is "malformed" perhaps we should not return error
+	// but only log and error and return.
+	slashSplit := strings.SplitAfterN(target, "/", 2)
+	if len(slashSplit) <= 1 {
 		return errors.New(target + " is not a valid target")
 	}
-	registryDomain := targetParts[0]
+	// TODO: If target is "malformed" perhaps we should not return error
+	// but only log and error and return.
+	targetSplit := strings.Split(slashSplit[1], ":")
+	if len(targetSplit) != 2 {
+		return errors.New(target + "is not a valid target")
+	}
 
-	registryCreds := helpers.DockerHubCreds
+	registryDomain := strings.Trim(slashSplit[0], "/")
 	// If docker registry equals registryDomain, export trivy credential env vars.
 	if registryDomain == registryEnvDomain {
-		registryCreds = helpers.NewDockerCreds(registryEnvDomain,
-			registryEnvUsername, registryEnvPassword)
-		// os.Setenv("TRIVY_AUTH_URL", registryEnvDomain)
-		// os.Setenv("TRIVY_USERNAME", registryEnvUsername)
-		// os.Setenv("TRIVY_PASSWORD", registryEnvPassword)
-	}
-
-	isReachable, err := helpers.IsReachable(target, assetType, registryCreds)
-	if err != nil {
-		logger.Warnf("Can not check asset reachability: %v", err)
-	}
-	if !isReachable {
-		return checkstate.ErrAssetUnreachable
+		os.Setenv("TRIVY_AUTH_URL", registryEnvDomain)
+		os.Setenv("TRIVY_USERNAME", registryEnvUsername)
+		os.Setenv("TRIVY_PASSWORD", registryEnvPassword)
 	}
 
 	// Build trivy command with arguments.
@@ -157,7 +141,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.Infof("running command: %s %s\n", triviCmd, triviArgs)
 
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
 			cmd := exec.Command(triviCmd, triviArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
