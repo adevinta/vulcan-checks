@@ -26,6 +26,8 @@ github.com/adevinta/vulcan-check-sdk v0.0.0-20201106115703-12ab5d9d260d h1:s8XcE
 github.com/adevinta/vulcan-check-sdk v0.0.0-20201106115703-12ab5d9d260d/go.mod h1:uaUXwBqTeGMI7p+nmnhkloAv/Hwm+2xBMr/HfXSvWoI=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20201106145537-7d67339045ae h1:stJlV1nlECtbcCF/yG3Kicehf5b6395kOXYfy9THz+M=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20201106145537-7d67339045ae/go.mod h1:uaUXwBqTeGMI7p+nmnhkloAv/Hwm+2xBMr/HfXSvWoI=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20201106172308-b135ccb73d74 h1:UezIL1EgB4pzvHWMXt7+2VqjqmenXPS7cdgfrCmaK7Q=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20201106172308-b135ccb73d74/go.mod h1:uaUXwBqTeGMI7p+nmnhkloAv/Hwm+2xBMr/HfXSvWoI=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff h1:ZazuZSOfV8oo70SWdjLQi+In4GSmJCA2rwsliyz9KNs=
 github.com/adevinta/vulcan-report v0.0.0-20190503133936-d8a2d4cb18ff/go.mod h1:GtAon6TymHFTOPwRdR7SHun/TSM1kyPMQYXxGLTR8eQ=
 github.com/adevinta/vulcan-types v0.0.0-20191204142703-7bdca15915ca h1:Cp5Y1tHSwf7JLeMzSDuSmqAEsWx2aHPDoszERMKspQQ=
