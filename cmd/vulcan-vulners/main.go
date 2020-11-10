@@ -13,8 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	gonmap "github.com/lair-framework/go-nmap"
 )
@@ -334,7 +335,10 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 	return vulns, nil
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	l := check.NewCheckLog(checkName)
+	logger = l.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
+
 	if cpeRegex, err = regexp.Compile(cpeRegexStr); err != nil {
 		return fmt.Errorf("regex can not be compiled. regex: %s, error: %v", cpeRegexStr, err)
 	}
@@ -346,8 +350,13 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		}
 	}
 
-	l := check.NewCheckLog(checkName)
-	logger = l.WithFields(logrus.Fields{"target": target, "options": optJSON})
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
+	}
 
 	if opt.Timing == 0 {
 		opt.Timing = defaultTiming

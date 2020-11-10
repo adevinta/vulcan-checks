@@ -1,2 +1,3 @@
 [Check]
 Target = "http://example.com"
+AssetType = "WebAddress"

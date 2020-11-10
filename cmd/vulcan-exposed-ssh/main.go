@@ -8,9 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
 	version "github.com/hashicorp/go-version"
 )
 
@@ -68,6 +69,7 @@ type sshScanReport struct {
 var (
 	pathToScanner = "ssh_scan"
 	checkName     = "vulcan-exposed-ssh"
+	logger        = check.NewCheckLog(checkName)
 	policyFile    = "policy/modern.yml"
 	defaultPorts  = []string{
 		"22",    // standard SSH port
@@ -277,7 +279,7 @@ func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) 
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		var err error
 		bannerRE, err = regexp.Compile(`^SSH-[0-9A-Za-z.]+-libssh-([[:graph:]]+)[[:space:]]*`)
 		if err != nil {
@@ -301,6 +303,14 @@ func main() {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		if len(opt.Ports) == 0 {

@@ -6,13 +6,15 @@ import (
 	"errors"
 	"net"
 
-	"github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
 )
 
 var (
 	checkName = "vulcan-mx"
+	logger    = check.NewCheckLog(checkName)
 
 	// MXIsPresent is a check name
 	MXIsPresent = report.Vulnerability{
@@ -46,9 +48,17 @@ func lookupMX(host string) ([]*net.MX, error) {
 
 func main() {
 
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if net.ParseIP(target) != nil {
 			return errors.New("invalid hostname provided")
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		records, err := lookupMX(target)

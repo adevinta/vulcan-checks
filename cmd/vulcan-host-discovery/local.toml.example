@@ -2,4 +2,5 @@
 LogLevel = "debug"
 [Check]
 Target = "localhost"
+AssetType = "IPRange"
 Options = '{"timing": 3, "known_hosts_list_url": ""}'

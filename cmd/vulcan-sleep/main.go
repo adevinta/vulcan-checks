@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
 	var opt options
 	logger.Printf("Starting the %v check", checkName)
 	logger.Printf("Validating params. Target: %v Options: %v ...", target, optJSON)

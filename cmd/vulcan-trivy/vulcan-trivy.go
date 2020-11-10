@@ -15,7 +15,8 @@ import (
 	report "github.com/adevinta/vulcan-report"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/avast/retry-go"
 	"github.com/mcuadros/go-version"
 )
@@ -74,7 +75,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 	var reportTruncated bool
 	// Load required env vars for docker registry authentication.
 	registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
@@ -111,6 +112,15 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		os.Setenv("TRIVY_PASSWORD", registryEnvPassword)
 	}
 
+	isReachable, err := helpers.IsReachable(target, assetType,
+		helpers.NewDockerCreds(os.Getenv("TRIVY_USERNAME"), os.Getenv("TRIVY_PASSWORD")))
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
+	}
+
 	// Build trivy command with arguments.
 	triviCmd := "./trivy"
 	triviArgs := []string{
@@ -141,7 +151,7 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 
 	logger.Infof("running command: %s %s\n", triviCmd, triviArgs)
 
-	err := retry.Do(
+	err = retry.Do(
 		func() error {
 			cmd := exec.Command(triviCmd, triviArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
