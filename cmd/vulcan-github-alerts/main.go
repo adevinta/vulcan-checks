@@ -14,7 +14,8 @@ import (
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 
 	semver "github.com/Masterminds/semver/v3"
@@ -101,6 +102,7 @@ type dependencyData struct {
 
 var (
 	checkName              = "vulcan-github-alerts"
+	logger                 = check.NewCheckLog(checkName)
 	vulnerableDependencies = report.Vulnerability{
 		Summary: "Vulnerable Code Dependencies in Github Repository",
 		Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
@@ -113,7 +115,7 @@ You can find more specific information in the resources table for the repository
 )
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -134,6 +136,19 @@ func main() {
 			return err
 		}
 		githubURL.Path = graphqlAPIPath
+
+		gitCreds := &helpers.GitCreds{}
+		if githubURL.Host != "" && targetURL.Host == githubURL.Host {
+			gitCreds.User = "username" // Can be anything except blank.
+			gitCreds.Pass = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
+		}
+		isReachable, err := helpers.IsReachable(target, assetType, gitCreds)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
 
 		var alerts []Details
 		cursor := ""
