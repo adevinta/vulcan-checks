@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -42,20 +43,12 @@ type Options struct {
 const (
 	checkName = "vulcan-exposed-http-resources"
 
-	// falsePositiveMinimumRequests is the minimum number of requests
-	// the check must do in order for the false positive filtering to take place.
-	falsePositiveMinimumRequests = 10
-	// falsePositiveOKThreshold is the ratio of 200 OK responses
-	// necessary to consider that the HTTP server is consistently returning
-	// false OK statuses and flag the found resources as a false positives.
-	falsePositiveOKThreshold = 0.80
-	// falsePositiveMaximumResources is the maximum number of exposed resources
-	// the check is expected to find except for false positives.
-	falsePositiveMaximumResources = 20
-	// falsePositiveMessage is the message that will be displayed
-	// in the details section if the exposed resources of the check
-	// are flagged as false positives.
-	falsePositiveMessage = "The check found %v exposed resources and %v out of %v requests returned an OK response status. The check considered the web server responses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported."
+	// okRateMinimumRequests is the minimum number of requests
+	// the check must do in order for the OK rate filtering to take place.
+	okRateMinimumRequests = 10
+	// okRateThreshold is the ratio of 200 OK responses necessary to consider
+	// that the HTTP server is consistently returning false OK statuses.
+	okRateThreshold = 0.80
 
 	// burst is the maximum number of simultaneous connections to the target.
 	burst = 5
@@ -79,6 +72,30 @@ var (
 		},
 		CWEID: 538, // File and Directory Information Exposure
 	}
+
+	falseOKVuln = report.Vulnerability{
+		Summary:         "Incorrect Successful HTTP Response",
+		Description:     "The HTTP server is responding \"200 OK\" to requests for unexistent resources.",
+		ImpactDetails:   "Unreliable response statuses prevent the check from identifying accidentally exposed resources.",
+		Score:           report.SeverityThresholdNone,
+		Recommendations: []string{"Ensure that the server only returns \"200 OK\" when a request is successful."},
+		Resources: []report.ResourcesGroup{
+			report.ResourcesGroup{
+				Name:   "Requested Resources",
+				Header: []string{"URL", "Response"},
+				Rows:   []map[string]string{},
+			},
+		},
+	}
+
+	// falseOKSuffixes are the suffixes that will be added to the randomly
+	// generated resource to check if the server is returning false OK responses.
+	falseOKSuffixes = [...]string{"", "/", ".txt", ".html", ".php", ".asp", ".jsp"}
+
+	// falsePositivesMessage is the message that will be displayed
+	// in the details section if the exposed resources of the check
+	// are flagged as false positives.
+	falsePositivesMessage = "The check found the web server responses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported. The following issues were identified in the web server:\n"
 
 	responseCount = struct {
 		ok    int
@@ -146,10 +163,7 @@ func main() {
 					logger.Infof("Server not found in default %s port.", strings.ToUpper(scheme))
 					continue
 				}
-
 				logger.Infof("Server found in default %s port.", strings.ToUpper(scheme))
-				vulnResources := exposedResources(targetURL, resources)
-				exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
 			}
 		} else {
 			logger.Info("Target seems to be a web address.")
@@ -158,15 +172,56 @@ func main() {
 				logger.Infof("Server not found in target web address.")
 				return nil
 			}
-
-			vulnResources := exposedResources(targetURL, resources)
-			exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
 		}
 
+		// Have false positives been identified?
+		falsePositives := false
+
+		// First false positive detection test.
+		// We check if the server returns "200 OK" for unexistent resources.
+		falseOKResources, falseOK, err := checkFalseOK(targetURL)
+		if err != nil {
+			return err
+		}
+		if falseOK {
+			logger.Infof("Incorrect OK responses returned by the server.")
+			falsePositives = true
+			falsePositivesMessage +=
+				"\n- The check received \"200 OK\" responses for unexistent resources."
+			falseOKVuln.Resources[0].Rows = falseOKResources
+			state.AddVulnerabilities(falseOKVuln)
+		}
+
+		// Second false positive detection test.
+		// We check if the server behaves inconsistently by scanning twice.
+		// We compare the resources which return "200 OK" each time.
+		vulnResources := exposedResources(targetURL, resources)
+		vulnResourcesRepeat := exposedResources(targetURL, resources)
+		if checkInconsistentOK(vulnResources, vulnResourcesRepeat) {
+			logger.Infof("Inconsistent OK responses returned by the server.")
+			falsePositives = true
+			falsePositivesMessage +=
+				"\n- The check received different \"200 OK\" responses in two identical executions."
+		}
+
+		// Third false positive detection test.
+		// We check for an abnormal rate of "200 OK" responses.
+		if checkOKRate() {
+			logger.Infof("Abnormal rate of OK responses returned by the server.")
+			falsePositives = true
+			falsePositivesMessage += fmt.Sprintf(
+				"\n- The check found that %v out of %v requests returned a \"200 OK\" response.",
+				responseCount.ok, responseCount.total,
+			)
+		}
+
+		exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
 		if len(exposedVuln.Resources[0].Rows) > 0 {
-			err = filterFalsePositives(&exposedVuln)
-			if err != nil {
-				return err
+			if falsePositives {
+				err = filterFalsePositives(&exposedVuln)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Sort rows by severity and then confidence.
@@ -234,6 +289,7 @@ func checkResource(targetURL *url.URL, httpResource Resource) []map[string]strin
 					return
 				}
 
+				// This line creates a copy of the net.URL object.
 				targetResource, err := url.Parse(targetURL.String())
 				if err != nil {
 					logger.Error(err)
@@ -339,6 +395,105 @@ func checkPath(targetResource *url.URL, httpResource Resource) (bool, error) {
 	return positive, nil
 }
 
+func checkFalseOK(targetURL *url.URL) ([]map[string]string, bool, error) {
+	client := http.DefaultClient
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	// We generate a random resource name.
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	token := fmt.Sprintf("%x", bytes)
+
+	falseOK := false
+	resources := []map[string]string{}
+
+	// We request the non-existent resource with various suffixes.
+	for _, suffix := range falseOKSuffixes {
+		// This line creates a copy of the net.URL object.
+		targetResource, err := url.Parse(targetURL.String())
+		if err != nil {
+			return resources, falseOK, err
+		}
+
+		targetResource.Path = path.Join(targetResource.Path, token+suffix)
+		if strings.HasSuffix(suffix, "/") && !strings.HasSuffix(targetResource.Path, "/") {
+			targetResource.Path += "/"
+		}
+
+		resp, err := client.Get(targetResource.String())
+		if (err != nil && !err.(*url.Error).Timeout()) || resp == nil {
+			logger.WithFields(logrus.Fields{"url": targetResource.String(), "error": err.Error()}).Warn(
+				"Failed to get response from test resource.",
+			)
+			continue
+		}
+		defer resp.Body.Close() // nolint
+
+		logger.WithFields(logrus.Fields{"url": targetResource.String(), "status": resp.Status}).Debug(
+			"Got response from test resource.",
+		)
+
+		resources = append(resources, map[string]string{"URL": targetResource.String(), "Response": resp.Status})
+
+		// If the request returns an OK response, it is a false OK.
+		if resp.StatusCode == http.StatusOK {
+			falseOK = true
+		}
+	}
+
+	return resources, falseOK, nil
+}
+
+func checkInconsistentOK(first []map[string]string, second []map[string]string) bool {
+	index := map[string]bool{}
+
+	if len(first) != len(second) {
+		return true
+	}
+
+	for _, resource := range first {
+		index[resource["URL"]] = true
+	}
+	for _, resource := range second {
+		if index[resource["URL"]] != true {
+			return true
+		}
+	}
+
+	return false
+}
+
+func checkOKRate() bool {
+	// The check is skipped if the number of requests made is low.
+	if responseCount.total < okRateMinimumRequests {
+		logger.WithFields(logrus.Fields{
+			"responses_ok":    responseCount.ok,
+			"responses_total": responseCount.total,
+		}).Infof("OK rate detection skipped.")
+
+		return false
+	}
+
+	// We check for an abnormal rate of OK responses.
+	if float32(responseCount.ok)/float32(responseCount.total) > okRateThreshold {
+		logger.WithFields(logrus.Fields{
+			"responses_ok":    responseCount.ok,
+			"responses_total": responseCount.total,
+		}).Info("OK rate threshold met.")
+
+		return true
+	}
+
+	logger.WithFields(logrus.Fields{
+		"responses_ok":    responseCount.ok,
+		"responses_total": responseCount.total,
+	}).Info("OK rate not exceeded.")
+
+	return false
+}
+
 func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 	contents, err := httputil.DumpResponse(resp, true)
 	if err != nil {
@@ -348,37 +503,8 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 }
 
 func filterFalsePositives(vuln *report.Vulnerability) error {
-	// False positives will only be filtered if a minimum number of requests are made.
-	if responseCount.total < falsePositiveMinimumRequests {
-		return nil
-		logger.WithFields(logrus.Fields{
-			"responses_ok":    responseCount.ok,
-			"responses_total": responseCount.total,
-		}).Infof("False positive detection skipped.")
-	}
-
-	// We check for an abnormal rate of OK responses.
-	if float32(responseCount.ok)/float32(responseCount.total) > falsePositiveOKThreshold {
-		logger.WithFields(logrus.Fields{
-			"responses_ok":    responseCount.ok,
-			"responses_total": responseCount.total,
-		}).Info("False positive threshold met.")
-	} else if len(vuln.Resources[0].Rows) > falsePositiveMaximumResources {
-		logger.WithFields(logrus.Fields{
-			"resources_found":   len(vuln.Resources[0].Rows),
-			"resources_maximum": falsePositiveMaximumResources,
-		}).Info("False positive found resources maximum met.")
-	} else {
-		logger.WithFields(logrus.Fields{
-			"responses_ok":      responseCount.ok,
-			"responses_total":   responseCount.total,
-			"resources_found":   len(vuln.Resources[0].Rows),
-			"resources_maximum": falsePositiveMaximumResources,
-		}).Info("False positive not identified.")
-		return nil
-	}
-
 	highConfidenceScore := 0.0
+	// We will disregard resources with less than high confidence.
 	for _, resource := range vuln.Resources[0].Rows {
 		confidence := resource["Confidence"]
 		score, err := strconv.ParseFloat(resource["Score"], 32)
@@ -393,7 +519,7 @@ func filterFalsePositives(vuln *report.Vulnerability) error {
 	}
 
 	vuln.Score = float32(highConfidenceScore)
-	vuln.Details = fmt.Sprintf(falsePositiveMessage, len(vuln.Resources[0].Rows), responseCount.ok, responseCount.total)
+	vuln.Details = falsePositivesMessage
 
 	return nil
 }
