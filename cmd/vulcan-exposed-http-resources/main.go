@@ -90,7 +90,7 @@ var (
 
 	// falseOKSuffixes are the suffixes that will be added to the randomly
 	// generated resource to check if the server is returning false OK responses.
-	falseOKSuffixes = [...]string{"", "/", ".txt", ".html", ".php", ".asp", ".jsp"}
+	falseOKSuffixes = [...]string{"", "/", "/images/", ".txt", ".html", ".php", ".asp", ".jsp"}
 
 	// falsePositivesMessage is the message that will be displayed
 	// in the details section if the exposed resources of the check
