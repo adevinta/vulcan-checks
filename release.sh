@@ -28,6 +28,9 @@ BASE_PATH="$PWD"
 eval "$(git_env)"
 eval "$(dkr_env)"
 
+# Login into registry (authenticated pulls)
+dkr_login > /dev/null
+
 # Fetch dependency version and modification timestamp
 dep_version=$(git_commit_id go.mod)
 
