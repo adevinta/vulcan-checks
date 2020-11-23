@@ -12,7 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/aws/aws-sdk-go/aws/arn"
 )
 
@@ -22,7 +23,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
@@ -31,8 +32,16 @@ func main() {
 		if vulcanAssumeRoleEndpoint == "" {
 			return fmt.Errorf("VULCAN_ASSUME_ROLE_ENDPOINT option is missing")
 		}
-
 		roleName := os.Getenv("ROLE_NAME")
+
+		isReachable, err := helpers.IsReachable(target, assetType,
+			helpers.NewAWSCreds(vulcanAssumeRoleEndpoint, roleName))
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
 
 		parsedARN, err := arn.Parse(target)
 		if err != nil {

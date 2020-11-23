@@ -14,7 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-exposed-http-endpoint/path"
 	report "github.com/adevinta/vulcan-report"
 )
@@ -152,19 +153,30 @@ func checkBodyRegExp(resp *http.Response, exp string) (bool, error) {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger := check.NewCheckLog(checkName)
-		logger = logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
+		logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
+
 		addr, err := url.Parse(target)
 		if err != nil {
 			return err
 		}
+
 		var opt Options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
 		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
+
 		paths := opt.Paths
 		if len(paths) == 0 {
 			defaultPaths, err := path.ReadDefault()

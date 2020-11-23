@@ -10,10 +10,11 @@ import (
 	gonmap "github.com/lair-framework/go-nmap"
 	"github.com/sirupsen/logrus"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
-	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
 )
 
 type options struct {
@@ -103,7 +104,7 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger := check.NewCheckLog(checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
@@ -112,6 +113,14 @@ func main() {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		if opt.Timing == 0 {

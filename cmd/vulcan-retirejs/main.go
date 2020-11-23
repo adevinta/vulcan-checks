@@ -14,8 +14,9 @@ import (
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -31,10 +32,19 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
+
 		return scanTarget(ctx, target, logger, state, nil)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
@@ -42,7 +52,7 @@ func main() {
 
 }
 
-func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state state.State, args []string) error {
+func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state checkstate.State, args []string) error {
 	target, err := resolveTarget(target)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
@@ -83,7 +93,7 @@ func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, erro
 	return report.Data, err
 }
 
-func addVulnsToState(state state.State, r []RetireJsFileResult) {
+func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 	vulns := make(map[string]report.Vulnerability)
 	for _, finding := range r {
 		for _, result := range finding.Results {

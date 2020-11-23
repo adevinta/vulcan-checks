@@ -15,6 +15,7 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -37,12 +38,20 @@ var behindOktaVuln = report.Vulnerability{
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		logger := check.NewCheckLog(checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
 		if target == "" {
 			return errors.New("missing check target")
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		// TODO: This is maybe too concrete for the check as maybe there are some targets behind other kind of

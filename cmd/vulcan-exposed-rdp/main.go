@@ -14,7 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -122,9 +123,9 @@ func isExposedRDP(host, port string, timeout int) []report.Vulnerability {
 	return nil
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 	l := check.NewCheckLog(checkName)
-	logger = l.WithFields(logrus.Fields{"target": target, "options": optJSON})
+	logger = l.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 	if err := buildPDUs(); err != nil {
 		return err
@@ -135,6 +136,14 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 			return err
 		}
+	}
+
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
 	}
 
 	if opt.Timeout == 0 {

@@ -1,5 +1,6 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
+AssetType = "AWSAccount"
 
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"

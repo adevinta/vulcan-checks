@@ -11,7 +11,8 @@ import (
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	types "github.com/adevinta/vulcan-types"
 	"github.com/sirupsen/logrus"
@@ -115,7 +116,7 @@ func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulner
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger := check.NewCheckLog(checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
@@ -124,6 +125,14 @@ func main() {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType, nil)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		dest := target

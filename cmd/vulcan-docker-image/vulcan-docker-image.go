@@ -103,7 +103,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) error {
+func run(ctx context.Context, target, assetType, optJSON string, state state.State) error {
 	portAuthorityURL := os.Getenv("PORT_AUTHORITY_ENDPOINT")
 	log.Printf("using %s as portauthority URL", portAuthorityURL)
 

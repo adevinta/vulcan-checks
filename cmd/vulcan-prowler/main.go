@@ -18,7 +18,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/aws/aws-sdk-go/aws/arn"
 )
@@ -193,7 +194,7 @@ func buildOptions(optJSON string) (options, error) {
 }
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) error {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -214,6 +215,15 @@ func main() {
 		role := os.Getenv(envRole)
 
 		logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
+
+		isReachable, err := helpers.IsReachable(target, assetType,
+			helpers.NewAWSCreds(endpoint, role))
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
 
 		if err := loadCredentials(endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
 			return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)

@@ -1,4 +1,5 @@
 [Check]
 Target = "example.com"
+AssetType = "Hostname"
 [Log]
 LogLever = "DEBUG"

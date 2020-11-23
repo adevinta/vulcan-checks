@@ -13,7 +13,8 @@ import (
 	"unicode"
 
 	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	seekret "github.com/apuigsech/seekret"
 	sourcedir "github.com/apuigsech/seekret-source-dir"
@@ -28,6 +29,7 @@ type options struct {
 
 var (
 	checkName    = "vulcan-seekret"
+	logger       = check.NewCheckLog(checkName)
 	leakedSecret = report.Vulnerability{
 		Summary:       "Secrets Leaked in Git Repository",
 		Description:   "Some secrets have been found stored in the Git repository. These secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as exceptions so that they are only reported informationally as documented in the references section.",
@@ -61,7 +63,7 @@ var (
 )
 
 func main() {
-	run := func(ctx context.Context, target string, optJSON string, state state.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -92,6 +94,19 @@ func main() {
 				Username: "username", // Can be anything except blank.
 				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
 			}
+		}
+
+		gitCreds := &helpers.GitCreds{}
+		if auth != nil {
+			gitCreds.User = auth.Username
+			gitCreds.Pass = auth.Password
+		}
+		isReachable, err := helpers.IsReachable(target, assetType, gitCreds)
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
 		}
 
 		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
