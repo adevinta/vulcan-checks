@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -34,12 +35,13 @@ var (
 	// ErrInvalidScanMode is returned when an invalid scan mode was specified.
 	ErrInvalidScanMode = errors.New("invalid scan mode")
 
-	defaultTimeout = 300 * time.Minute
+	defaultTimeout = 500 * time.Minute
 )
 
 type options struct {
-	ScanMode ScanMode `json:"vulcan_burp.scan_mode"`
-	ScanID   uint     `json:"vulcan_burp.scan_id"`
+	ScanMode    ScanMode `json:"vulcan_burp.scan_mode"`
+	ScanID      uint     `json:"vulcan_burp.scan_id"`
+	Credentials string   `json:"vulcan_burp.credentials"`
 }
 
 // ScanMode possible scan modes are: "active" and "passive".
@@ -97,8 +99,8 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		return err
 	}
 
-	// If a scan id is specified try to generete the vulns
-	// from the corresponding already existent
+	// If a scan id is specified try to generete the vulns from the
+	// corresponding already existent scan.
 	if opts.ScanID != 0 {
 		s, err := c.GetScanStatus(opts.ScanID)
 		if err != nil {
@@ -118,7 +120,12 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		return err
 	}
 
-	id, err := c.LaunchScan(target, configs)
+	var user, password string
+	if opts.Credentials != "" {
+		user, password = parseCredentials(opts.Credentials)
+	}
+
+	id, err := c.LaunchScan(target, configs, user, password)
 	if err != nil {
 		return err
 	}
@@ -171,12 +178,12 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 	}
 	var cvulns = make(map[string]report.Vulnerability)
 	for _, i := range ievents {
-		if i.Type != "issue_found" {
-			continue
-		}
-		if i.Issue.Confidence == "tentative" {
-			continue
-		}
+		// if i.Type != "issue_found" {
+		// 	continue
+		// }
+		// if i.Issue.Confidence == "tentative" {
+		// 	continue
+		// }
 		// TODO: Check the issue exists in the index, and return an error if
 		// it doesn't.
 		id := strconv.Itoa(int(i.Issue.TypeIndex))
@@ -240,4 +247,17 @@ func severityToScore(risk string) float32 {
 	default:
 		return report.SeverityThresholdNone
 	}
+}
+
+func parseCredentials(credentials string) (user string, password string) {
+	parts := strings.Split(credentials, ":")
+	if len(parts) < 1 {
+		return
+	}
+	user = parts[0]
+	if len(parts) < 2 {
+		return
+	}
+	password = parts[1]
+	return
 }

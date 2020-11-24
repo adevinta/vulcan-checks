@@ -42,7 +42,7 @@ func New(d Doer, burpURL string, APIKey string) (*Resturp, error) {
 // LaunchScan runs a new scan using the specified configurations against the
 // given web url. The configurations must exist in the Burp library, for
 // instance: "Minimize false positives". It returns the id of the created scan.
-func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
+func (r *Resturp) LaunchScan(webURL string, configs []string, user, password string) (uint, error) {
 	u := *r.burpURL
 	u.Path = u.Path + "scan"
 	sURL := u.String()
@@ -56,6 +56,14 @@ func (r *Resturp) LaunchScan(webURL string, configs []string) (uint, error) {
 	s := Scan{
 		ScanConfigurations: sconfigs,
 		Urls:               []string{webURL},
+	}
+
+	if user != "" || password != "" {
+		al := ApplicationLogin{
+			Username: user,
+			Password: password,
+		}
+		s.ApplicationLogins = []ApplicationLogin{al}
 	}
 	payload, err := json.Marshal(s)
 	if err != nil {
@@ -135,6 +143,7 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
 }
 
