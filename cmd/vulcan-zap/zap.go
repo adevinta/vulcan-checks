@@ -13,13 +13,13 @@ import (
 func riskToScore(risk string) float32 {
 	switch risk {
 	case "Informational":
-		return float32(report.SeverityNone)
+		return float32(report.SeverityThresholdNone)
 	case "Low":
-		return float32(report.SeverityLow)
+		return float32(report.SeverityThresholdLow)
 	case "Medium":
-		return float32(report.SeverityMedium)
+		return float32(report.SeverityThresholdMedium)
 	case "High":
-		return float32(report.SeverityHigh)
+		return float32(report.SeverityThresholdHigh)
 	}
 
 	return float32(report.SeverityNone)
