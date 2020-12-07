@@ -1,4 +1,4 @@
 Description = "Runs an OWASP ZAP passive or active scan"
 AssetTypes = ["WebAddress"]
 Timeout = 10800 # 3 hours. Expressed in seconds as an integer.
-Options = '{"depth": 3, "active": true, "min_score": 7}'
+Options = '{"depth": 3, "active": true, "min_score": 0}'
