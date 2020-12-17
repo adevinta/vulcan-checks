@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -33,6 +34,9 @@ type options struct {
 	Username string  `json:"username"`
 	Password string  `json:"password"`
 	MinScore float32 `json:"min_score"`
+	// List of active/passive scanners to disable by their identifiers:
+	// https://www.zaproxy.org/docs/alerts/
+	DisabledScanners []string `json:"disabled_scanners"`
 }
 
 func main() {
@@ -43,6 +47,8 @@ func main() {
 				return err
 			}
 		}
+
+		disabledScanners := strings.Join(opt.DisabledScanners, ",")
 
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
@@ -112,6 +118,11 @@ func main() {
 			users.NewUser("1", opt.Username)
 			users.SetAuthenticationCredentials("1", "0", fmt.Sprintf("username=%v&password=%v", opt.Username, opt.Password))
 			users.SetUserEnabled("1", "0", "True")
+		}
+
+		_, err = client.Pscan().DisableScanners(disabledScanners)
+		if err != nil {
+			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
 		}
 
 		logger.Printf("Running spider %v levels deep...", opt.Depth)
@@ -224,7 +235,7 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Print("Running active scan...")
-			err := activeScan(ctx, targetURL, state)
+			err := activeScan(ctx, targetURL, state, disabledScanners)
 			if err != nil {
 				return err
 			}
@@ -286,7 +297,12 @@ func main() {
 	c.RunAndServe()
 }
 
-func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State) error {
+func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string) error {
+	_, err := client.Ascan().DisableScanners(disabledScanners, "")
+	if err != nil {
+		return fmt.Errorf("error disabling scanners for active scan: %w", err)
+	}
+
 	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)

@@ -1,4 +1,7 @@
 Description = "Runs an OWASP ZAP passive or active scan"
 AssetTypes = ["WebAddress"]
 Timeout = 10800 # 3 hours. Expressed in seconds as an integer.
-Options = '{"depth": 3, "active": true, "min_score": 7}'
+# Disabled scanners:
+# 10062 - PII Disclosure - Too many false positive results.
+# 10003 - Vulnerable JS Library - Duplicates the Retire.js check.
+Options = '{"depth": 3, "active": true, "min_score": 7, "disabled_scanners": ["10062", "10003"]}'
