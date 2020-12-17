@@ -1,6 +1,6 @@
 Description = "Runs an OWASP ZAP passive or active scan"
 AssetTypes = ["WebAddress"]
-Timeout = 10800 # 3 hours. Expressed in seconds as an integer.
+Timeout = 36000 # 10 hours. Expressed in seconds as an integer.
 # Disabled scanners:
 # 10062 - PII Disclosure - Too many false positive results.
 # 10003 - Vulnerable JS Library - Duplicates the Retire.js check.
