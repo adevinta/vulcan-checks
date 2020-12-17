@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -108,6 +109,28 @@ func main() {
 		targetURL, err := url.Parse(target)
 		if err != nil {
 			return fmt.Errorf("error parsing target URL: %w", err)
+		}
+
+		_, err = client.Context().NewContext("target")
+		if err != nil {
+			return fmt.Errorf("error creating scope context: %w", err)
+		}
+
+		// Add base URL to the scope.
+		_, err = client.Context().IncludeInContext("target", targetURL.String())
+		if err != nil {
+			return fmt.Errorf("error including target URL to context: %w", err)
+		}
+
+		// Add all paths from base URL to the scope.
+		_, err = client.Context().IncludeInContext("target", path.Join(targetURL.String(), ".*"))
+		if err != nil {
+			return fmt.Errorf("error including children paths to context: %w", err)
+		}
+
+		_, err = client.Context().SetContextInScope("target", "True")
+		if err != nil {
+			return fmt.Errorf("error setting context in scope: %w", err)
 		}
 
 		if opt.Username != "" {
@@ -315,7 +338,7 @@ func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State,
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)
 	}
 
-	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
+	resp, err := client.Ascan().Scan(targetURL.String(), "True", "True", "", "", "", "")
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)
 	}
