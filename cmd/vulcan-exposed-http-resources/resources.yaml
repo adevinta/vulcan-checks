@@ -417,3 +417,10 @@
   status: 200
   severity: 5.0
   description: Potentially exposed WordPress administration login page.
+
+- paths:
+  - "proxy.stream?origin=http://example.com"
+  status: 200
+  regex: "This domain is for use in illustrative examples in documents"
+  severity: 9.0
+  description: Unauthenticated SSRF in Hystrix dashboard 

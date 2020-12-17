@@ -296,9 +296,19 @@ func checkResource(targetURL *url.URL, httpResource Resource) []map[string]strin
 					return
 				}
 
-				targetResource.Path = path.Join(targetResource.Path, p)
+				pURL, err := url.Parse(p)
+				if err != nil {
+					logger.Error(err)
+					return
+				}
+
+				targetResource.Path = path.Join(targetResource.Path, pURL.Path)
+				// Allow to specify query strings in the paths.
 				if strings.HasSuffix(p, "/") && !strings.HasSuffix(targetResource.Path, "/") {
 					targetResource.Path += "/"
+				}
+				if pURL.RawQuery != "" {
+					targetResource.RawQuery = pURL.RawQuery
 				}
 
 				positive, err := checkPath(targetResource, httpResource)
