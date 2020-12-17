@@ -193,6 +193,12 @@ func main() {
 		logger.Print("Waiting for spider results...")
 		time.Sleep(5 * time.Second)
 
+		resp, err = client.Spider().AllUrls()
+		if err != nil {
+			return fmt.Errorf("error getting the list of URLs from spider: %w", err)
+		}
+		logger.Printf("Spider found the following URLs: %+v", resp)
+
 		logger.Printf("Running AJAX spider %v levels deep...", opt.Depth)
 
 		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
@@ -231,6 +237,12 @@ func main() {
 
 		logger.Print("Waiting for AJAX spider results...")
 		time.Sleep(5 * time.Second)
+
+		resp, err = client.AjaxSpider().FullResults()
+		if err != nil {
+			return fmt.Errorf("error getting the list of URLs from AJAX spider: %w", err)
+		}
+		logger.Printf("AJAX spider found the following URLs: %+v", resp)
 
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
