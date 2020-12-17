@@ -197,7 +197,6 @@ func main() {
 			case <-ctx.Done():
 				return errors.New("ZAP exited while waiting for AJAX spider")
 			case <-ticker.C:
-				time.Sleep(10 * time.Second)
 				resp, err := client.AjaxSpider().Status()
 				if err != nil {
 					return fmt.Errorf("error getting the status of the AJAX spider: %w", err)
@@ -303,7 +302,7 @@ func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State)
 		return errors.New("scan is present in response body when calling Ascan().Scan() but it is not a string")
 	}
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
