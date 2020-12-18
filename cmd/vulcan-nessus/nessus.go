@@ -20,6 +20,13 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
+const (
+	// Default polling interval is 5min.
+	defPollingInterval = 5 * 60
+	// Default delay range is 1min.
+	defDelayRange = 60
+)
+
 // Runner executes a Nessus check.
 type Runner interface {
 	Run(ctx context.Context) (err error)
@@ -53,12 +60,25 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	}
 	policyID := int64(p)
 
-	pollingInterval := opt.PollingInterval
 	basicAuth := opt.BasicAuth
 	r.Delete = opt.Delete
+
+	pollingInterval := opt.PollingInterval
 	if pollingInterval <= 0 {
-		pollingInterval = 30
+		pollingInterval = defPollingInterval
 	}
+
+	// In order to not overload Tenable API
+	// sleep a random time from within a range
+	// so we distribute initial spike during
+	// scans creation process.
+	delayRange := opt.DelayRange
+	if delayRange <= 0 {
+		delayRange = defDelayRange
+	}
+	delay := time.Duration(rand.Intn(delayRange)) * time.Second
+	logger.Infof("Delaying startup for %v", delay)
+	time.Sleep(delay)
 
 	logger = logger.WithFields(log.Fields{
 		"target":    target,
