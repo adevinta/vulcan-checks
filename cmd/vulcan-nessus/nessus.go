@@ -76,7 +76,9 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if delayRange <= 0 {
 		delayRange = defDelayRange
 	}
-	time.Sleep(time.Duration(rand.Intn(delayRange)) * time.Second)
+	delay := time.Duration(rand.Intn(delayRange)) * time.Second
+	logger.Infof("Delaying startup for %v", delay)
+	time.Sleep(delay)
 
 	logger = logger.WithFields(log.Fields{
 		"target":    target,
