@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/url"
 	"os/exec"
+	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -27,11 +29,15 @@ var (
 )
 
 type options struct {
-	Depth    int    `json:"depth"`
-	Active   bool   `json:"active"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Depth    int     `json:"depth"`
+	Active   bool    `json:"active"`
+	Port     int     `json:"port"`
+	Username string  `json:"username"`
+	Password string  `json:"password"`
+	MinScore float32 `json:"min_score"`
+	// List of active/passive scanners to disable by their identifiers:
+	// https://www.zaproxy.org/docs/alerts/
+	DisabledScanners []string `json:"disabled_scanners"`
 }
 
 func main() {
@@ -43,6 +49,8 @@ func main() {
 			}
 		}
 
+		disabledScanners := strings.Join(opt.DisabledScanners, ",")
+
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
 			logger.Warnf("Can not check asset reachability: %v", err)
@@ -51,30 +59,40 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
+		ctx, ctxCancel := context.WithCancel(context.Background())
+
 		// Execute ZAP daemon.
 		go func() {
-			logger.Debug("Executing for ZAP daemon...")
+			logger.Print("Executing for ZAP daemon...")
 			out, err := exec.Command(
 				"/zap/zap.sh",
 				"-daemon", "-host", "127.0.0.1", "-port", "8080",
 				"-config", "api.disablekey=true",
 			).Output()
 			logger.Debugf("Error executing ZAP daemon: %v", err)
-			logger.Debugf("Output of the ZAP daemon: %s", out)
+			logger.Debugf("Output of the ZAP daemon: %s", string(out))
+
+			ctxCancel()
 		}()
 
 		// Wait for ZAP to be available.
-		logger.Debug("Waiting for ZAP proxy...")
+		logger.Print("Waiting for ZAP proxy...")
+		ticker := time.NewTicker(time.Second)
+	proxyLoop:
 		for {
-			time.Sleep(time.Second)
-			conn, _ := net.DialTimeout("tcp", "127.0.0.1:8080", time.Second)
-			if conn != nil {
-				conn.Close()
-				break
+			select {
+			case <-ctx.Done():
+				return errors.New("ZAP exited while waiting for proxy")
+			case <-ticker.C:
+				conn, _ := net.DialTimeout("tcp", "127.0.0.1:8080", time.Second)
+				if conn != nil {
+					conn.Close()
+					break proxyLoop
+				}
 			}
 		}
 
-		logger.Debug("Initiating ZAP client...")
+		logger.Print("Initiating ZAP client...")
 
 		cfg := &zap.Config{
 			Proxy:     "http://127.0.0.1:8080",
@@ -93,6 +111,28 @@ func main() {
 			return fmt.Errorf("error parsing target URL: %w", err)
 		}
 
+		_, err = client.Context().NewContext("target")
+		if err != nil {
+			return fmt.Errorf("error creating scope context: %w", err)
+		}
+
+		// Add base URL to the scope.
+		_, err = client.Context().IncludeInContext("target", targetURL.String())
+		if err != nil {
+			return fmt.Errorf("error including target URL to context: %w", err)
+		}
+
+		// Add all paths from base URL to the scope.
+		_, err = client.Context().IncludeInContext("target", path.Join(targetURL.String(), ".*"))
+		if err != nil {
+			return fmt.Errorf("error including children paths to context: %w", err)
+		}
+
+		_, err = client.Context().SetContextInScope("target", "True")
+		if err != nil {
+			return fmt.Errorf("error setting context in scope: %w", err)
+		}
+
 		if opt.Username != "" {
 			auth := client.Authentication()
 			auth.SetAuthenticationMethod("1", "httpAuthentication", fmt.Sprintf("hostname=%v&port=%v", targetURL.Hostname(), targetURL.Port()))
@@ -103,7 +143,12 @@ func main() {
 			users.SetUserEnabled("1", "0", "True")
 		}
 
-		logger.Debugf("Running spider %v levels deep...", opt.Depth)
+		_, err = client.Pscan().DisableScanners(disabledScanners)
+		if err != nil {
+			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
+		}
+
+		logger.Printf("Running spider %v levels deep...", opt.Depth)
 
 		client.Spider().SetOptionMaxDepth(opt.Depth)
 		resp, err := client.Spider().Scan(targetURL.String(), "", "", "", "")
@@ -127,45 +172,57 @@ func main() {
 			return errors.New("scan is present in response body when calling Spider().Scan() but it is not a string")
 		}
 
+		ticker = time.NewTicker(10 * time.Second)
+	spiderLoop:
 		for {
-			time.Sleep(10 * time.Second)
-			resp, err := client.Spider().Status(scanid)
-			if err != nil {
-				return fmt.Errorf("error getting the status of the spider: %w", err)
-			}
+			select {
+			case <-ctx.Done():
+				return errors.New("ZAP exited while waiting for spider")
+			case <-ticker.C:
+				resp, err := client.Spider().Status(scanid)
+				if err != nil {
+					return fmt.Errorf("error getting the status of the spider: %w", err)
+				}
 
-			v, ok := resp["status"]
-			if !ok {
-				// In this case if we can not get the status let's fail.
-				return errors.New("can not retrieve the status of the spider")
-			}
-			status, ok := v.(string)
-			if !ok {
-				return errors.New("status is present in response body when calling Spider().Scatus() but it is not a string")
-			}
+				v, ok := resp["status"]
+				if !ok {
+					// In this case if we can not get the status let's fail.
+					return errors.New("can not retrieve the status of the spider")
+				}
+				status, ok := v.(string)
+				if !ok {
+					return errors.New("status is present in response body when calling Spider().Scatus() but it is not a string")
+				}
 
-			progress, err := strconv.Atoi(status)
-			if err != nil {
-				return fmt.Errorf("can not convert status value %s into an int", status)
-			}
+				progress, err := strconv.Atoi(status)
+				if err != nil {
+					return fmt.Errorf("can not convert status value %s into an int", status)
+				}
 
-			logger.Debugf("Spider at %v progress.", progress)
+				logger.Debugf("Spider at %v progress.", progress)
 
-			if opt.Active {
-				state.SetProgress(float32(progress) / 200)
-			} else {
-				state.SetProgress(float32(progress) / 100)
-			}
+				if opt.Active {
+					state.SetProgress(float32(progress) / 200)
+				} else {
+					state.SetProgress(float32(progress) / 100)
+				}
 
-			if progress >= 100 {
-				break
+				if progress >= 100 {
+					break spiderLoop
+				}
 			}
 		}
 
-		logger.Debug("Waiting for spider results...")
+		logger.Print("Waiting for spider results...")
 		time.Sleep(5 * time.Second)
 
-		logger.Debugf("Running AJAX spider %v levels deep...", opt.Depth)
+		resp, err = client.Spider().AllUrls()
+		if err != nil {
+			return fmt.Errorf("error getting the list of URLs from spider: %w", err)
+		}
+		logger.Printf("Spider found the following URLs: %+v", resp)
+
+		logger.Printf("Running AJAX spider %v levels deep...", opt.Depth)
 
 		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
 		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", "", "")
@@ -173,39 +230,51 @@ func main() {
 			return fmt.Errorf("error executing the AJAX spider: %w", err)
 		}
 
+		ticker = time.NewTicker(10 * time.Second)
+	ajaxSpiderLoop:
 		for {
-			time.Sleep(10 * time.Second)
-			resp, err := client.AjaxSpider().Status()
-			if err != nil {
-				return fmt.Errorf("error getting the status of the AJAX spider: %w", err)
-			}
+			select {
+			case <-ctx.Done():
+				return errors.New("ZAP exited while waiting for AJAX spider")
+			case <-ticker.C:
+				resp, err := client.AjaxSpider().Status()
+				if err != nil {
+					return fmt.Errorf("error getting the status of the AJAX spider: %w", err)
+				}
 
-			v, ok := resp["status"]
-			if !ok {
-				// In this case if we can not get the status let's fail.
-				return errors.New("can not retrieve the status of the AJAX spider")
-			}
-			status, ok := v.(string)
-			if !ok {
-				return errors.New("status is present in response body when calling AjaxSpider().Scatus() but it is not a string")
-			}
+				v, ok := resp["status"]
+				if !ok {
+					// In this case if we can not get the status let's fail.
+					return errors.New("can not retrieve the status of the AJAX spider")
+				}
+				status, ok := v.(string)
+				if !ok {
+					return errors.New("status is present in response body when calling AjaxSpider().Scatus() but it is not a string")
+				}
 
-			if status >= "running" {
-				break
+				if status >= "running" {
+					break ajaxSpiderLoop
+				}
 			}
 		}
 
-		logger.Debug("Waiting for AJAX spider results...")
+		logger.Print("Waiting for AJAX spider results...")
 		time.Sleep(5 * time.Second)
+
+		resp, err = client.AjaxSpider().FullResults()
+		if err != nil {
+			return fmt.Errorf("error getting the list of URLs from AJAX spider: %w", err)
+		}
+		logger.Printf("AJAX spider found the following URLs: %+v", resp)
 
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
-			logger.Debug("Running active scan...")
-			err := activeScan(targetURL, state)
+			logger.Print("Running active scan...")
+			err := activeScan(ctx, targetURL, state, disabledScanners)
 			if err != nil {
 				return err
 			}
-			logger.Debug("Waiting for active scan results...")
+			logger.Print("Waiting for active scan results...")
 			time.Sleep(5 * time.Second)
 		}
 
@@ -244,6 +313,15 @@ func main() {
 		}
 
 		for _, v := range vulnerabilities {
+			// NOTE: Due to a signifcant number of false positive findings
+			// reported for low severity issues by ZAP, the MinScore option
+			// allows the check to skip reporting vulnerabilities with
+			// score below a minimum threshold.
+			if opt.MinScore > 0 && v.Score < opt.MinScore {
+				logger.Debugf("Skipping vulnerability with low score: %+v", v)
+				continue
+			}
+
 			state.AddVulnerabilities(*v)
 		}
 
@@ -254,8 +332,13 @@ func main() {
 	c.RunAndServe()
 }
 
-func activeScan(targetURL *url.URL, state checkstate.State) error {
-	resp, err := client.Ascan().Scan(targetURL.String(), "True", "False", "", "", "", "")
+func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string) error {
+	_, err := client.Ascan().DisableScanners(disabledScanners, "")
+	if err != nil {
+		return fmt.Errorf("error disabling scanners for active scan: %w", err)
+	}
+
+	resp, err := client.Ascan().Scan(targetURL.String(), "True", "True", "", "", "", "")
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)
 	}
@@ -270,37 +353,39 @@ func activeScan(targetURL *url.URL, state checkstate.State) error {
 		return errors.New("scan is present in response body when calling Ascan().Scan() but it is not a string")
 	}
 
+	ticker := time.NewTicker(60 * time.Second)
 	for {
-		time.Sleep(5 * time.Minute)
+		select {
+		case <-ctx.Done():
+			return errors.New("ZAP exited while waiting for active scan")
+		case <-ticker.C:
+			ascan := client.Ascan()
 
-		ascan := client.Ascan()
+			resp, err := ascan.Status(scanid)
+			if err != nil {
+				return fmt.Errorf("error getting the status of the scan: %w", err)
+			}
 
-		resp, err := ascan.Status(scanid)
-		if err != nil {
-			return fmt.Errorf("error getting the status of the scan: %w", err)
-		}
+			v, ok := resp["status"]
+			if !ok {
+				// In this case if we can not get the status let's fail.
+				return errors.New("can not retrieve the status of the scan")
+			}
+			status, ok := v.(string)
+			if !ok {
+				return errors.New("status is present in response body when calling Ascan().Scatus() but it is not a string")
+			}
+			progress, err := strconv.Atoi(status)
+			if err != nil {
+				return fmt.Errorf("can not convert status value %s into an int", status)
+			}
 
-		v, ok := resp["status"]
-		if !ok {
-			// In this case if we can not get the status let's fail.
-			return errors.New("can not retrieve the status of the scan")
-		}
-		status, ok := v.(string)
-		if !ok {
-			return errors.New("status is present in response body when calling Ascan().Scatus() but it is not a string")
-		}
-		progress, err := strconv.Atoi(status)
-		if err != nil {
-			return fmt.Errorf("can not convert status value %s into an int", status)
-		}
+			state.SetProgress((1 + float32(progress)) / 200)
 
-		state.SetProgress((1 + float32(progress)) / 200)
-
-		logger.Debugf("Active scan at %v progress.", progress)
-		if progress >= 100 {
-			break
+			logger.Debugf("Active scan at %v progress.", progress)
+			if progress >= 100 {
+				return nil
+			}
 		}
 	}
-
-	return nil
 }
