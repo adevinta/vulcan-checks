@@ -73,8 +73,10 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 		return report.Vulnerability{}, fmt.Errorf("Error converting CWE ID for \"%v\".", v.Summary)
 	}
 	// ZAP uses 2^32-1 as CWE ID for vulnerabilities without a known CWE.
-	if cweIDInt < math.MaxInt32-1 {
+	if cweIDInt >= 0 && cweIDInt < math.MaxInt32-1 {
 		v.CWEID = uint32(cweIDInt)
+	} else {
+		v.CWEID = 0
 	}
 
 	resMethod, ok := a["method"].(string)
