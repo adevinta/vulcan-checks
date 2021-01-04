@@ -153,42 +153,45 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 		}
 	}
 
-	// Start polling for checks refresh status
-	t := time.NewTicker(time.Duration(opt.RefreshTimeout) * time.Second)
+	// If some check was enqueued for refreshing
+	// poll it's status and wait up until opt.RefreshTimeout
+	if enqueued > 0 {
+		t := time.NewTicker(time.Duration(opt.RefreshTimeout) * time.Second)
 
-LOOP:
-	for {
-		select {
-		case <-t.C:
-			break LOOP
-		default:
-			checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
-				&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
-					CheckIds: checkIds,
-				},
-			)
-			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					if awsErr.Code() != "InvalidParameterValueException" {
-						return err
+	LOOP:
+		for {
+			select {
+			case <-t.C:
+				break LOOP
+			default:
+				checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
+					&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
+						CheckIds: checkIds,
+					},
+				)
+				if err != nil {
+					if awsErr, ok := err.(awserr.Error); ok {
+						if awsErr.Code() != "InvalidParameterValueException" {
+							return err
+						}
 					}
 				}
-			}
-			var pending bool
-			for _, cs := range checkStatus.Statuses {
-				if *cs.Status == "enqueued" || *cs.Status == "processing" {
-					pending = true
-					break
+				var pending bool
+				for _, cs := range checkStatus.Statuses {
+					if *cs.Status == "enqueued" || *cs.Status == "processing" {
+						pending = true
+						break
+					}
 				}
+				if !pending {
+					break LOOP
+				}
+				logger.Infof("Waiting for checks to be refreshed. Sleeping for %v...", rfrshInterval)
+				time.Sleep(rfrshInterval)
 			}
-			if !pending {
-				break LOOP
-			}
-			logger.Infof("Waiting for checks to be refreshed. Sleeping for %v...", rfrshInterval)
-			time.Sleep(rfrshInterval)
 		}
+		t.Stop()
 	}
-	t.Stop()
 
 	// Retrieve checks summaries
 	var alias *string
