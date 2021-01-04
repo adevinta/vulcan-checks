@@ -157,6 +157,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 	// poll it's status and wait up until opt.RefreshTimeout
 	if enqueued > 0 {
 		t := time.NewTicker(time.Duration(opt.RefreshTimeout) * time.Second)
+		defer t.Stop()
 
 	LOOP:
 		for {
@@ -190,7 +191,6 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				time.Sleep(rfrshInterval)
 			}
 		}
-		t.Stop()
 	}
 
 	// Retrieve checks summaries
