@@ -40,6 +40,8 @@ var (
 
 	additionalResourcesPattern = regexp.MustCompile(`href=\"(?P<resource>.*?)\"`)
 	templateResource           = "$resource"
+
+	rfrshInterval = time.Duration(5 * time.Second)
 )
 
 type options struct {
@@ -112,6 +114,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 
 	s := support.New(sess, &aws.Config{Credentials: creds})
 
+	// Retrieve checks list
 	checks, err := s.DescribeTrustedAdvisorChecks(
 		&support.DescribeTrustedAdvisorChecksInput{
 			Language: aws.String("en"),
@@ -120,6 +123,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 		return err
 	}
 
+	// Refresh checks
 	checkIds := []*string{}
 	enqueued := 0
 	for _, check := range checks.Checks {
@@ -148,12 +152,45 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 			enqueued++
 		}
 	}
-	// Let's chill a bit before getting results
-	if enqueued > 0 {
-		logger.Infof("waiting for checks to be refreshed. Sleeping for %d seconds ...", opt.RefreshTimeout)
-		time.Sleep(time.Duration(opt.RefreshTimeout) * time.Second)
-	}
 
+	// Start polling for checks refresh status
+	t := time.NewTicker(time.Duration(opt.RefreshTimeout) * time.Second)
+
+LOOP:
+	for {
+		select {
+		case <-t.C:
+			break LOOP
+		default:
+			checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
+				&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
+					CheckIds: checkIds,
+				},
+			)
+			if err != nil {
+				if awsErr, ok := err.(awserr.Error); ok {
+					if awsErr.Code() != "InvalidParameterValueException" {
+						return err
+					}
+				}
+			}
+			var pending bool
+			for _, cs := range checkStatus.Statuses {
+				if *cs.Status == "enqueued" || *cs.Status == "processing" {
+					pending = true
+					break
+				}
+			}
+			if !pending {
+				break LOOP
+			}
+			logger.Infof("Waiting for checks to be refreshed. Sleeping for %v...", rfrshInterval)
+			time.Sleep(rfrshInterval)
+		}
+	}
+	t.Stop()
+
+	// Retrieve checks summaries
 	var alias *string
 	for _, v := range checks.Checks {
 		// Ignore results if we can't know the category

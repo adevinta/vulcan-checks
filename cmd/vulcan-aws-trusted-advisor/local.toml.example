@@ -1,4 +1,4 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
 AssetType = "AWSAccount"
-Options = '{"vulcan_assume_role_url":"http://localhost:8080/assume","role":"SecurityAuditRole", "refresh_timeout": 5}'
+Options = '{"vulcan_assume_role_url":"http://localhost:8080/assume","role":"SecurityAuditRole", "refresh_timeout": 60}'
