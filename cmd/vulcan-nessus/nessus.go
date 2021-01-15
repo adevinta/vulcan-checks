@@ -61,7 +61,12 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	policyID := int64(p)
 
 	basicAuth := opt.BasicAuth
-	r.Delete = opt.Delete
+
+	// Default value for delete option is TRUE
+	r.Delete = true
+	if opt.Delete != nil {
+		r.Delete = *opt.Delete
+	}
 
 	pollingInterval := opt.PollingInterval
 	if pollingInterval <= 0 {

@@ -12,10 +12,10 @@ var (
 )
 
 type options struct {
-	DelayRange      int  `json:"delay_range"`
-	PollingInterval int  `json:"polling_interval"`
-	BasicAuth       bool `json:"basic_auth"`
-	Delete          bool `json:"delete"`
+	DelayRange      int   `json:"delay_range"`
+	PollingInterval int   `json:"polling_interval"`
+	BasicAuth       bool  `json:"basic_auth"`
+	Delete          *bool `json:"delete"`
 }
 
 func main() {
