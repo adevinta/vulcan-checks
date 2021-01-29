@@ -184,7 +184,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// If there are no vulnerabilities we can return.
-	if len(results) < 1 {
+	if len(results) < 1 || len(results) == 1 && len(results[0].Vulnerabilities) == 0 {
 		return nil
 	}
 
