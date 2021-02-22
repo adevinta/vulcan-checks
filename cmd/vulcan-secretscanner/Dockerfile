@@ -7,8 +7,8 @@ FROM alpine
 
 RUN apk update && apk add skopeo hyperscan bash jq
 
-ADD https://raw.githubusercontent.com/deepfence/SecretScanner/master/config.yaml /ss/config.yaml
-ADD ./scan.sh /ss
+ADD config.yaml /ss/config.yaml
+ADD scan.sh /ss
 
 COPY --from=build /go/bin/SecretScanner /ss
 

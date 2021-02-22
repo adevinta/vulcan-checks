@@ -3,8 +3,8 @@
 We use:
 
 - `skopeo` just to download the images from the registry without root or docker daemon access.
-- The `SecretScanner` binary from the official docker image.
-- `libhyperscan5` is the Intel Hyperscan library used by SecretScanner.
+- `SecretScanner` go get from from git repo.
+- `hyperscan` is the Intel Hyperscan library used by SecretScanner.
 
 ```sh
 docker build . -t vss
