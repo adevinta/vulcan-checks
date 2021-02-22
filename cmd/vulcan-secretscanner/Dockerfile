@@ -7,9 +7,9 @@ FROM alpine
 
 RUN apk update && apk add skopeo hyperscan bash jq
 
-ADD config.yaml /ss/config.yaml
-ADD scan.sh /ss
+ADD config.yaml /app/config.yaml
+ADD scan.sh /app
 
-COPY --from=build /go/bin/SecretScanner /ss
+COPY --from=build /go/bin/SecretScanner /usr/bin
 
-ENTRYPOINT ["/ss/scan.sh"]
+ENTRYPOINT ["/app/scan.sh"]

@@ -40,4 +40,4 @@ done
 
 mkdir /work/res
 
-/ss/SecretScanner -local /work/out/ -output-path /work/res
+SecretScanner -config-path /app -local /work/out/ -output-path /work/res
