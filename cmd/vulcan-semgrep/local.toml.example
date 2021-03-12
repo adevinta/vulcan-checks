@@ -1,0 +1,4 @@
+[Check]
+Target = "https://github.com/adevinta/vulcan-checks"
+AssetType = "GitRepository"
+# Options = '{"depth": 1, "ruleset":"r2c-security-audit"}'
