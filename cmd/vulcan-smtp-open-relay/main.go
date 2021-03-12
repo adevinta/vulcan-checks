@@ -1,4 +1,8 @@
 /*
+Copyright 2021 Adevinta
+*/
+
+/*
 The checks are done based in combinations of MAIL FROM and RCPT TO commands. The list is hardcoded in the source file.
 The script will output all the working combinations that the server allows if nmap is in verbose mode otherwise
 the script will print the number of successful tests. The script will not output if the server requires authentication.

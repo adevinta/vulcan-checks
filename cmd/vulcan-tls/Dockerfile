@@ -1,3 +1,5 @@
+# Copyright 2021 Adevinta
+
 FROM debian:stretch-slim
 
 RUN apt-get update && \

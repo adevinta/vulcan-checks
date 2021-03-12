@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# Copyright 2021 Adevinta
 #
 # This script contains the logic for build and push Vulcan
 # checks available in `cmd` folder to Docker Hub registry.

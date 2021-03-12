@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# Copyright 2021 Adevinta
 #
 # Git library
 

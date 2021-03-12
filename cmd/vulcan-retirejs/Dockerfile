@@ -1,3 +1,5 @@
+# Copyright 2021 Adevinta
+
 FROM node:alpine
 RUN apk add --no-cache ca-certificates
 RUN yarn global add retire

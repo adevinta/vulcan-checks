@@ -1,3 +1,5 @@
+# Copyright 2021 Adevinta
+
 FROM alpine
 RUN apk update && apk add --no-cache nmap nmap-scripts
 ADD vulcan-vulners /vulcan-vulners

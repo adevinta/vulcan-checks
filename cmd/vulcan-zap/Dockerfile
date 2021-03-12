@@ -1,3 +1,5 @@
+# Copyright 2021 Adevinta
+
 FROM owasp/zap2docker-weekly:w2020-08-03
 
 USER root
