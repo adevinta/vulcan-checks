@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# Copyright 2020 Adevinta
 #
 # Docker library
 

@@ -1,3 +1,5 @@
+# Copyright 2019 Adevinta
+
 FROM wpscanteam/wpscan
 
 # Override entrypoint

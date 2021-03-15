@@ -1,3 +1,5 @@
+# Copyright 2020 Adevinta
+
 FROM scratch
 WORKDIR /
 ADD vulcan-exposed-http-resources .

@@ -1,3 +1,7 @@
+/*
+Copyright 2019 Adevinta
+*/
+
 package main
 
 import report "github.com/adevinta/vulcan-report"
