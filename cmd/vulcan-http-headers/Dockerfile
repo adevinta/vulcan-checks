@@ -1,3 +1,5 @@
+# Copyright 2019 Adevinta
+
 FROM python:3.6.4-slim-stretch
 
 # Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis

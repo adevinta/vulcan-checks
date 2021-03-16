@@ -1,3 +1,5 @@
+# Copyright 2019 Adevinta
+
 FROM alpine
 RUN apk update && apk add \
 	git \

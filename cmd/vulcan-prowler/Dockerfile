@@ -1,3 +1,5 @@
+# Copyright 2020 Adevinta
+
 FROM toniblyx/prowler
 
 # Override entrypoint
