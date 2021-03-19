@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
 	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
@@ -127,7 +128,7 @@ func main() {
 			return err
 		}
 
-		addVulnsToState(state, r)
+		addVulnsToState(state, r, repoPath)
 
 		return nil
 	}
@@ -136,7 +137,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func addVulnsToState(state checkstate.State, r *SemgrepOutput) {
+func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) {
 	if r == nil || len(r.Results) < 1 {
 		return
 	}
@@ -159,9 +160,10 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput) {
 			sev = can
 		}
 
+		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		row := map[string]string{
 			"Severity":  result.Extra.Severity,
-			"Path":      fmt.Sprintf("%s:%d", result.Path, result.Start.Line),
+			"Path":      fmt.Sprintf("%s:%d", path, result.Start.Line),
 			"Message":   result.Extra.Message,
 			"Lines":     result.Extra.Lines,
 			"Fix":       result.Extra.Fix,
