@@ -1,4 +1,4 @@
 Description = "Finds potential issues in source code from a Git repository using Semgrep"
-Timeout = 600
+Timeout = 3600
 AssetTypes = ["GitRepository"]
 RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
