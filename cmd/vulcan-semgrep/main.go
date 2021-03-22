@@ -31,7 +31,7 @@ var (
 	logger    = check.NewCheckLog(checkName)
 
 	vuln = report.Vulnerability{
-		Summary:     "Pontential Issues Found in Source Code",
+		Summary:     "Potential Issues Found in Source Code",
 		Description: `Semgrep found potential security issues while scanning the source code. For more information check the details and resources sections.`,
 		References: []string{
 			"https://semgrep.dev/",
