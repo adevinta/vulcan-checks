@@ -14,27 +14,29 @@ const (
 
 var params = []string{"--json", "-c"}
 
-// SemgrepOutput represent the output information from the semgrep command.
-// Non-used fields have been intentionally ommitted.
+// SemgrepOutput and Result represent the output information from the semgrep
+// command.  Non-used fields have been intentionally ommitted.
 type SemgrepOutput struct {
-	Results []struct {
-		Path  string `json:"path"`
-		Start struct {
-			Line int `json:"line"`
-		} `json:"start"`
-		Extra struct {
-			Message  string `json:"message"`
-			Metadata struct {
-				Owasp         string `json:"owasp"`
-				Cwe           string `json:"cwe"`
-				SourceRuleURL string `json:"source-rule-url"`
-			} `json:"metadata"`
-			Severity string `json:"severity"`
-			Fix      string `json:"fix"`
-			Lines    string `json:"lines"`
-		} `json:"extra,omitempty"`
-	} `json:"results"`
-	Errors []interface{} `json:"errors"`
+	Results []Result      `json:"results"`
+	Errors  []interface{} `json:"errors"`
+}
+type Result struct {
+	Path  string `json:"path"`
+	Start struct {
+		Line int `json:"line"`
+	} `json:"start"`
+	Extra struct {
+		Message  string `json:"message"`
+		Metadata struct {
+			Owasp         string   `json:"owasp"`
+			Cwe           string   `json:"cwe"`
+			SourceRuleURL string   `json:"source-rule-url"`
+			References    []string `json:"references"`
+		} `json:"metadata"`
+		Severity string `json:"severity"`
+		Fix      string `json:"fix"`
+		Lines    string `json:"lines"`
+	} `json:"extra,omitempty"`
 }
 
 func runSemgrep(ctx context.Context, logger *logrus.Entry, ruleset, dir string) (*SemgrepOutput, error) {
