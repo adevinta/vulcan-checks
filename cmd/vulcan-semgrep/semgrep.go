@@ -21,8 +21,9 @@ type SemgrepOutput struct {
 	Errors  []interface{} `json:"errors"`
 }
 type Result struct {
-	Path  string `json:"path"`
-	Start struct {
+	CheckID string `json:"check_id"`
+	Path    string `json:"path"`
+	Start   struct {
 		Line int `json:"line"`
 	} `json:"start"`
 	Extra struct {

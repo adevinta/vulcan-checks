@@ -167,6 +167,7 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	v.Summary = summary
 	v.Description = strings.TrimSpace(strings.Join(messageParts[1:], "."))
 	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
+	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
 	v.References = append(v.References, "https://semgrep.dev/")
 	v.References = append(v.References, result.Extra.Metadata.References...)
 	v.Resources = []report.ResourcesGroup{
@@ -185,7 +186,7 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	}
 
 	if result.Extra.Metadata.Owasp != "" {
-		v.Details = fmt.Sprintf("OWASP Category:\n\t%s\n", result.Extra.Metadata.Owasp)
+		v.Details += fmt.Sprintf("OWASP Category:\n\t%s\n", result.Extra.Metadata.Owasp)
 	}
 
 	aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
