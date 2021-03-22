@@ -12,7 +12,7 @@ const (
 	Cmd = `semgrep`
 )
 
-var params = []string{"--json", "-c"}
+var params = []string{"--json", "--timeout", "0", "-c"}
 
 // SemgrepOutput and Result represent the output information from the semgrep
 // command.  Non-used fields have been intentionally ommitted.
