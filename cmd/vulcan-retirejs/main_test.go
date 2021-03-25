@@ -17,9 +17,9 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/adevinta/vulcan-check-sdk"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 func init() {
@@ -154,7 +154,10 @@ func TestFindScriptFiles(t *testing.T) {
 	localAddr = ts.URL
 
 	expected := 2
-	got := findScriptFiles(localAddr)
+	got, err := findScriptFiles(localAddr)
+	if err != nil {
+		t.Fatalf("expected no error but got: %v", err)
+	}
 	if got != expected {
 		t.Fatalf("wrong value for findInlineScripts. Got: %v , expected: %v", got, expected)
 	}
@@ -168,7 +171,10 @@ func TestInlineScripts(t *testing.T) {
 	defer ts.Close()
 	localAddr = ts.URL
 	expected := 1
-	got := findInlineScripts(localAddr)
+	got, err := findInlineScripts(localAddr)
+	if err != nil {
+		t.Fatalf("expected no error but got: %v", err)
+	}
 	if got != expected {
 		t.Fatalf("wrong value for findInlineScripts. Got: %v , expected: %v", got, expected)
 	}
@@ -181,7 +187,11 @@ func TestFindTargetHTML(t *testing.T) {
 	}))
 
 	defer ts.Close()
-	if getTargetHTML(ts.URL).FirstChild.Data != "html" {
+	htmlNode, err := getTargetHTML(ts.URL)
+	if err != nil {
+		t.Fatalf("exepected no error but got: %v", err)
+	}
+	if htmlNode.FirstChild.Data != "html" {
 		t.Fatalf("Cannot find target html")
 	}
 }
