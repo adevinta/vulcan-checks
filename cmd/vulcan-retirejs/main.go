@@ -65,17 +65,28 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 		}
 		return err
 	}
+
 	logger.Infof("Downloading javascript sources from %s", target)
+
 	os.RemoveAll("./temp")
 	os.MkdirAll("temp", os.ModePerm)
-	findScriptFiles(target)
-	findInlineScripts(target)
+	defer os.RemoveAll("./temp")
+
+	_, err = findScriptFiles(target)
+	if err != nil {
+		return err
+	}
+	_, err = findInlineScripts(target)
+	if err != nil {
+		return err
+	}
 	retireJsReport, err := runRetireJs(ctx, args)
 	if err != nil {
 		return err
 	}
+
 	addVulnsToState(state, retireJsReport)
-	os.RemoveAll("./temp")
+
 	return nil
 }
 
@@ -200,9 +211,14 @@ type RetireJsVulnerability struct {
 	Identifiers RetireJsResultId `json:"identifiers"`
 }
 
-func findScriptFiles(target string) int {
+func findScriptFiles(target string) (int, error) {
+	htmlNode, err := getTargetHTML(target)
+	if err != nil {
+		return 0, err
+	}
+
 	count := 0
-	for _, tag := range scrape.FindAll(getTargetHTML(target), scriptMatcher) {
+	for _, tag := range scrape.FindAll(htmlNode, scriptMatcher) {
 		url := ""
 		if tag.DataAtom == atom.Script {
 			url = scrape.Attr(tag, "src")
@@ -214,23 +230,25 @@ func findScriptFiles(target string) int {
 		if isRelativeUrl(url) {
 			url = getAbsoluteUrl(target, url)
 		}
-		downloadFromUrl(url)
+		if err := downloadFromUrl(url); err != nil {
+			return 0, err
+		}
 		count++
 	}
-	return count
+	return count, nil
 }
 
-func getTargetHTML(target string) *html.Node {
+func getTargetHTML(target string) (*html.Node, error) {
 	resp, err := http.Get(target)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	root, err := html.Parse(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return root
+	return root, nil
 }
 
 func scriptMatcher(n *html.Node) bool {
@@ -262,7 +280,7 @@ func isRelativeUrl(url string) bool {
 
 // findInlineScripts downloads all inline scripts inside a given target HTML
 // it returns the number of dowloaded files
-func findInlineScripts(target string) int {
+func findInlineScripts(target string) (int, error) {
 	inlineMather := func(n *html.Node) bool {
 		if n.DataAtom == atom.Script {
 			return len(scrape.Attr(n, "src")) <= 0
@@ -270,39 +288,47 @@ func findInlineScripts(target string) int {
 		return false
 	}
 
+	htmlNode, err := getTargetHTML(target)
+	if err != nil {
+		return 0, err
+	}
+
 	count := 0
-	for i, inlineScript := range scrape.FindAll(getTargetHTML(target), inlineMather) {
+	for i, inlineScript := range scrape.FindAll(htmlNode, inlineMather) {
 		inlineSrc := scrape.Text(inlineScript)
 		fileName := "temp/" + strconv.Itoa(i) + ".js"
 		logger.Infof("Writing inline script to file %s", fileName)
-		writeFile(fileName, inlineSrc)
+		if err := writeFile(fileName, inlineSrc); err != nil {
+			return 0, fmt.Errorf("error writing inline script to file: %v", err)
+		}
 		count++
 	}
-	return count
+	return count, nil
 }
 
-func writeFile(fileName string, contents string) {
+func writeFile(fileName string, contents string) error {
 	file, err := os.Create(fileName)
 	if err != nil {
-		logger.Fatal(err)
+		return err
 	}
 	_, err = file.WriteString(contents)
 	if err != nil {
-		logger.Fatal(err)
+		return err
 	}
-	file.Close()
+	file.Close() // nolint
+	return nil
 }
 
-func downloadFromUrl(url string) {
+func downloadFromUrl(url string) error {
 	filePath := getFilePath(url)
 	logger.Infof("Downloading %s to %s", url, filePath)
 	response, err := http.Get(url)
 	if err != nil {
-		logger.Fatal(err)
+		return fmt.Errorf("error downloading from url %s: %v", url, err)
 	}
 	defer response.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(response.Body)
-	writeFile(filePath, string(bodyBytes))
+	return writeFile(filePath, string(bodyBytes))
 }
 
 func getFilePath(url string) string {
