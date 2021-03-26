@@ -29,10 +29,14 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+const (
+	jsPath = "temp"
+)
+
 var (
 	checkName  = "vulcan-retirejs"
 	logger     = check.NewCheckLog(checkName)
-	retireArgs = []string{"retire", "--outputformat", "json", "--jsrepo", "jsrepository.json"}
+	retireArgs = []string{"retire", "--outputformat", "json", "--jspath", jsPath, "--jsrepo", "jsrepository.json"}
 )
 
 func main() {
@@ -68,9 +72,9 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 
 	logger.Infof("Downloading javascript sources from %s", target)
 
-	os.RemoveAll("./temp")
-	os.MkdirAll("temp", os.ModePerm)
-	defer os.RemoveAll("./temp")
+	os.RemoveAll(jsPath)
+	os.MkdirAll(jsPath, os.ModePerm)
+	defer os.RemoveAll(jsPath)
 
 	_, err = findScriptFiles(target)
 	if err != nil {
@@ -296,7 +300,7 @@ func findInlineScripts(target string) (int, error) {
 	count := 0
 	for i, inlineScript := range scrape.FindAll(htmlNode, inlineMather) {
 		inlineSrc := scrape.Text(inlineScript)
-		fileName := "temp/" + strconv.Itoa(i) + ".js"
+		fileName := fmt.Sprint(jsPath, "/", strconv.Itoa(i), ".js")
 		logger.Infof("Writing inline script to file %s", fileName)
 		if err := writeFile(fileName, inlineSrc); err != nil {
 			return 0, fmt.Errorf("error writing inline script to file: %v", err)
@@ -338,7 +342,7 @@ func getFilePath(url string) string {
 		uuid := uuid.NewV4()
 		fileName = uuid.String() + ".js"
 	}
-	return "temp/" + fileName
+	return fmt.Sprint(jsPath, "/", fileName)
 }
 
 // Follow redirects and return final URL.
