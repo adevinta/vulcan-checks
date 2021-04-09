@@ -156,16 +156,16 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 }
 
 func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerability {
-	messageParts := strings.Split(result.Extra.Message, ".")
-	summary := messageParts[0]
+	aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
+	cweParts := strings.Split(aux, ":")
+	summary := strings.TrimSpace(cweParts[1])
 
 	v, ok := vulns[summary]
-	if ok {
-		return v
+	if !ok {
+		v.Summary = summary
 	}
 
-	v.Summary = summary
-	v.Description = strings.TrimSpace(strings.Join(messageParts[1:], "."))
+	//v.Description = strings.TrimSpace(strings.Join(messageParts[1:], "."))
 	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
 	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
 	v.References = append(v.References, "https://semgrep.dev/")
@@ -181,19 +181,17 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 		},
 	}
 
+	cweID, err := strconv.Atoi(cweParts[0])
+	if err == nil {
+		v.CWEID = uint32(cweID)
+	}
+
 	if result.Extra.Metadata.SourceRuleURL != "" {
 		v.References = append(v.References, result.Extra.Metadata.SourceRuleURL)
 	}
 
 	if result.Extra.Metadata.Owasp != "" {
 		v.Details += fmt.Sprintf("OWASP Category:\n\t%s\n", result.Extra.Metadata.Owasp)
-	}
-
-	aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
-	cwe := strings.Split(aux, ":")[0]
-	cweID, err := strconv.Atoi(cwe)
-	if err == nil {
-		v.CWEID = uint32(cweID)
 	}
 
 	return v
