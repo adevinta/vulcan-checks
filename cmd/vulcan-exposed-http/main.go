@@ -22,6 +22,8 @@ import (
 type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
+	// Return status updates on the progress of the check
+	ReportProgress bool `json:"report_progress"`
 	// List of potential database ports to scan for.
 	Ports []string `json:"ports"`
 }
@@ -161,7 +163,7 @@ func main() {
 			"-p":  strings.Join(opt.Ports, ","),
 		}
 
-		nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapParams)
+		nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapParams)
 		nmapReport, _, err := nmapRunner.Run(ctx)
 		if err != nil {
 			return err

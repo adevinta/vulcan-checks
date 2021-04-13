@@ -23,6 +23,8 @@ import (
 type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
+	// Return status updates on the progress of the check
+	ReportProgress bool `json:"report_progress"`
 
 	/* Lists of whitelisted TCP and UDP ports.
 	 *
@@ -171,7 +173,7 @@ func main() {
 			nmapTCPParams["--exclude-ports"] = uint16ArrayToString(opt.WhitelistedTCPPorts, ",")
 		}
 
-		nmapTCPRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapTCPParams)
+		nmapTCPRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapTCPParams)
 		nmapTCPReport, _, err := nmapTCPRunner.Run(ctx)
 		if err != nil {
 			return err
@@ -194,7 +196,7 @@ func main() {
 			nmapUDPParams["--exclude-ports"] = uint16ArrayToString(opt.WhitelistedUDPPorts, ",")
 		}
 
-		nmapUDPRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapUDPParams)
+		nmapUDPRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapUDPParams)
 		nmapUDPReport, _, err := nmapUDPRunner.Run(ctx)
 		if err != nil {
 			return err
