@@ -22,6 +22,8 @@ import (
 type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
+	// Return status updates on the progress of the check
+	ReportProgress bool `json:"reportProgress"`
 
 	/***
 	 * If a list of known hosts is provided, the check will return results only when
@@ -188,7 +190,7 @@ func main() {
 		}
 
 		// Ideally, the target should be a subnet mask, but /32 address will also work.
-		nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapParams)
+		nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapParams)
 		nmapReport, _, err := nmapRunner.Run(ctx)
 		if err != nil {
 			return err

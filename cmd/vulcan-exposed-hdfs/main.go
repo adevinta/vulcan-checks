@@ -31,6 +31,8 @@ const defaultTiming = 4
 type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
+	// Return status updates on the progress of the check
+	ReportProgress bool `json:"reportProgress"`
 	// List of potential ports to scan for.
 	Ports []string `json:"ports"`
 	// Regex to verify that the exposed service is a hadoop port.
@@ -231,7 +233,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		"-p":  strings.Join(opt.Ports, ","),
 	}
 
-	nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapParams)
+	nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapParams)
 	nmapReport, _, err := nmapRunner.Run(ctx)
 	if err != nil {
 		return err

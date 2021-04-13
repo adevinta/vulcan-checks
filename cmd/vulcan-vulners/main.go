@@ -39,6 +39,8 @@ const (
 type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
+	// Return status updates on the progress of the check
+	ReportProgress bool `json:"reportProgress"`
 }
 
 var (
@@ -372,7 +374,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		"-sV": "",
 	}
 
-	nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapParams)
+	nmapRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapParams)
 	nmapReport, _, err := nmapRunner.Run(ctx)
 	if err != nil {
 		return err
