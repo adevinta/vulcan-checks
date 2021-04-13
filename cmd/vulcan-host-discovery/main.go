@@ -23,7 +23,7 @@ type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
 	// Return status updates on the progress of the check
-	ReportProgress bool `json:"reportProgress"`
+	ReportProgress bool `json:"report_progress"`
 
 	/***
 	 * If a list of known hosts is provided, the check will return results only when

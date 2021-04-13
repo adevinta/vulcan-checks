@@ -32,7 +32,7 @@ type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
 	// Return status updates on the progress of the check
-	ReportProgress bool `json:"reportProgress"`
+	ReportProgress bool `json:"report_progress"`
 	// List of potential ports to scan for.
 	Ports []string `json:"ports"`
 	// Regex to verify that the exposed service is a hadoop port.

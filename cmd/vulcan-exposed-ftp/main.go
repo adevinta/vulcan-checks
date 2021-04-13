@@ -24,7 +24,7 @@ type options struct {
 	// Nmap timing parameter.
 	Timing int `json:"timing"`
 	// Return status updates on the progress of the check
-	ReportProgress bool `json:"reportProgress"`
+	ReportProgress bool `json:"report_progress"`
 	// List of ports that will be scanned
 	Ports []string `json:"ports"`
 	// Scanning allowed open FTP Ports
