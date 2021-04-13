@@ -173,7 +173,7 @@ func main() {
 			nmapTCPParams["--exclude-ports"] = uint16ArrayToString(opt.WhitelistedTCPPorts, ",")
 		}
 
-		nmapTCPRunner := nmap.NewNmapCheck(target, state, opt.Timing, nmapTCPParams)
+		nmapTCPRunner := nmap.NewNmapCheck(target, state, opt.Timing, opt.ReportProgress, nmapTCPParams)
 		nmapTCPReport, _, err := nmapTCPRunner.Run(ctx)
 		if err != nil {
 			return err
