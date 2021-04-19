@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -138,11 +139,19 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 	for _, result := range r.Results {
 		v := vuln(result, vulns)
 
+		score := report.ScoreSeverity(severityMap[result.Extra.Severity])
+		if score > v.Score {
+			v.Score = score
+		}
+
 		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		row := map[string]string{
-			"Path":  fmt.Sprintf("%s:%d", path, result.Start.Line),
-			"Match": result.Extra.Lines,
-			"Fix":   result.Extra.Fix,
+			"Severity":     result.Extra.Severity,
+			"Path":         fmt.Sprintf("%s:%d", path, result.Start.Line),
+			"Message":      result.Extra.Message,
+			"Match":        result.Extra.Lines,
+			"Fix":          result.Extra.Fix,
+			"Semgrep Rule": result.Extra.Metadata.SourceRuleURL,
 		}
 
 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
@@ -151,6 +160,20 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 	}
 
 	for _, v := range vulns {
+		// Sort rows by severity, alphabetical order of the path and message.
+		sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
+			si := severityMap[v.Resources[0].Rows[i]["Severity"]]
+			sj := severityMap[v.Resources[0].Rows[j]["Severity"]]
+
+			switch {
+			case si != sj:
+				return si > sj
+			case v.Resources[0].Rows[i]["Path"] != v.Resources[0].Rows[j]["Path"]:
+				return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
+			default:
+				return v.Resources[0].Rows[i]["Message"] < v.Resources[0].Rows[j]["Message"]
+			}
+		})
 		state.AddVulnerabilities(v)
 	}
 }
@@ -161,22 +184,25 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	summary := strings.TrimSpace(cweParts[1])
 
 	v, ok := vulns[summary]
-	if !ok {
-		v.Summary = summary
+	if ok {
+		return v
 	}
 
+	v.Summary = summary
 	//v.Description = strings.TrimSpace(strings.Join(messageParts[1:], "."))
-	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
-	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
+	//v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
 	v.References = append(v.References, "https://semgrep.dev/")
-	v.References = append(v.References, result.Extra.Metadata.References...)
+	//v.References = append(v.References, result.Extra.Metadata.References...)
 	v.Resources = []report.ResourcesGroup{
 		report.ResourcesGroup{
 			Name: "Ocurrences",
 			Header: []string{
+				"Severity",
 				"Path",
+				"Message",
 				"Match",
 				"Fix",
+				"Semgrep Rule",
 			},
 		},
 	}
@@ -184,14 +210,6 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	cweID, err := strconv.Atoi(cweParts[0])
 	if err == nil {
 		v.CWEID = uint32(cweID)
-	}
-
-	if result.Extra.Metadata.SourceRuleURL != "" {
-		v.References = append(v.References, result.Extra.Metadata.SourceRuleURL)
-	}
-
-	if result.Extra.Metadata.Owasp != "" {
-		v.Details += fmt.Sprintf("OWASP Category:\n\t%s\n", result.Extra.Metadata.Owasp)
 	}
 
 	return v
