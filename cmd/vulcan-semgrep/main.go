@@ -146,12 +146,11 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 
 		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		row := map[string]string{
-			"Severity":     result.Extra.Severity,
-			"Path":         fmt.Sprintf("%s:%d", path, result.Start.Line),
-			"Message":      result.Extra.Message,
-			"Match":        result.Extra.Lines,
-			"Fix":          result.Extra.Fix,
-			"Semgrep Rule": result.Extra.Metadata.SourceRuleURL,
+			"Severity": result.Extra.Severity,
+			"Path":     fmt.Sprintf("%s:%d", path, result.Start.Line),
+			"Message":  result.Extra.Message,
+			"Match":    result.Extra.Lines,
+			"Fix":      result.Extra.Fix,
 		}
 
 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
@@ -179,10 +178,7 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 }
 
 func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerability {
-	aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
-	cweParts := strings.Split(aux, ":")
-	summary := strings.TrimSpace(cweParts[1])
-
+	summary := result.CheckID
 	v, ok := vulns[summary]
 	if ok {
 		return v
@@ -202,11 +198,12 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 				"Message",
 				"Match",
 				"Fix",
-				"Semgrep Rule",
 			},
 		},
 	}
 
+	aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
+	cweParts := strings.Split(aux, ":")
 	cweID, err := strconv.Atoi(cweParts[0])
 	if err == nil {
 		v.CWEID = uint32(cweID)
