@@ -66,7 +66,7 @@ type vulnerability struct {
 }
 
 var vuln = report.Vulnerability{
-	Summary:     "Outdated Packages in Docker Image",
+	Summary:     "Outdated Packages in Docker Image (BETA)",
 	Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
 	CWEID:       937,
 	Recommendations: []string{
