@@ -99,7 +99,7 @@ var (
 	// falsePositivesMessage is the message that will be displayed
 	// in the details section if the exposed resources of the check
 	// are flagged as false positives.
-	falsePositivesMessage = "The check found the web server responses unrealiable and marked low and medium confidence resources as false positives. The highest score among high confidence resources is reported. The following issues were identified in the web server:\n"
+	falsePositivesMessage = "The check found the web server responses unrealiable and marked low and medium confidence resources as false positives. Only high confidence resources will be reported. The following issues were identified in the web server:\n"
 
 	responseCount = struct {
 		ok    int
@@ -228,30 +228,33 @@ func main() {
 				}
 			}
 
-			// Sort rows by severity and then confidence.
-			sort.Slice(exposedVuln.Resources[0].Rows, func(i, j int) bool {
-				si, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[i]["Score"], 32)
-				if err != nil {
-					return false
-				}
-				sj, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[j]["Score"], 32)
-				if err != nil {
-					return true
-				}
-				switch {
-				case si != sj:
-					return si > sj
-				case exposedVuln.Resources[0].Rows[i]["Confidence"] == "HIGH":
-					return true
-				case exposedVuln.Resources[0].Rows[i]["Confidence"] == "MEDIUM" &&
-					exposedVuln.Resources[0].Rows[j]["Confidence"] == "LOW":
-					return true
-				default:
-					return false
-				}
-			})
+			// We will only report a vulnerability if it still exists after filtering false positives.
+			if exposedVuln.Score > 0 {
+				// Sort rows by severity and then confidence.
+				sort.Slice(exposedVuln.Resources[0].Rows, func(i, j int) bool {
+					si, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[i]["Score"], 32)
+					if err != nil {
+						return false
+					}
+					sj, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[j]["Score"], 32)
+					if err != nil {
+						return true
+					}
+					switch {
+					case si != sj:
+						return si > sj
+					case exposedVuln.Resources[0].Rows[i]["Confidence"] == "HIGH":
+						return true
+					case exposedVuln.Resources[0].Rows[i]["Confidence"] == "MEDIUM" &&
+						exposedVuln.Resources[0].Rows[j]["Confidence"] == "LOW":
+						return true
+					default:
+						return false
+					}
+				})
 
-			state.AddVulnerabilities(exposedVuln)
+				state.AddVulnerabilities(exposedVuln)
+			}
 		}
 
 		return nil
@@ -518,6 +521,7 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 
 func filterFalsePositives(vuln *report.Vulnerability) error {
 	highConfidenceScore := 0.0
+	newRows := []map[string]string{}
 	// We will disregard resources with less than high confidence.
 	for _, resource := range vuln.Resources[0].Rows {
 		confidence := resource["Confidence"]
@@ -526,12 +530,16 @@ func filterFalsePositives(vuln *report.Vulnerability) error {
 			return err
 		}
 
-		if confidence == "HIGH" && score > highConfidenceScore {
-			// We store the highest score with high confidence.
-			highConfidenceScore = score
+		if confidence == "HIGH" {
+			newRows = append(newRows, resource)
+			if score > highConfidenceScore {
+				// We store the highest score with high confidence.
+				highConfidenceScore = score
+			}
 		}
 	}
 
+	vuln.Resources[0].Rows = newRows
 	vuln.Score = float32(highConfidenceScore)
 	vuln.Details = falsePositivesMessage
 
