@@ -149,10 +149,9 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 
 		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		row := map[string]string{
-			"Severity": result.Extra.Severity,
-			"Path":     fmt.Sprintf("%s:%d", path, result.Start.Line),
-			"Match":    result.Extra.Lines,
-			"Fix":      result.Extra.Fix,
+			"Path":  fmt.Sprintf("%s:%d", path, result.Start.Line),
+			"Match": result.Extra.Lines,
+			"Fix":   result.Extra.Fix,
 		}
 
 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
@@ -161,17 +160,9 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 	}
 
 	for _, v := range vulns {
-		// Sort rows by severity or alphabetical order of the path.
+		// Sort rows by alphabetical order of the path.
 		sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
-			si := severityMap[v.Resources[0].Rows[i]["Severity"]]
-			sj := severityMap[v.Resources[0].Rows[j]["Severity"]]
-
-			switch {
-			case si != sj:
-				return si > sj
-			default:
-				return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
-			}
+			return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
 		})
 		state.AddVulnerabilities(v)
 	}
