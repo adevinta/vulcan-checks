@@ -141,7 +141,10 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 
 		score := report.ScoreSeverity(severityMap[result.Extra.Severity])
 		if score != v.Score {
-			v.Score = report.ScoreSeverity(report.SeverityCritical)
+			v.Description = "[Different Score] " + v.Description
+		}
+		if result.Extra.Message != v.Description {
+			v.Description = "[Different Message] " + v.Description
 		}
 
 		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
