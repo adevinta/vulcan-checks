@@ -192,7 +192,6 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 		report.ResourcesGroup{
 			Name: "Ocurrences",
 			Header: []string{
-				"Severity",
 				"Path",
 				"Match",
 				"Fix",
