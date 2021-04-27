@@ -140,15 +140,14 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 		v := vuln(result, vulns)
 
 		score := report.ScoreSeverity(severityMap[result.Extra.Severity])
-		if score > v.Score {
-			v.Score = score
+		if score != v.Score {
+			v.Score = report.ScoreSeverity(report.SeverityCritical)
 		}
 
 		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		row := map[string]string{
 			"Severity": result.Extra.Severity,
 			"Path":     fmt.Sprintf("%s:%d", path, result.Start.Line),
-			"Message":  result.Extra.Message,
 			"Match":    result.Extra.Lines,
 			"Fix":      result.Extra.Fix,
 		}
@@ -159,7 +158,7 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 	}
 
 	for _, v := range vulns {
-		// Sort rows by severity, alphabetical order of the path and message.
+		// Sort rows by severity or alphabetical order of the path.
 		sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
 			si := severityMap[v.Resources[0].Rows[i]["Severity"]]
 			sj := severityMap[v.Resources[0].Rows[j]["Severity"]]
@@ -167,10 +166,8 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 			switch {
 			case si != sj:
 				return si > sj
-			case v.Resources[0].Rows[i]["Path"] != v.Resources[0].Rows[j]["Path"]:
-				return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
 			default:
-				return v.Resources[0].Rows[i]["Message"] < v.Resources[0].Rows[j]["Message"]
+				return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
 			}
 		})
 		state.AddVulnerabilities(v)
@@ -178,24 +175,31 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 }
 
 func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerability {
-	summary := result.CheckID
+	// Check ID example: python.lang.security.unquoted-csv-writer.unquoted-csv-writer
+	checkIDParts := strings.Split(result.CheckID, ".")
+
+	issue := checkIDParts[len(checkIDParts)-1] // Example: unquoted-csv-writer
+	issue = strings.ReplaceAll(issue, "-", " ")
+	issue = strings.ReplaceAll(issue, "_", " ") // Example: unquoted csv writer
+
+	summary := strings.Title(issue) // Example: Unquoted Csv Writer
 	v, ok := vulns[summary]
 	if ok {
 		return v
 	}
 
 	v.Summary = summary
-	//v.Description = strings.TrimSpace(strings.Join(messageParts[1:], "."))
-	//v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
+	v.Description = result.Extra.Message
+	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
+	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
 	v.References = append(v.References, "https://semgrep.dev/")
-	//v.References = append(v.References, result.Extra.Metadata.References...)
+	v.References = append(v.References, result.Extra.Metadata.References...)
 	v.Resources = []report.ResourcesGroup{
 		report.ResourcesGroup{
 			Name: "Ocurrences",
 			Header: []string{
 				"Severity",
 				"Path",
-				"Message",
 				"Match",
 				"Fix",
 			},
