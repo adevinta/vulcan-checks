@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"net/url"
 	"path"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,14 +67,7 @@ var (
 		ImpactDetails:   "Through the exposed resources, an external attacker may be able to obtain sensitive information (credentials, source code, user data...), interact with sensitive features (content administration, database management...) or have access to additional attack surface.",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Remove the resource from web server.", "Forbid access to the reported paths.", "Rotate any leaked credentials."},
-		Resources: []report.ResourcesGroup{
-			report.ResourcesGroup{
-				Name:   "Exposed Resources",
-				Header: []string{"Score", "Severity", "Confidence", "Description", "URL"},
-				Rows:   []map[string]string{},
-			},
-		},
-		CWEID: 538, // File and Directory Information Exposure
+		CWEID:           538, // File and Directory Information Exposure
 	}
 
 	falseOKVuln = report.Vulnerability{
@@ -192,6 +185,14 @@ func main() {
 			falsePositives = true
 			falsePositivesMessage +=
 				"\n- The check received \"200 OK\" responses for unexistent resources."
+
+			// Not splitting each resource into a different Vulnerability
+			// because the issue affects the target as a whole.
+			falseOKVuln.AffectedResource = targetURL.String()
+
+			// Gotcha: resources will be different at every check execution
+			// because the URLs are generated randomly every time the check is
+			// executed.
 			falseOKVuln.Resources[0].Rows = falseOKResources
 			state.AddVulnerabilities(falseOKVuln)
 		}
@@ -219,42 +220,37 @@ func main() {
 			)
 		}
 
-		exposedVuln.Resources[0].Rows = append(exposedVuln.Resources[0].Rows, vulnResources...)
-		if len(exposedVuln.Resources[0].Rows) > 0 {
+		for _, resource := range vulnResources {
+			resource := resource
+
+			// We will disregard resources with less than high confidence.
+			if resource["Confidence"] != "HIGH" {
+				continue
+			}
+
+			v := exposedVuln
+			v.AffectedResource = resource["URL"]
+			v.Resources = []report.ResourcesGroup{
+				report.ResourcesGroup{
+					Name:   "Exposed Resources",
+					Header: []string{"Score", "Severity", "Confidence", "Description", "URL"},
+					Rows:   []map[string]string{resource},
+				},
+			}
+
+			score, err := strconv.ParseFloat(resource["Score"], 32)
+			if err != nil {
+				return err
+			}
+			v.Score = float32(score)
+
 			if falsePositives {
-				err = filterFalsePositives(&exposedVuln)
-				if err != nil {
-					return err
-				}
+				v.Details = falsePositivesMessage
 			}
 
-			// We will only report a vulnerability if it still exists after filtering false positives.
-			if exposedVuln.Score > 0 {
-				// Sort rows by severity and then confidence.
-				sort.Slice(exposedVuln.Resources[0].Rows, func(i, j int) bool {
-					si, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[i]["Score"], 32)
-					if err != nil {
-						return false
-					}
-					sj, err := strconv.ParseFloat(exposedVuln.Resources[0].Rows[j]["Score"], 32)
-					if err != nil {
-						return true
-					}
-					switch {
-					case si != sj:
-						return si > sj
-					case exposedVuln.Resources[0].Rows[i]["Confidence"] == "HIGH":
-						return true
-					case exposedVuln.Resources[0].Rows[i]["Confidence"] == "MEDIUM" &&
-						exposedVuln.Resources[0].Rows[j]["Confidence"] == "LOW":
-						return true
-					default:
-						return false
-					}
-				})
+			v.ID = computeVulnerabilityID(target, v.AffectedResource)
 
-				state.AddVulnerabilities(exposedVuln)
-			}
+			state.AddVulnerabilities(v)
 		}
 
 		return nil
@@ -262,6 +258,18 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string]string {
@@ -346,9 +354,6 @@ func checkResource(targetURL *url.URL, httpResource Resource) []map[string]strin
 
 	var severityRank string
 	if httpResource.Severity != nil {
-		if *httpResource.Severity > exposedVuln.Score {
-			exposedVuln.Score = *httpResource.Severity
-		}
 		severityRank = rankSeverity(*httpResource.Severity)
 	} else {
 		severityRank = rankSeverity(report.SeverityThresholdHigh)
@@ -517,33 +522,6 @@ func checkBodyRegex(resp *http.Response, regex string) (bool, error) {
 		return false, err
 	}
 	return regexp.Match(regex, contents)
-}
-
-func filterFalsePositives(vuln *report.Vulnerability) error {
-	highConfidenceScore := 0.0
-	newRows := []map[string]string{}
-	// We will disregard resources with less than high confidence.
-	for _, resource := range vuln.Resources[0].Rows {
-		confidence := resource["Confidence"]
-		score, err := strconv.ParseFloat(resource["Score"], 32)
-		if err != nil {
-			return err
-		}
-
-		if confidence == "HIGH" {
-			newRows = append(newRows, resource)
-			if score > highConfidenceScore {
-				// We store the highest score with high confidence.
-				highConfidenceScore = score
-			}
-		}
-	}
-
-	vuln.Resources[0].Rows = newRows
-	vuln.Score = float32(highConfidenceScore)
-	vuln.Details = falsePositivesMessage
-
-	return nil
 }
 
 func rankSeverity(severity float32) string {
