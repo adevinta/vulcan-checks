@@ -1,4 +1,4 @@
-dist: bionic
+dist: trusty
 language: go
 go:
   - 1.13.4
