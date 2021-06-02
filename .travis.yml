@@ -7,8 +7,10 @@ env:
   - DKR_USERNAME=vulcansec
   - CGO_ENABLED=0
   - GO111MODULE=on
-go_import_path: github.com/adevinta/vulcan-checks
-script: bash test-pull.sh
+# go_import_path: github.com/adevinta/vulcan-checks
+script:
+  - docker pull alpine
+  - bash test-pull.sh
 deploy:
   provider: script
   script: bash release.sh
