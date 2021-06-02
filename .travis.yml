@@ -8,6 +8,7 @@ env:
   - CGO_ENABLED=0
   - GO111MODULE=on
 go_import_path: github.com/adevinta/vulcan-checks
+script: bash test-pull.sh
 deploy:
   provider: script
   script: bash release.sh
