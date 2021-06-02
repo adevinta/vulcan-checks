@@ -11,8 +11,9 @@ env:
   - GO111MODULE=on
 # go_import_path: github.com/adevinta/vulcan-checks
 script:
-  - docker pull alpine
-  - bash test-pull.sh
+  - docker pull busybox || true
+  - docker pull alpine:latest || true
+  - docker pull alpine:3.12 || true
 deploy:
   provider: script
   script: bash release.sh
