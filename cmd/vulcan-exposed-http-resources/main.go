@@ -73,6 +73,7 @@ var (
 	falseOKVuln = report.Vulnerability{
 		Summary:         "Incorrect Successful HTTP Response",
 		Description:     "The HTTP server is responding \"200 OK\" to requests for unexistent resources.",
+		Labels:          []string{"informational", "http"},
 		ImpactDetails:   "Unreliable response statuses prevent the check from identifying accidentally exposed resources.",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Ensure that the server only returns \"200 OK\" when a request is successful."},
@@ -223,13 +224,16 @@ func main() {
 		for _, resource := range vulnResources {
 			resource := resource
 
-			// We will disregard resources with less than high confidence.
+			// We will disregard resources with less than high confidence.  In
+			// the future if we reconsider adding vulnerabilities with lower
+			// confidence we can always change the label of the vulnerability.
 			if resource["Confidence"] != "HIGH" {
 				continue
 			}
 
 			v := exposedVuln
 			v.AffectedResource = resource["URL"]
+			v.Labels = []string{"issue", "http"}
 			v.Resources = []report.ResourcesGroup{
 				report.ResourcesGroup{
 					Name:   "Exposed Resources",
