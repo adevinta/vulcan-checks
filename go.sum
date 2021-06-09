@@ -13,10 +13,10 @@ github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f h1:I74NfMCY6nR2+/u
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
 github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21 h1:UTCSVBGTK78jV0F/pDsYLIKRzmJD7pkz/vqP0OVOHfM=
 github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
-github.com/adevinta/vulcan-check-sdk v0.0.0-20210531064101-0bbc89e25d42 h1:mtUFdR5JyBdEyKSUNk/P6E3CUTcKhNa0zoPbePP55a0=
-github.com/adevinta/vulcan-check-sdk v0.0.0-20210531064101-0bbc89e25d42/go.mod h1:Ke6+dMDQzcwI1a5vNhk71JywI+mUi2OQU3soCJJXPaA=
-github.com/adevinta/vulcan-report v0.0.0-20210528090423-5280af1d1f0b h1:MhWBa78rDn8w2mp7v0gl1CGkYCAQpd+o1HAe2fuqnKg=
-github.com/adevinta/vulcan-report v0.0.0-20210528090423-5280af1d1f0b/go.mod h1:mj4gaLILjExwR6TV0zCyoSqNFaPBaGI9ngZwiOdPtA0=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20210609062910-e4ce684f8fc9 h1:0KoROf/ij1SO4P7ZEDaEj5Epj4G+u5Y2cIdqpQx/mDc=
+github.com/adevinta/vulcan-check-sdk v0.0.0-20210609062910-e4ce684f8fc9/go.mod h1:4qN3r3Npp3bAdZ9/2THRDbucDEHaHqkcW8mv6huDRlw=
+github.com/adevinta/vulcan-report v0.0.0-20210608141555-94465cb70da6 h1:YZ4i9ahAJazkRtDF+n6mbgARXeR3MDChsG1PRoSqXPU=
+github.com/adevinta/vulcan-report v0.0.0-20210608141555-94465cb70da6/go.mod h1:mj4gaLILjExwR6TV0zCyoSqNFaPBaGI9ngZwiOdPtA0=
 github.com/adevinta/vulcan-types v0.0.0-20200922093209-437fd6d5ab11/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
 github.com/adevinta/vulcan-types v0.0.0-20210430125916-dd7eaa6946f8 h1:vERy/c1GdXbklTH054TsgNZ4Fkuw6mhc/icUmhqNCXE=
 github.com/adevinta/vulcan-types v0.0.0-20210430125916-dd7eaa6946f8/go.mod h1:gflQ+QgTgSGHMJp+kUnogHadjASIDcvCTwH1v/fqT3U=
@@ -36,8 +36,8 @@ github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHS
 github.com/avast/retry-go v3.0.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
 github.com/aws/aws-sdk-go v1.25.43/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.35.15/go.mod h1:tlPOdRjfxPBpNIwqDj61rmsnA85v9jc0Ps9+muhnW+k=
-github.com/aws/aws-sdk-go v1.38.52 h1:7NKcUyTG/CyDX835kq04DDNe8vXaJhbGW8ThemHb18A=
-github.com/aws/aws-sdk-go v1.38.52/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
+github.com/aws/aws-sdk-go v1.38.57 h1:Jo6uOnWNbj4jL/8t/XUrHOKm1J6pPcYFhGzda20UcUk=
+github.com/aws/aws-sdk-go v1.38.57/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/codahale/blake2 v0.0.0-20150924215134-8d10d0420cbf/go.mod h1:BO2rLUAZMrpgh6GBVKi0Gjdqw2MgCtJrtmUdDeZRKjY=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
@@ -171,8 +171,8 @@ golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210303074136-134d130e1a04/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b h1:qh4f65QIVFjq9eBURLEYWqaEXmOyqdUyiBSgaXWccWk=
-golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 h1:C+AwYEtBp/VQwoLntUmQ/yx3MS9vmZaKNdw5eOpoQe8=
+golang.org/x/sys v0.0.0-20210608053332-aa57babbf139/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 h1:v+OssWQX+hTHEmOBgwxdZxK4zHq3yOs8F9J7mk0PY8E=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
