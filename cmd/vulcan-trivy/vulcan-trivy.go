@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,11 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/avast/retry-go"
 	"github.com/mcuadros/go-version"
+)
+
+const (
+	vulnTruncateLimit   = 30
+	vulnCVETrucateLimit = 10
 )
 
 var (
@@ -65,22 +71,12 @@ type vulnerability struct {
 	link     string
 }
 
-var vuln = report.Vulnerability{
-	Summary:     "Outdated Packages in Docker Image",
-	Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
-	CWEID:       937,
-	Recommendations: []string{
-		"Update affected packages to the versions specified in the resources table or newer.",
-	},
-}
-
 func main() {
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	var reportTruncated bool
 	// Load required env vars for docker registry authentication.
 	registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
 	registryEnvUsername := os.Getenv("REGISTRY_USERNAME")
@@ -192,43 +188,19 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return nil
 	}
 
-	ap := report.ResourcesGroup{
-		Name: "Affected Packages",
-		Header: []string{
-			"Name",
-			"Version",
-			"Severity",
-			"FixedBy",
-		},
-	}
-
-	vp := report.ResourcesGroup{
-		Name: "Package Vulnerabilities",
-		Header: []string{
-			"Name",
-			"Version",
-			"Vulnerabilities",
-		},
-	}
-
 	var rows []map[string]string
 	duppedPackageVulns := make(map[string]map[string]string)
+	apCVEs := make(map[string][]string)
 
 	for _, trivyTarget := range results {
 		for _, dockerVuln := range trivyTarget.Vulnerabilities {
-			// Set global score for the report.
-			score := getScore(dockerVuln.Severity)
-			if score > vuln.Score {
-				vuln.Score = score
-			}
-
 			ap := map[string]string{
-				"Name":            dockerVuln.PkgName,
-				"Version":         dockerVuln.InstalledVersion,
-				"Severity":        dockerVuln.Severity,
-				"FixedBy":         dockerVuln.FixedVersion,
-				"Vulnerabilities": fmt.Sprintf("[%s](https://nvd.nist.gov/vuln/detail/%s)", dockerVuln.VulnerabilityID, dockerVuln.VulnerabilityID),
+				"Name":     dockerVuln.PkgName,
+				"Version":  dockerVuln.InstalledVersion,
+				"Severity": dockerVuln.Severity,
+				"FixedBy":  dockerVuln.FixedVersion,
 			}
+			apCVEs[ap["Name"]] = append(apCVEs[ap["Name"]], dockerVuln.VulnerabilityID)
 
 			// Check if affected package has already been indexed.
 			key, ok := duppedPackageVulns[ap["Name"]]
@@ -236,17 +208,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				duppedPackageVulns[ap["Name"]] = ap
 				continue
 			}
-
-			// Append VulnerabilityID to the affected package vulnerabilities.
-			// Truncate Vulnerabilities to 10 to avoid overflow the report.
-			switch count := len(strings.Split(key["Vulnerabilities"], "|")); {
-			case count < 10:
-				key["Vulnerabilities"] = fmt.Sprintf("%s | %s", key["Vulnerabilities"], ap["Vulnerabilities"])
-			case count == 10:
-				key["Vulnerabilities"] = fmt.Sprintf("%s | and some others ...", key["Vulnerabilities"])
-				reportTruncated = true
-			}
-
 			if isMoreSevere(ap["Severity"], key["Severity"]) {
 				key["Severity"] = ap["Severity"]
 			}
@@ -276,34 +237,81 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	})
 
-	// To avoid report size overflow only top 30 vulnerabilities are shown.
-	// In addition, docker commands are provided to let the user generate
-	// the full report.
+	// To avoid report size overflow only top 30 most vulnerable packages
+	// are reported.
 	totalVulnerablePackages := len(rows)
-	if totalVulnerablePackages > 30 {
-		logger.Warn("truncate to top 30 vulnerabilities\n")
-		reportTruncated = true
-		rows = rows[0:30]
+	if totalVulnerablePackages > vulnTruncateLimit {
+		logger.Warnf("truncate to top %d vulnerabilities\n", vulnTruncateLimit)
+		rows = rows[0:vulnTruncateLimit]
 	}
 
-	if reportTruncated {
-		vuln.Details = generateDetails(len(rows), totalVulnerablePackages, registryEnvDomain, target)
+	// Sort apCVEs for a consistent fingerprinting.
+	for _, v := range apCVEs {
+		sort.Strings(v)
 	}
 
-	ap.Rows = rows
-	vp.Rows = rows
+	vp := report.ResourcesGroup{
+		Name: "Package Vulnerabilities",
+		Header: []string{
+			"Name",
+			"Version",
+			"Vulnerabilities",
+		},
+	}
 
-	vuln.Resources = append(vuln.Resources, ap, vp)
-	state.AddVulnerabilities(vuln)
+	for _, r := range rows {
+		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
+		vulnerabilityID := computeVulnerabilityID(target, affectedResource, apCVEs)
+		description := fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities", r["Name"], r["Version"])
+		cves := apCVEs[r["Name"]]
+		// Build vulnerabilities Rsources table.
+		vResourcesTable := make(map[string]string)
+		vResourcesTable["Name"] = r["Name"]
+		vResourcesTable["Version"] = r["Version"]
+		for i := 0; i < len(cves) && i < vulnCVETrucateLimit; i++ {
+			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | [%s](https://nvd.nist.gov/vuln/detail/%s)", vResourcesTable["Vulnerabilities"], cves[i], cves[i])
+		}
+		if len(cves) > vulnCVETrucateLimit {
+			logger.Warnf("truncate affected package [%s] CVE list to [%d]\n", r["Name"], vulnCVETrucateLimit)
+			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | and some others ...)", vResourcesTable["Vulnerabilities"])
+		}
+		vp.Rows = []map[string]string{vResourcesTable}
+		// Build the vulnerability.
+		vuln := report.Vulnerability{
+			ID:               vulnerabilityID,
+			AffectedResource: affectedResource,
+			Summary:          "Outdated Packages in Docker Image",
+			Score:            getScore(r["Severity"]),
+			Description:      description,
+			Details:          generateDetails(registryEnvDomain, target),
+			CWEID:            937,
+			Labels:           []string{"potential", "docker"},
+			Recommendations: []string{
+				fmt.Sprintf("Update the base docker image or [%s] package to at least version [%s]", r["Name"], r["FixedBy"]),
+			},
+			Resources: []report.ResourcesGroup{vp},
+		}
+		state.AddVulnerabilities(vuln)
+	}
 
 	return nil
 }
 
-func generateDetails(vp, totalVP int, registry, target string) string {
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func generateDetails(registry, target string) string {
 	details := []string{
-		fmt.Sprintf("This report shows %d vulnerable packages out of %d.", vp, totalVP),
-		"Some vulnerability description might have been truncated.",
-		"Run the following command to obtain the full report.",
+		"Run the following command to obtain the full report in your computer.",
 		"If using a public docker registry:",
 		fmt.Sprintf(`
 	docker run -it --rm aquasec/trivy %s`, target,
