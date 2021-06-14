@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
@@ -32,6 +30,7 @@ const (
 
 var (
 	checkName = "vulcan-burp"
+	logger    = check.NewCheckLog(checkName)
 	// ErrNoBurpAPIEndPoint is returned by the check when the burp api url is
 	// not defined.
 	ErrNoBurpAPIEndPoint = errors.New("BURP_API_ENDPOINT env var must be set")
@@ -62,8 +61,6 @@ func run(ctx context.Context, assetType string, target string, optJSON string, s
 	if target == "" {
 		return errors.New("check target missing")
 	}
-	logger := check.NewCheckLog(checkName)
-	logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType})
 	isReachable, err := helpers.IsReachable(target, assetType, nil)
 	if err != nil {
 		logger.Warnf("Can not check asset reachability: %v", err)
