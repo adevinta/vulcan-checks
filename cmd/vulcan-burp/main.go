@@ -4,33 +4,46 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-burp/resturp"
 	report "github.com/adevinta/vulcan-report"
 )
 
 const (
-	activeScanMode  = "active"
-	passiveScanMode = "passive"
-	burpEndPointEnv = "BURP_API_ENDPOINT"
+	activeScanMode     = "active"
+	passiveScanMode    = "passive"
+	burpAPIEndpointEnv = "BURP_API_ENDPOINT"
+	burpUsernameEnv    = "BURP_USERNAME"
+	burpPasswordEnv    = "BURP_PASSWORD"
+	burpCrawlConfigEnv = "BURP_CRAWL_CONFIG"
+	burpCheckConfigEnv = "BURP_CHECK_CONFIG"
 )
 
 var (
 	checkName = "vulcan-burp"
 
-	logger = check.NewCheckLog(checkName)
-
 	// ErrNoBurpAPIEndPoint is returned by the check when the burp api url is
 	// not defined.
 	ErrNoBurpAPIEndPoint = errors.New("BURP_API_ENDPOINT env var must be set")
+
+	// ErrNoBurpCrawlConfig defines the error returned by the check when no
+	// config for the crawler has been defined.
+	ErrNoBurpCrawlConfig = errors.New("BURP_CRAWL_CONFIG env var must be set")
+
+	// ErrNoBurpCheckConfig defines the error returned by the check when no
+	// config for the checks has been defined.
+	ErrNoBurpCheckConfig = errors.New("BURP_CHECK_CONFIG env var must be set")
 
 	// ErrInvalidScanMode is returned when an invalid scan mode was specified.
 	ErrInvalidScanMode = errors.New("invalid scan mode")
@@ -38,41 +51,9 @@ var (
 	defaultTimeout = 500 * time.Minute
 )
 
-type options struct {
-	ScanMode    ScanMode `json:"vulcan_burp.scan_mode"`
-	ScanID      uint     `json:"vulcan_burp.scan_id"`
-	Credentials string   `json:"vulcan_burp.credentials"`
-}
-
-// ScanMode possible scan modes are: "active" and "passive".
-type ScanMode string
-
-func (s ScanMode) toBurpConfigs() ([]string, error) {
-	if s == "passive" || s == "" {
-		return []string{"Crawl limit - 10 minutes", "Audit checks - passive"}, nil
-	}
-
-	if s == "active" {
-		// return []string{"Crawl limit - 10 minutes", "Audit coverage - maximum"}, nil
-		return []string{}, nil
-	}
-
-	return nil, fmt.Errorf("%w, mode specified was %s, only valid modes are: active, passive", ErrInvalidScanMode, s)
-}
-
-func buildOptions(optJSON string) (options, error) {
-	var opts options
-	if optJSON != "" {
-		if err := json.Unmarshal([]byte(optJSON), &opts); err != nil {
-			return opts, err
-		}
-	}
-
-	if opts.ScanMode == "" {
-		opts.ScanMode = passiveScanMode
-	}
-
-	return opts, nil
+// Options defines the possible options to be received by the check.
+type Options struct {
+	ScanID uint `json:"scan_id"`
 }
 
 func main() {
@@ -80,19 +61,44 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, target string, optJSON string, state state.State) error {
+func run(ctx context.Context, assetType string, target string, optJSON string, state state.State) error {
 	if target == "" {
 		return errors.New("check target missing")
 	}
-	api, ok := os.LookupEnv(burpEndPointEnv)
+	logger := check.NewCheckLog(checkName)
+	logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType})
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
+	if !isReachable {
+		return checkstate.ErrAssetUnreachable
+	}
+
+	var opt Options
+	if optJSON != "" {
+		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
+			return err
+		}
+	}
+
+	api, ok := os.LookupEnv(burpAPIEndpointEnv)
 	if !ok {
 		return ErrNoBurpAPIEndPoint
 	}
 
-	opts, err := buildOptions(optJSON)
-	if err != nil {
-		return err
+	crawlConfig, ok := os.LookupEnv(burpCrawlConfigEnv)
+	if !ok {
+		return ErrNoBurpCrawlConfig
 	}
+
+	checkConfig, ok := os.LookupEnv(burpCheckConfigEnv)
+	if !ok {
+		return ErrNoBurpCheckConfig
+	}
+
+	username, ok := os.LookupEnv(burpUsernameEnv)
+	password, ok := os.LookupEnv(burpPasswordEnv)
 
 	c, err := resturp.New(http.DefaultClient, api, "")
 	if err != nil {
@@ -100,9 +106,10 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 	}
 
 	// If a scan id is specified try to generete the vulns from the
-	// corresponding already existent scan.
-	if opts.ScanID != 0 {
-		s, err := c.GetScanStatus(opts.ScanID)
+	// corresponding already existent scan, this is not intended to be used
+	// running in production, only to run the check locally.
+	if opt.ScanID != 0 {
+		s, err := c.GetScanStatus(opt.ScanID)
 		if err != nil {
 			return err
 		}
@@ -115,17 +122,10 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 		return nil
 	}
 
-	configs, err := opts.ScanMode.toBurpConfigs()
-	if err != nil {
-		return err
-	}
+	configs := []string{crawlConfig, checkConfig}
+	logger.Infof("scanning with policy %+v", configs)
 
-	var user, password string
-	if opts.Credentials != "" {
-		user, password = parseCredentials(opts.Credentials)
-	}
-
-	id, err := c.LaunchScan(target, configs, user, password)
+	id, err := c.LaunchScan(target, configs, username, password)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func run(ctx context.Context, target string, optJSON string, state state.State) 
 }
 
 func waitScanFinished(ID uint, c *resturp.Resturp) (*resturp.ScanStatus, error) {
-	t := time.NewTicker(3 * time.Second)
+	t := time.NewTicker(5 * time.Minute)
 	timeout := time.NewTimer(defaultTimeout)
 	var (
 		err error
@@ -178,12 +178,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 	}
 	var cvulns = make(map[string]report.Vulnerability)
 	for _, i := range ievents {
-		// if i.Type != "issue_found" {
-		// 	continue
-		// }
-		// if i.Issue.Confidence == "tentative" {
-		// 	continue
-		// }
 		// TODO: Check the issue exists in the index, and return an error if
 		// it doesn't.
 		id := strconv.Itoa(int(i.Issue.TypeIndex))

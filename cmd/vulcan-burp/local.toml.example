@@ -1,5 +1,8 @@
 [Check]
 Target = "https://example.com"
-Options =  '{"vulcan_burp.scan_mode": "passive"}'
 [RequiredVars]
 BURP_API_ENDPOINT = "http://localhost:1337"
+BURP_USERNAME = "user"
+BURP_PASSWORD = "supersecret"
+BURP_CRAWL_CONFIG = "Crawl limit - 10 minutes"
+BURP_CHECK_CONFIG = "Audit coverage - maximum"
