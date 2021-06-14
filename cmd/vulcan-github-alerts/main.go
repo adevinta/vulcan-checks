@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -170,7 +171,6 @@ func main() {
 			return nil
 		}
 
-		var maxScore float32
 		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
 			vuln := alert.SecurityVulnerability
@@ -230,10 +230,6 @@ func main() {
 				)
 				dependencies[vuln.Package.Name].referencesCount++
 			}
-
-			if advisoryScore > maxScore {
-				maxScore = advisoryScore
-			}
 		}
 
 		rows := []map[string]string{}
@@ -274,22 +270,36 @@ func main() {
 			}
 		})
 
-		dependenciesResources := report.ResourcesGroup{
-			Name: "Vulnerable Dependencies",
-			Header: []string{
-				"Dependency",
-				"Ecosystem",
-				"Vulnerabilities",
-				"Max. Severity",
-				"Min. Recommended Version",
-				"References",
-			},
-			Rows: rows,
+		for _, r := range rows {
+			affectedResource := fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"])
+			vulnerabilityID := computeVulnerabilityID(target, affectedResource, fmt.Sprintf("%v", r))
+			vulnerability := report.Vulnerability{
+				ID:               vulnerabilityID,
+				AffectedResource: affectedResource,
+				Score:            scoreSeverity(r["Max. Severity"]),
+				Summary:          "Vulnerable Code Dependencies in Github Repository",
+				Labels:           []string{"potential", "dependency", "code", "github"},
+				Description:      fmt.Sprintf("Dependency [%s] installed by [%s] have published security vulnerabilities.\nYou can find more specific information in the resources table for the repository.", r["Dependency"], r["Ecosystem"]),
+				ImpactDetails:    "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
+				CWEID:            937,
+				Recommendations:  []string{"Update the dependency to at least the minimum recommended version in the resources table."},
+				Resources: []report.ResourcesGroup{
+					{
+						Name: "Vulnerable Dependencies",
+						Header: []string{
+							"Dependency",
+							"Ecosystem",
+							"Vulnerabilities",
+							"Max. Severity",
+							"Min. Recommended Version",
+							"References",
+						},
+						Rows: []map[string]string{r},
+					},
+				},
+			}
+			state.AddVulnerabilities(vulnerability)
 		}
-
-		vulnerableDependencies.Resources = []report.ResourcesGroup{dependenciesResources}
-		vulnerableDependencies.Score = maxScore
-		state.AddVulnerabilities(vulnerableDependencies)
 
 		return nil
 	}
@@ -297,6 +307,18 @@ func main() {
 	c := check.NewCheckFromHandler(checkName, run)
 
 	c.RunAndServe()
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func scoreSeverity(githubSeverity string) float32 {
