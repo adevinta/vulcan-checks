@@ -32,7 +32,6 @@ const (
 
 var (
 	checkName = "vulcan-burp"
-
 	// ErrNoBurpAPIEndPoint is returned by the check when the burp api url is
 	// not defined.
 	ErrNoBurpAPIEndPoint = errors.New("BURP_API_ENDPOINT env var must be set")
@@ -47,8 +46,6 @@ var (
 
 	// ErrInvalidScanMode is returned when an invalid scan mode was specified.
 	ErrInvalidScanMode = errors.New("invalid scan mode")
-
-	defaultTimeout = 500 * time.Minute
 )
 
 // Options defines the possible options to be received by the check.
@@ -144,7 +141,6 @@ func run(ctx context.Context, assetType string, target string, optJSON string, s
 
 func waitScanFinished(ID uint, c *resturp.Resturp) (*resturp.ScanStatus, error) {
 	t := time.NewTicker(5 * time.Minute)
-	timeout := time.NewTimer(defaultTimeout)
 	var (
 		err error
 		s   *resturp.ScanStatus
@@ -162,9 +158,6 @@ LOOP:
 				break LOOP
 			}
 			break
-		case <-timeout.C:
-			err = errors.New("timeout waiting scan to finish")
-			break LOOP
 		}
 	}
 	return s, err
