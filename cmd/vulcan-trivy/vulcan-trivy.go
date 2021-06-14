@@ -261,7 +261,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	for _, r := range rows {
 		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
-		vulnerabilityID := computeVulnerabilityID(target, affectedResource, apCVEs)
+		vulnerabilityID := computeVulnerabilityID(target, affectedResource, r["Severity"], apCVEs)
 		description := fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities", r["Name"], r["Version"])
 		cves := apCVEs[r["Name"]]
 		// Build vulnerabilities Rsources table.
