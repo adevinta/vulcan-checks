@@ -380,6 +380,7 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 	}
 
 	if len(pluginOutput.Output) < 1 {
+		//TODO: add affected resource and labels.
 		return []report.Vulnerability{vulcanVulnerability}, nil
 	}
 
