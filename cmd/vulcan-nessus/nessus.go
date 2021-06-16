@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -323,6 +324,7 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 
 	vulcanVulnerability := report.Vulnerability{
 		Summary: p.Name,
+		Labels:  []string{"nessus"},
 	}
 
 	// There might be more than one attribute with the same name. For example
@@ -380,7 +382,14 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 	}
 
 	if len(pluginOutput.Output) < 1 {
-		//TODO: add affected resource and labels.
+		vulcanVulnerability.AffectedResource = target
+		if vulcanVulnerability.Score == 0 {
+			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "informational")
+		} else {
+			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "issue")
+		}
+		vulcanVulnerability.ID = computeVulnerabilityID(target, target, vulcanVulnerability.Score)
+
 		return []report.Vulnerability{vulcanVulnerability}, nil
 	}
 
@@ -398,16 +407,21 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		if !ok || len(mapPorts) < 1 {
 			logger.Warnf("unexpected type for Output.Ports: %#v", output.Ports)
 
-			//TODO: add affected resource and labels.
 			v.AffectedResource = target
+			if v.Score == 0 {
+				v.Labels = append(v.Labels, "informational")
+			} else {
+				v.Labels = append(v.Labels, "issue")
+			}
+			v.ID = computeVulnerabilityID(target, target, v.Score, v.Details)
+
 			vulnerabilities = append(vulnerabilities, v)
+
 			continue
 		}
 
 		for portInformation := range mapPorts {
 			v := v
-			v.AffectedResource = portInformation
-			//TODO: add affected resource and labels.
 
 			parts := strings.Split(portInformation, " / ")
 			if len(parts) > 2 {
@@ -431,10 +445,29 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 				}
 			}
 
+			v.AffectedResource = portInformation
+			if v.Score == 0 {
+				v.Labels = append(v.Labels, "informational")
+			} else {
+				v.Labels = append(v.Labels, "issue")
+			}
+			v.ID = computeVulnerabilityID(target, target, v.Score, v.Details, v.Resources)
+
 			vulnerabilities = append(vulnerabilities, v)
 		}
-
 	}
 
 	return vulnerabilities, nil
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
