@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,37 +19,24 @@ import (
 )
 
 const (
-	activeScanMode     = "active"
-	passiveScanMode    = "passive"
-	burpAPIEndpointEnv = "BURP_API_ENDPOINT"
-	burpUsernameEnv    = "BURP_USERNAME"
-	burpPasswordEnv    = "BURP_PASSWORD"
-	burpCrawlConfigEnv = "BURP_CRAWL_CONFIG"
-	burpCheckConfigEnv = "BURP_CHECK_CONFIG"
+	burpAPITokenEnv           = "BURP_API_TOKEN"
+	burpBaseURLEnv            = "BURP_BASE_URL"
+	burpInsecureSkipVerifyEnv = "BURP_INSECURE_SKIP_VERIFY"
+	burpScanConfigEnv         = "BURP_SCAN_CONFIG"
+
+	defaultBurpInsecureSkipVerify = false
+	scanPollingInterval           = 10 // In seconds.
 )
 
 var (
 	checkName = "vulcan-burp"
 	logger    = check.NewCheckLog(checkName)
-	// ErrNoBurpAPIEndPoint is returned by the check when the burp api url is
-	// not defined.
-	ErrNoBurpAPIEndPoint = errors.New("BURP_API_ENDPOINT env var must be set")
-
-	// ErrNoBurpCrawlConfig defines the error returned by the check when no
-	// config for the crawler has been defined.
-	ErrNoBurpCrawlConfig = errors.New("BURP_CRAWL_CONFIG env var must be set")
-
-	// ErrNoBurpCheckConfig defines the error returned by the check when no
-	// config for the checks has been defined.
-	ErrNoBurpCheckConfig = errors.New("BURP_CHECK_CONFIG env var must be set")
-
-	// ErrInvalidScanMode is returned when an invalid scan mode was specified.
-	ErrInvalidScanMode = errors.New("invalid scan mode")
 )
 
 // Options defines the possible options to be received by the check.
 type Options struct {
-	ScanID uint `json:"scan_id"`
+	ScanID         uint `json:"scan_id"`
+	SkipDeleteScan bool `json:"skip_delete_scan"`
 }
 
 func main() {
@@ -57,10 +44,14 @@ func main() {
 	c.RunAndServe()
 }
 
-func run(ctx context.Context, assetType string, target string, optJSON string, state state.State) error {
-	if target == "" {
-		return errors.New("check target missing")
+func run(ctx context.Context, target string, assetType string, optJSON string, state state.State) error {
+	var opt Options
+	if optJSON != "" {
+		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
+			return err
+		}
 	}
+
 	isReachable, err := helpers.IsReachable(target, assetType, nil)
 	if err != nil {
 		logger.Warnf("Can not check asset reachability: %v", err)
@@ -69,39 +60,40 @@ func run(ctx context.Context, assetType string, target string, optJSON string, s
 		return checkstate.ErrAssetUnreachable
 	}
 
-	var opt Options
-	if optJSON != "" {
-		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
-			return err
-		}
+	apiToken, present := os.LookupEnv(burpAPITokenEnv)
+	if !present {
+		return ErrNoBurpAPIToken
 	}
 
-	api, ok := os.LookupEnv(burpAPIEndpointEnv)
-	if !ok {
-		return ErrNoBurpAPIEndPoint
+	baseURL, present := os.LookupEnv(burpBaseURLEnv)
+	if !present {
+		return ErrNoBurpBaseURL
 	}
 
-	crawlConfig, ok := os.LookupEnv(burpCrawlConfigEnv)
-	if !ok {
-		return ErrNoBurpCrawlConfig
+	scanConfig, present := os.LookupEnv(burpScanConfigEnv)
+	if !present {
+		return ErrNoBurpScanConfig
 	}
 
-	checkConfig, ok := os.LookupEnv(burpCheckConfigEnv)
-	if !ok {
-		return ErrNoBurpCheckConfig
+	// InsecureSkipVerify should be set only for local testing.
+	apiInsecureSkipVerifyStr, _ := os.LookupEnv(burpInsecureSkipVerifyEnv)
+	apiInsecureSkipVerify, err := strconv.ParseBool(apiInsecureSkipVerifyStr)
+	if err != nil {
+		apiInsecureSkipVerify = defaultBurpInsecureSkipVerify
 	}
-
-	username, ok := os.LookupEnv(burpUsernameEnv)
-	password, ok := os.LookupEnv(burpPasswordEnv)
-
-	c, err := resturp.New(http.DefaultClient, api, "")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: apiInsecureSkipVerify},
+	}
+	client := &http.Client{Transport: tr}
+	c, err := resturp.New(client, baseURL, apiToken, logger)
 	if err != nil {
 		return err
 	}
 
-	// If a scan id is specified try to generete the vulns from the
-	// corresponding already existent scan, this is not intended to be used
-	// running in production, only to run the check locally.
+	// If a scan ID is specified try to generate the vulns from the
+	// given existing scan ID.
+	// This is not intended to be used running in production, only
+	// for local testing.
 	if opt.ScanID != 0 {
 		s, err := c.GetScanStatus(opt.ScanID)
 		if err != nil {
@@ -116,10 +108,18 @@ func run(ctx context.Context, assetType string, target string, optJSON string, s
 		return nil
 	}
 
-	configs := []string{crawlConfig, checkConfig}
-	logger.Infof("scanning with policy %+v", configs)
+	configs := strings.Split(scanConfig, ";")
+	for i := range configs {
+		configs[i] = strings.TrimSpace(configs[i])
+	}
+	logger.Infof("scanning with config %+v", configs)
 
-	id, err := c.LaunchScan(target, configs, username, password)
+	id, err := c.LaunchScan(target, configs)
+	// Delete scan summary from Burp platform unless instruct for
+	// non do it or if we are reusing a Burp scan ID for testing.
+	if id != 0 && opt.ScanID == 0 && !opt.SkipDeleteScan {
+		defer c.DeleteScan(id)
+	}
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func run(ctx context.Context, assetType string, target string, optJSON string, s
 }
 
 func waitScanFinished(ID uint, c *resturp.Resturp) (*resturp.ScanStatus, error) {
-	t := time.NewTicker(5 * time.Minute)
+	t := time.NewTicker(scanPollingInterval * time.Second)
 	var (
 		err error
 		s   *resturp.ScanStatus

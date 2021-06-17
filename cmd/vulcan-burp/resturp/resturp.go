@@ -9,9 +9,15 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
-const basePath = "/v0.1/"
+const (
+	baseAPIPath    = "/api"
+	restAPIPath    = "/v0.1"
+	graphQLAPIPath = "/graphql/v1"
+)
 
 // Doer contains the methods needed by Resturp in order to make http client
 // calls.
@@ -21,31 +27,33 @@ type Doer interface {
 
 // Resturp is a client for the Burp scanner rest API.
 type Resturp struct {
-	doer    Doer
-	burpURL *url.URL
+	doer       Doer
+	restURL    string
+	graphQLURL string
+	apiKey     string
+	logger     *log.Entry
 }
 
 // New returns a ready to use Burp REST client.
-// The burpURL must have the form: https://hostname:port.
-func New(d Doer, burpURL string, APIKey string) (*Resturp, error) {
-	burp, err := url.Parse(burpURL)
+// The burpRESTURL must have the form: https://hostname:port.
+func New(d Doer, burpBaseURL string, APIKey string, logger *log.Entry) (*Resturp, error) {
+	_, err := url.Parse(burpBaseURL)
 	if err != nil {
 		return nil, err
 	}
-	if APIKey != "" {
-		burp.Path = "/" + APIKey
-	}
-	burp.Path = burp.Path + basePath
-	return &Resturp{d, burp}, nil
+	return &Resturp{
+		doer:       d,
+		restURL:    fmt.Sprintf("%s%s/%s%s", burpBaseURL, baseAPIPath, APIKey, restAPIPath),
+		graphQLURL: fmt.Sprintf("%s%s", burpBaseURL, graphQLAPIPath),
+		apiKey:     APIKey,
+		logger:     logger}, nil
 }
 
 // LaunchScan runs a new scan using the specified configurations against the
-// given web url. The configurations must exist in the Burp library, for
+// given target url. The configurations must exist in the Burp library, for
 // instance: "Minimize false positives". It returns the id of the created scan.
-func (r *Resturp) LaunchScan(webURL string, configs []string, user, password string) (uint, error) {
-	u := *r.burpURL
-	u.Path = u.Path + "scan"
-	sURL := u.String()
+func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
+	sURL := fmt.Sprintf("%s/scan", r.restURL)
 	var sconfigs []ScanConfiguration
 	for _, s := range configs {
 		sconfigs = append(sconfigs, ScanConfiguration{
@@ -55,15 +63,7 @@ func (r *Resturp) LaunchScan(webURL string, configs []string, user, password str
 	}
 	s := Scan{
 		ScanConfigurations: sconfigs,
-		Urls:               []string{webURL},
-	}
-
-	if user != "" || password != "" {
-		al := ApplicationLogin{
-			Username: user,
-			Password: password,
-		}
-		s.ApplicationLogins = []ApplicationLogin{al}
+		Urls:               []string{targetURL},
 	}
 	payload, err := json.Marshal(s)
 	if err != nil {
@@ -88,6 +88,7 @@ func (r *Resturp) LaunchScan(webURL string, configs []string, user, password str
 		if err != nil {
 			return 0, fmt.Errorf("parsing returned task id: %w", err)
 		}
+		r.logger.Infof("scan created with Burp scan ID [%d]", id)
 		uid := uint(id)
 		return uid, nil
 	}
@@ -114,10 +115,7 @@ func (r *Resturp) LaunchScan(webURL string, configs []string, user, password str
 
 // GetScanStatus returns the status of a scan.
 func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
-	u := *r.burpURL
-	id := strconv.Itoa(int(ID))
-	u.Path = fmt.Sprintf("%sscan/%s", u.Path, id)
-	sURL := u.String()
+	sURL := fmt.Sprintf("%s/scan/%d", r.restURL, ID)
 	req, err := http.NewRequest(http.MethodGet, sURL, nil)
 	if err != nil {
 		return nil, err
@@ -149,9 +147,7 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 
 // GetIssueDefinitions gets the current defined issues in burp.
 func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
-	u := *r.burpURL
-	u.Path = fmt.Sprintf("%sknowledge_base/issue_definitions", u.Path)
-	sURL := u.String()
+	sURL := fmt.Sprintf("%s/knowledge_base/issue_definitions", r.restURL)
 	req, err := http.NewRequest(http.MethodGet, sURL, nil)
 	if err != nil {
 		return nil, err
@@ -179,5 +175,58 @@ func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
 		return nil, err
 	}
 	return defs, nil
+}
 
+// DeleteScan deletes the scan with the given id.
+func (r *Resturp) DeleteScan(ID uint) {
+	payload := fmt.Sprintf("{\"operationName\":\"DeleteScan\",\"variables\":{\"input\":{\"id\":\"%d\"}},\"query\":\"mutation DeleteScan($input: DeleteScanInput!) {\\n  delete_scan(input: $input) {\\n    id\\n    __typename\\n  }\\n}\\n\"}", ID)
+	err := r.gDo(payload)
+	if err != nil {
+		r.logger.Errorf("unable to delete Burp scan ID [%d] report: %s", ID, err)
+		return
+	}
+	r.logger.Infof("Burp scan ID [%d] report deleted successfully", ID)
+}
+
+// CancelScan cancels the scan with the given id.
+func (r *Resturp) CancelScan(ID uint) {
+	payload := fmt.Sprintf("{\"operationName\":\"CancelScan\",\"variables\":{\"input\":{\"id\":\"%d\"}},\"query\":\"mutation CancelScan($input: CancelScanInput!) {\\n  cancel_scan(input: $input) {\\n    id\\n    __typename\\n  }\\n}\\n\"}", ID)
+	err := r.gDo(payload)
+	if err != nil {
+		r.logger.Errorf("unable to cancel Burp scan ID [%d] report: %s", ID, err)
+		return
+	}
+	r.logger.Infof("Burp scan ID [%d] cancelled successfully", ID)
+}
+
+func (r *Resturp) gDo(payload string) error {
+	preader := strings.NewReader(string(payload))
+	req, err := http.NewRequest(http.MethodPost, r.graphQLURL, preader)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("authorization", r.apiKey)
+	req.Header.Add("content-type", "application/json")
+	resp, err := r.doer.Do(req)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		r.logger.Errorf("unexpected response body: %s", body)
+		return errors.New("unexpected response status code")
+	}
+	var errorResponse GraphQLErrorResponse
+	err = json.Unmarshal(body, &errorResponse)
+	if err != nil {
+		return err
+	}
+	if len(errorResponse.Errors) > 0 {
+		r.logger.Errorf("response error: %+v", errorResponse.Errors)
+		return errors.New("API error response received")
+	}
+	return nil
 }

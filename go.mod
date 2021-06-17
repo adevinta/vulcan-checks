@@ -16,12 +16,7 @@ require (
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/avast/retry-go v3.0.0+incompatible
-<<<<<<< HEAD
 	github.com/aws/aws-sdk-go v1.42.9
-=======
-	github.com/aws/aws-sdk-go v1.38.57
-	github.com/google/go-cmp v0.4.0 // indirect
->>>>>>> 9890485... Rebase
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
@@ -47,7 +42,11 @@ require (
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
+<<<<<<< HEAD
 >>>>>>> 9890485... Rebase
+=======
+	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
+>>>>>>> 68fce59... WIP
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.8

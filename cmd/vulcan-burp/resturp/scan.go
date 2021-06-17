@@ -59,6 +59,16 @@ type ScanPayloadError struct {
 	Err  string `json:"error"`
 }
 
+// GraphQLErrorResponse defines the Burp GrapQL API error response structure.
+type GraphQLErrorResponse struct {
+	Errors []struct {
+		Message    string `json:"message"`
+		Extensions struct {
+			Code int `json:"code"`
+		} `json:"extensions"`
+	} `json:"errors"`
+}
+
 func (s ScanPayloadError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Type, s.Err)
 }

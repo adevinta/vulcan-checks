@@ -1,8 +1,6 @@
 [Check]
 Target = "https://example.com"
 [RequiredVars]
-BURP_API_ENDPOINT = "http://localhost:1337"
-BURP_USERNAME = "user"
-BURP_PASSWORD = "supersecret"
-BURP_CRAWL_CONFIG = "Crawl limit - 10 minutes"
-BURP_CHECK_CONFIG = "Audit coverage - maximum"
+BURP_BASE_URL = "http://localhost:1337"
+BURP_API_TOKEN = "supersecrettoken"
+BURP_SCAN_CONFIG = "Crawl strategy - fastest;Audit checks - all except time-based detection methods;Audit checks - light active;Never stop audit due to application errors"
