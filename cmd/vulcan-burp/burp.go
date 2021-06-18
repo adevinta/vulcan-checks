@@ -24,7 +24,7 @@ const (
 	burpScanConfigEnv         = "BURP_SCAN_CONFIG"
 
 	defaultBurpInsecureSkipVerify = false
-	scanPollingInterval           = 10 // In seconds.
+	scanPollingInterval           = 15 // In seconds.
 )
 
 // Runner defines the check interface.
@@ -39,8 +39,13 @@ type runner struct {
 	ctx        context.Context
 }
 
-// CleanUp is called by the sdk when the check needs to be aborted in order to give the
-// opportunity to clean up resources.
+var scanTerminalStatus = map[string]bool{
+	"succeeded": true,
+	"failed":    true,
+}
+
+// CleanUp is called by the sdk when the check finishes or a check abort
+// operation has been requested. We must perform clean up tasks at this point.
 func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 	if r.burpScanID == 0 {
 		// Nothing to handle.
@@ -53,9 +58,18 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 		}
 		logger.Infof("cleanup process finished")
 	}()
-	// Cancel the scan regardless the status. This may show some errors in the
-	// logs but we ensure cancel action is executed in all cases.
-	r.burpCli.CancelScan(r.burpScanID)
+
+	scanStatus, err := r.burpCli.GetScanStatus(r.burpScanID)
+	if err != nil {
+		logger.Warnf("could't get scan status: %s", err)
+		return
+	}
+
+	// If we reach here and the scan is not in a terminal status something went
+	// wrong and we should try to cancel the scan in Burp.
+	if !scanTerminalStatus[scanStatus.Status] {
+		r.burpCli.CancelScan(r.burpScanID)
+	}
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
@@ -66,6 +80,10 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 			return err
 		}
 	}
+	// Scan summary will be deleted after finish unless a scan_id has been
+	// provided in the Opts. or if skip_delete_scan is set true in the Opts.
+	r.delete = opt.ScanID == 0 && !opt.SkipDeleteScan
+	logger.Infof("Burp scan summary deletion after finish set to [%t]", r.delete)
 
 	isReachable, err := helpers.IsReachable(target, assetType, nil)
 	if err != nil {
@@ -105,16 +123,18 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		return err
 	}
 
-	r.delete = opt.ScanID != 0 || !opt.SkipDeleteScan
-
 	// If a scan ID is specified try to generate the vulns from the
 	// given existing Brup scan ID.
 	// This is not intended to be used running in production, only
 	// for local testing.
 	if opt.ScanID != 0 {
+		logger.Infof("extracting vulnerabilities from an existing scan with ID [%d]", opt.ScanID)
 		s, err := r.burpCli.GetScanStatus(opt.ScanID)
 		if err != nil {
 			return err
+		}
+		if s.Status != "succeeded" {
+			return errors.New("scan_id provided in options not found")
 		}
 		defs, err := r.burpCli.GetIssueDefinitions()
 		if err != nil {
@@ -132,13 +152,6 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	logger.Infof("scanning with config %+v", configs)
 
 	r.burpScanID, err = r.burpCli.LaunchScan(target, configs)
-	// Delete scan summary from Burp unless instruct to not do it.
-	if r.delete {
-		// In case of check abort this defer scan delete may fail because
-		// the scan can be in a "running" status.
-		// CleanUp function may cancel and delete the scan successfully.
-		defer r.burpCli.DeleteScan(r.burpScanID)
-	}
 	if err != nil {
 		return err
 	}
@@ -186,7 +199,7 @@ LOOP:
 			// complete/successfully scans.
 			if s.Status == "failed" {
 				err = errors.New("scan finished unsuccessfully")
-				logger.Errorf("Burp scan id [%d]: %s", r.burpScanID, err)
+				logger.Errorf("Burp scan ID [%d]: %s", r.burpScanID, err)
 				break LOOP
 			}
 			break

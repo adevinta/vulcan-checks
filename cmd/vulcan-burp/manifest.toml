@@ -1,11 +1,9 @@
-Description = "Runs a Burp passive or active scan"
-Timeout = 7200 # 2 hour. Expressed in seconds as an integer.
+Description = "Runs a Burp Suite Enterprise Edition scan."
+Timeout = 10800 # 3 hour. Expressed in seconds as an integer.
 AssetTypes = ["WebAddress"]
-Options = '{"type": "active"}'
+
 RequiredVars = [
-  "BURP_API_ENDPOINT ",
-  "BURP_USERNAME",
-  "BURP_PASSWORD",
-  "BURP_CRAWL_CONFIG",
-  "BURP_CHECK_CONFIG"
+  "BURP_BASE_URL",
+  "BURP_API_TOKEN",
+  "BURP_SCAN_CONFIG"
 ]

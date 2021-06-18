@@ -1,6 +1,21 @@
 [Check]
 Target = "https://example.com"
+AssetType = "WebAddress"
+
+# You can add check options to reuse an existing Brup scan summary by
+# specifying the scan_id to generate a Vulcan vulnerability report which
+# may be convinient for local testing.
+# Options = '{"scan_id": 124}'
+
+# You can also instruct Vulcan check to skip Brup scan summary deletion
+# specifying skip_delete_scan in the Options so you can reuse it later.
+# Options = '{"skip_delete_scan": true}'
+
 [RequiredVars]
 BURP_BASE_URL = "http://localhost:1337"
 BURP_API_TOKEN = "supersecrettoken"
 BURP_SCAN_CONFIG = "Crawl strategy - fastest;Audit checks - all except time-based detection methods;Audit checks - light active;Never stop audit due to application errors"
+# If you are exposing Burp Suite Enterprise Edition API using a self-signed
+# certificate you can set BURP_INSECURE_SKIP_VERIFY to true.
+# This is only meant to be used in developement, never in production.
+# BURP_INSECURE_SKIP_VERIFY = "true"
