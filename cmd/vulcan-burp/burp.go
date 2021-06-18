@@ -53,6 +53,7 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 	}
 	logger.Infof("starting cleanup process")
 	defer func() {
+		logger.Infof("Burp scan summary deletion after finish set to [%t]", r.delete)
 		if r.delete {
 			r.burpCli.DeleteScan(r.burpScanID)
 		}
@@ -82,8 +83,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	}
 	// Scan summary will be deleted after finish unless a scan_id has been
 	// provided in the Opts. or if skip_delete_scan is set true in the Opts.
-	r.delete = opt.ScanID == 0 && !opt.SkipDeleteScan
-	logger.Infof("Burp scan summary deletion after finish set to [%t]", r.delete)
+	r.delete = !(opt.ScanID != 0 || opt.SkipDeleteScan)
 
 	isReachable, err := helpers.IsReachable(target, assetType, nil)
 	if err != nil {

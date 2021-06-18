@@ -2,14 +2,15 @@ package resturp
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,6 +24,37 @@ const (
 // calls.
 type Doer interface {
 	Do(*http.Request) (*http.Response, error)
+}
+
+func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusCodeException bool) (*http.Response, error) {
+	var resp *http.Response
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxElapsedTime = 60 * time.Second
+	bo.MaxInterval = 15 * time.Second
+	retryCount := 0
+	err := backoff.Retry(func() func() error {
+		return func() error {
+			defer func() {
+				if retryCount > 0 {
+					r.logger.Infof("contacting with Burp API. Retry #%d", retryCount)
+				}
+				retryCount += 1
+			}()
+			var err error
+			resp, err = r.doer.Do(req)
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode != expectedStatusCode {
+				return ErrUnexpectedStatusCodeReceived
+			}
+			return nil
+		}
+	}(), bo)
+	if !statusCodeException && err == ErrUnexpectedStatusCodeReceived {
+		return resp, nil
+	}
+	return resp, err
 }
 
 // Resturp is a client for the Burp scanner rest API.
@@ -74,7 +106,7 @@ func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
 	if err != nil {
 		return 0, err
 	}
-	resp, err := r.doer.Do(req)
+	resp, err := r.doWithRetry(req, http.StatusCreated, false)
 	if err != nil {
 		return 0, err
 	}
@@ -82,7 +114,7 @@ func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
 	if resp.StatusCode == http.StatusCreated {
 		loc, ok := resp.Header["Location"]
 		if !ok || len(loc) < 1 {
-			return 0, errors.New("no location header received")
+			return 0, ErrNoLocationHeader
 		}
 		id, err := strconv.Atoi(loc[0])
 		if err != nil {
@@ -93,23 +125,20 @@ func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
 		return uid, nil
 	}
 
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
 	if resp.StatusCode == http.StatusBadRequest {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return 0, err
-		}
 		scanErr := new(ScanPayloadError)
-		err = json.Unmarshal(b, scanErr)
+		err = json.Unmarshal(body, scanErr)
 		if err != nil {
 			return 0, err
 		}
 		return 0, scanErr
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
 	return 0, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
 }
 
@@ -120,26 +149,23 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := r.doer.Do(req)
+	resp, err := r.doWithRetry(req, http.StatusOK, false)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
 		stat := new(ScanStatus)
-		err = json.Unmarshal(b, stat)
+		err = json.Unmarshal(body, stat)
 		if err != nil {
 			return nil, err
 		}
 		return stat, nil
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
 	}
 
 	return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
@@ -152,25 +178,22 @@ func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := r.doer.Do(req)
+	resp, err := r.doWithRetry(req, http.StatusOK, false)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
 		return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	var defs []IssueDefinition
-	err = json.Unmarshal(b, &defs)
+	err = json.Unmarshal(body, &defs)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +230,7 @@ func (r *Resturp) gDo(payload string) error {
 	}
 	req.Header.Add("authorization", r.apiKey)
 	req.Header.Add("content-type", "application/json")
-	resp, err := r.doer.Do(req)
+	resp, err := r.doWithRetry(req, http.StatusOK, false)
 	if err != nil {
 		return err
 	}
@@ -217,7 +240,7 @@ func (r *Resturp) gDo(payload string) error {
 	}
 	if resp.StatusCode != http.StatusOK {
 		r.logger.Errorf("unexpected response body: %s", body)
-		return errors.New("unexpected response status code")
+		return ErrUnexpectedStatusCodeReceived
 	}
 	var errorResponse GraphQLErrorResponse
 	err = json.Unmarshal(body, &errorResponse)
@@ -226,7 +249,7 @@ func (r *Resturp) gDo(payload string) error {
 	}
 	if len(errorResponse.Errors) > 0 {
 		r.logger.Errorf("response error: %+v", errorResponse.Errors)
-		return errors.New("API error response received")
+		return ErrGraphQLResponse
 	}
 	return nil
 }
