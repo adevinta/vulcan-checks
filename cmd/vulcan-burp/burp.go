@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -35,6 +36,7 @@ type runner struct {
 	burpCli    *resturp.Resturp
 	burpScanID uint
 	delete     bool
+	ctx        context.Context
 }
 
 // CleanUp is called by the sdk when the check needs to be aborted in order to give the
@@ -51,10 +53,13 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 		}
 		logger.Infof("cleanup process finished")
 	}()
+	// Cancel the scan regardless the status. This may show some errors in the
+	// logs but we ensure cancel action is executed in all cases.
 	r.burpCli.CancelScan(r.burpScanID)
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	r.ctx = ctx
 	var opt Options
 	if optJSON != "" {
 		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -100,7 +105,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		return err
 	}
 
-	r.delete = opt.ScanID != 0 || opt.SkipDeleteScan
+	r.delete = opt.ScanID != 0 || !opt.SkipDeleteScan
 
 	// If a scan ID is specified try to generate the vulns from the
 	// given existing Brup scan ID.
@@ -127,9 +132,11 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	logger.Infof("scanning with config %+v", configs)
 
 	r.burpScanID, err = r.burpCli.LaunchScan(target, configs)
-	// Delete scan summary from Burp platform unless instruct to
-	// not do it.
+	// Delete scan summary from Burp unless instruct to not do it.
 	if r.delete {
+		// In case of check abort this defer scan delete may fail because
+		// the scan can be in a "running" status.
+		// CleanUp function may cancel and delete the scan successfully.
 		defer r.burpCli.DeleteScan(r.burpScanID)
 	}
 	if err != nil {
@@ -159,12 +166,27 @@ func waitScanFinished(r *runner) (*resturp.ScanStatus, error) {
 LOOP:
 	for {
 		select {
+		case <-r.ctx.Done():
+			logger.Infof("ctx.Done")
+			t.Stop()
+			return nil, r.ctx.Err()
 		case <-t.C:
 			s, err = r.burpCli.GetScanStatus(r.burpScanID)
 			if err != nil {
 				break LOOP
 			}
+			logger.Infof("polling. Scan status [%s]", s.Status)
 			if s.Status == "succeeded" {
+				break LOOP
+			}
+			// TODO: A failed scan provides a "partial" vulnerability summary.
+			// We should evaluate if is better to return a partial summary or
+			// is better to consider always only complete/successfully scans.
+			// For the sake of consistency for now we are considering only
+			// complete/successfully scans.
+			if s.Status == "failed" {
+				err = errors.New("scan finished unsuccessfully")
+				logger.Errorf("Burp scan id [%d]: %s", r.burpScanID, err)
 				break LOOP
 			}
 			break
