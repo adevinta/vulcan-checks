@@ -26,7 +26,7 @@ type Doer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusCodeException bool) (*http.Response, error) {
+func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusCodeRiseException bool) (*http.Response, error) {
 	var resp *http.Response
 	bo := backoff.NewExponentialBackOff()
 	bo.MaxElapsedTime = 60 * time.Second
@@ -36,7 +36,7 @@ func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusC
 		return func() error {
 			defer func() {
 				if retryCount > 0 {
-					r.logger.Infof("contacting with Burp API. Retry #%d", retryCount)
+					r.logger.Warnf("contacting with Burp API. Retry #%d", retryCount)
 				}
 				retryCount += 1
 			}()
@@ -51,7 +51,7 @@ func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusC
 			return nil
 		}
 	}(), bo)
-	if !statusCodeException && err == ErrUnexpectedStatusCodeReceived {
+	if !statusCodeRiseException && err == ErrUnexpectedStatusCodeReceived {
 		return resp, nil
 	}
 	return resp, err
@@ -74,11 +74,12 @@ func New(d Doer, burpBaseURL string, APIKey string, logger *log.Entry) (*Resturp
 		return nil, err
 	}
 	return &Resturp{
-		doer:       d,
-		restURL:    fmt.Sprintf("%s%s/%s%s", burpBaseURL, baseAPIPath, APIKey, restAPIPath),
-		graphQLURL: fmt.Sprintf("%s%s", burpBaseURL, graphQLAPIPath),
-		apiKey:     APIKey,
-		logger:     logger}, nil
+			doer:       d,
+			restURL:    fmt.Sprintf("%s%s/%s%s", burpBaseURL, baseAPIPath, APIKey, restAPIPath),
+			graphQLURL: fmt.Sprintf("%s%s", burpBaseURL, graphQLAPIPath),
+			apiKey:     APIKey,
+			logger:     logger},
+		nil
 }
 
 // LaunchScan runs a new scan using the specified configurations against the

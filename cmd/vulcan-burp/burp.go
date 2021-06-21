@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,7 +25,7 @@ const (
 	burpScanConfigEnv         = "BURP_SCAN_CONFIG"
 
 	defaultBurpInsecureSkipVerify = false
-	scanPollingInterval           = 15 // In seconds.
+	scanPollingInterval           = 30 // In seconds.
 )
 
 // Runner defines the check interface.
@@ -123,39 +124,27 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		return err
 	}
 
-	// If a scan ID is specified try to generate the vulns from the
-	// given existing Brup scan ID.
-	// This is not intended to be used running in production, only
-	// for local testing.
+	var s *resturp.ScanStatus
 	if opt.ScanID != 0 {
+		// If a scan ID is specified try to generate the vulns from the
+		// given existing Brup scan ID.
+		// This is not intended to be used running in production, only
+		// for local testing.
 		logger.Infof("extracting vulnerabilities from an existing scan with ID [%d]", opt.ScanID)
-		s, err := r.burpCli.GetScanStatus(opt.ScanID)
+		s, err = r.burpCli.GetScanStatus(opt.ScanID)
+	} else {
+		configs := strings.Split(scanConfig, ";")
+		for i := range configs {
+			configs[i] = strings.TrimSpace(configs[i])
+		}
+		logger.Infof("scanning with config %+v", configs)
+		logger.Info("launching Burp scan")
+		r.burpScanID, err = r.burpCli.LaunchScan(target, configs)
 		if err != nil {
 			return err
 		}
-		if s.Status != "succeeded" {
-			return errors.New("scan_id provided in options not found")
-		}
-		defs, err := r.burpCli.GetIssueDefinitions()
-		if err != nil {
-			return err
-		}
-		vulns := fillVulns(s.IssueEvents, defs)
-		state.AddVulnerabilities(vulns...)
-		return nil
+		s, err = waitScanFinished(r)
 	}
-
-	configs := strings.Split(scanConfig, ";")
-	for i := range configs {
-		configs[i] = strings.TrimSpace(configs[i])
-	}
-	logger.Infof("scanning with config %+v", configs)
-
-	r.burpScanID, err = r.burpCli.LaunchScan(target, configs)
-	if err != nil {
-		return err
-	}
-	s, err := waitScanFinished(r)
 	if err != nil {
 		return err
 	}
@@ -214,56 +203,53 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 	for _, d := range defs {
 		defsIndex[d.IssueTypeID] = d
 	}
-	var cvulns = make(map[string]report.Vulnerability)
-	for _, i := range ievents {
-		// TODO: Check the issue exists in the index, and return an error if
-		// it doesn't.
-		id := strconv.Itoa(int(i.Issue.TypeIndex))
-		def := defsIndex[id]
-		v := cvulns[id]
-		v = fillVuln(i.Issue, def, v)
-		cvulns[id] = v
-	}
 	var vulns []report.Vulnerability
-	for _, v := range cvulns {
-		v := v
-		vulns = append(vulns, v)
-	}
-	return vulns
-}
-
-func fillVuln(i resturp.Issue, def resturp.IssueDefinition, v report.Vulnerability) report.Vulnerability {
-	if v.Summary == "" {
-		v = report.Vulnerability{}
-		// We assume the severity is the same in all the paths the vulns has
-		// been found.
-		v.Summary = def.Name
-		v.Score = severityToScore(i.Severity)
-		v.Recommendations = []string{def.Remediation}
-		v.Description = def.Description
-		v.Resources = []report.ResourcesGroup{
-			{
-				Name: "Found In",
-				Header: []string{
-					"Path",
-					"Confidence",
-					"Description",
+	for _, i := range ievents {
+		issueId := strconv.Itoa(int(i.Issue.TypeIndex))
+		issueDefinition, found := defsIndex[issueId]
+		if !found {
+			logger.Errorf("Burp issue [%d] not found in Burp issue definition list", issueId)
+			continue
+		}
+		v := report.Vulnerability{
+			Summary:          issueDefinition.Name,
+			Description:      issueDefinition.Description,
+			Recommendations:  []string{issueDefinition.Remediation},
+			ID:               i.Issue.SerialNumber,
+			AffectedResource: i.Issue.Path,
+			Score:            severityToScore(i.Issue.Severity),
+			Labels:           []string{"web"},
+			Details:          i.Issue.Description,
+			Resources: []report.ResourcesGroup{
+				{
+					Name: "Found In",
+					Header: []string{
+						"Path",
+						"Confidence",
+						"CWEs",
+					},
+					Rows: []map[string]string{},
 				},
-				Rows: []map[string]string{},
 			},
 		}
+		if issueDefinition.References != "" {
+			v.Description = fmt.Sprintf("%s<br>%s", v.Description, issueDefinition.References)
+		}
+		row := map[string]string{
+			"Path":       i.Issue.Path,
+			"Confidence": i.Issue.Confidence,
+			"CWEs":       issueDefinition.VulnerabilityClassifications,
+		}
+		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
+		if v.Score == 0 {
+			v.Labels = append(v.Labels, "informational")
+		} else {
+			v.Labels = append(v.Labels, confidenceToLabel(i.Issue.Confidence))
+		}
+		vulns = append(vulns, v)
 	}
-	score := severityToScore(i.Severity)
-	if score > v.Score {
-		v.Score = score
-	}
-	row := map[string]string{
-		"Path":        i.Path,
-		"Confidence":  i.Confidence,
-		"Description": i.Description,
-	}
-	v.Resources[0].Rows = append(v.Resources[0].Rows, row)
-	return v
+
+	return vulns
 }
 
 func severityToScore(risk string) float32 {
@@ -279,4 +265,12 @@ func severityToScore(risk string) float32 {
 	default:
 		return report.SeverityThresholdNone
 	}
+}
+
+func confidenceToLabel(confidence string) string {
+	switch confidence {
+	case "certain":
+		return "issue"
+	}
+	return "potential"
 }
