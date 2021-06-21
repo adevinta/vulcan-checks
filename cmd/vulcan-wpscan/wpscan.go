@@ -61,6 +61,7 @@ type WpScanReport struct {
 		ChangelogURL       string          `json:"changelog_url"`
 		DirectoryListing   bool            `json:"directory_listing"`
 		ErrorLogURL        string          `json:"error_log_url"`
+		Slug               string          `json:"slug"`
 		StyleURL           string          `json:"style_url"`
 		StyleName          string          `json:"style_name"`
 		StyleURI           string          `json:"style_uri"`
