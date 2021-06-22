@@ -115,6 +115,9 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		apiInsecureSkipVerify = defaultBurpInsecureSkipVerify
 	}
+	if apiInsecureSkipVerify {
+		logger.Warn("contacting Burp API with `InsecureSkipVerify` set to true")
+	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: apiInsecureSkipVerify},
 	}
@@ -216,7 +219,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 			Description:      issueDefinition.Description,
 			Recommendations:  []string{issueDefinition.Remediation},
 			ID:               i.Issue.SerialNumber,
-			AffectedResource: i.Issue.Path,
+			AffectedResource: fmt.Sprintf("%s%s", i.Issue.Origin, i.Issue.Path),
 			Score:            severityToScore(i.Issue.Severity),
 			Labels:           []string{"web"},
 			Details:          i.Issue.Description,

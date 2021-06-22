@@ -2,8 +2,10 @@ Description = "Runs a Burp Suite Enterprise Edition scan."
 Timeout = 10800 # 3 hour. Expressed in seconds as an integer.
 AssetTypes = ["WebAddress"]
 
+# BURP_INSECURE_SKIP_VERIFY must be set to false in production.
 RequiredVars = [
   "BURP_BASE_URL",
   "BURP_API_TOKEN",
-  "BURP_SCAN_CONFIG"
+  "BURP_SCAN_CONFIG",
+  "BURP_INSECURE_SKIP_VERIFY"
 ]
