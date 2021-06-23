@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -206,53 +208,106 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 	for _, d := range defs {
 		defsIndex[d.IssueTypeID] = d
 	}
-	var vulns []report.Vulnerability
-	for _, i := range ievents {
-		issueId := strconv.Itoa(int(i.Issue.TypeIndex))
+
+	// Group vulnerabilities per AffectedResource.
+	vAR := make(map[string]map[string][]int)
+	for i, e := range ievents {
+		issueId := strconv.Itoa(int(e.Issue.TypeIndex))
 		issueDefinition, found := defsIndex[issueId]
 		if !found {
 			logger.Errorf("Burp issue [%d] not found in Burp issue definition list", issueId)
 			continue
 		}
-		v := report.Vulnerability{
-			Summary:          issueDefinition.Name,
-			Description:      issueDefinition.Description,
-			Recommendations:  []string{issueDefinition.Remediation},
-			ID:               i.Issue.SerialNumber,
-			AffectedResource: fmt.Sprintf("%s%s", i.Issue.Origin, i.Issue.Path),
-			Score:            severityToScore(i.Issue.Severity),
-			Labels:           []string{"web"},
-			Details:          i.Issue.Description,
-			Resources: []report.ResourcesGroup{
-				{
-					Name: "Found In",
-					Header: []string{
-						"Path",
-						"Confidence",
-						"CWEs",
-					},
-					Rows: []map[string]string{},
-				},
-			},
-		}
-		if issueDefinition.References != "" {
-			v.Description = fmt.Sprintf("%s<br>%s", v.Description, issueDefinition.References)
-		}
-		row := map[string]string{
-			"Path":       i.Issue.Path,
-			"Confidence": i.Issue.Confidence,
-			"CWEs":       issueDefinition.VulnerabilityClassifications,
-		}
-		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
-		if v.Score == 0 {
-			v.Labels = append(v.Labels, "informational")
+		if v, found := vAR[issueDefinition.Name]; !found {
+			affectedResourceVulnerabilityGroup := map[string][]int{
+				e.Issue.Path: {i},
+			}
+			vAR[issueDefinition.Name] = affectedResourceVulnerabilityGroup
 		} else {
-			v.Labels = append(v.Labels, confidenceToLabel(i.Issue.Confidence))
+			if ar, arFound := v[e.Issue.Path]; !arFound {
+				v[e.Issue.Path] = []int{i}
+			} else {
+				ar = append(ar, i)
+				v[e.Issue.Path] = ar
+			}
 		}
-		vulns = append(vulns, v)
 	}
 
+	var vulns []report.Vulnerability
+	for _, v := range vAR {
+		for affectedResource, findings := range v {
+			vuln := report.Vulnerability{}
+			vulnIDs := []string{}
+			for i, idexFinding := range findings {
+				e := ievents[idexFinding]
+				vulnIDs = append(vulnIDs, e.ID)
+				issueDefinition, _ := defsIndex[strconv.Itoa(int(e.Issue.TypeIndex))]
+				if i == 0 {
+					vuln.Summary = issueDefinition.Name
+					vuln.Description = issueDefinition.Description
+					vuln.Recommendations = []string{issueDefinition.Remediation}
+					vuln.Labels = []string{"web"}
+					vuln.AffectedResource = fmt.Sprintf("%s%s", e.Issue.Origin, affectedResource)
+					vuln.Score = severityToScore(e.Issue.Severity)
+					vuln.Resources = []report.ResourcesGroup{
+						{
+							Name: "Found In",
+							Header: []string{
+								"Path",
+								"Confidence",
+								"CWEs",
+							},
+							Rows: []map[string]string{},
+						},
+						{
+							Name: "Details",
+							Header: []string{
+								"Path",
+								"Detail",
+							},
+							Rows: []map[string]string{},
+						},
+					}
+					if issueDefinition.References != "" {
+						vuln.Description = fmt.Sprintf("%s<br>%s", vuln.Description, issueDefinition.References)
+					}
+					if vuln.Score == 0 {
+						vuln.Labels = append(vuln.Labels, "informational")
+					} else {
+						vuln.Labels = append(vuln.Labels, confidenceToLabel(e.Issue.Confidence))
+					}
+				}
+				rowFoundIn := map[string]string{
+					"Path":       e.Issue.Path,
+					"Confidence": e.Issue.Confidence,
+					"CWEs":       issueDefinition.VulnerabilityClassifications,
+				}
+				vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, rowFoundIn)
+				rowDetails := map[string]string{
+					"Path":   e.Issue.Path,
+					"Detail": e.Issue.Description,
+				}
+				vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
+			}
+			sort.Strings(vulnIDs)
+			vulnID := computeVulnerabilityID(vuln.AffectedResource, vuln.AffectedResource, vulnIDs)
+			vuln.ID = vulnID
+			vulns = append(vulns, vuln)
+		}
+	}
 	return vulns
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func severityToScore(risk string) float32 {
