@@ -247,7 +247,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					vuln.Description = issueDefinition.Description
 					vuln.Recommendations = []string{issueDefinition.Remediation}
 					vuln.Labels = []string{"web"}
-					vuln.AffectedResource = fmt.Sprintf("%s%s", e.Issue.Origin, affectedResource)
+					vuln.AffectedResource = affectedResource
 					vuln.Score = severityToScore(e.Issue.Severity)
 					vuln.Resources = []report.ResourcesGroup{
 						{
@@ -269,7 +269,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						},
 					}
 					if issueDefinition.References != "" {
-						vuln.Description = fmt.Sprintf("%s<br>%s", vuln.Description, issueDefinition.References)
+						vuln.Recommendations = append(vuln.Recommendations, "<br>", issueDefinition.References)
 					}
 					if vuln.Score == 0 {
 						vuln.Labels = append(vuln.Labels, "informational")
