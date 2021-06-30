@@ -4,5 +4,6 @@ Timeout = 36000 # 10 hours. Expressed in seconds as an integer.
 # Disabled scanners:
 # 10062 - PII Disclosure - Too many false positive results.
 # 10003 - Vulnerable JS Library - Duplicates the Retire.js check.
+# 10108 - Reverse Tabnabbing - Not relevant for modern browser versions.
 # Source: https://www.zaproxy.org/docs/alerts/
-Options = '{"depth": 2, "active": true, "min_score": 0, "disabled_scanners": ["10062", "10003"]}'
+Options = '{"depth": 2, "active": true, "min_score": 0, "disabled_scanners": ["10062", "10003", "10108"]}'
