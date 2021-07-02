@@ -1,0 +1,19 @@
+Description = "Scan web addresses with projectdiscovery/nuclei"
+AssetTypes = ["WebAddress"]
+# force_update_templates: You can spicify wether or not to update vulcan-nuclei templates from
+#                         source repository.
+# template_inclusion_list: You can specify which nuclei templates will run against the target.
+#                          If you leave the array empty ALL available templates will run.
+# template_exclusion_list: You can explicitly exclude nuclei templates.
+#                          Template exclusion prevails over template inclusion.
+# severities: You can define which severities you want the check to report.
+#             Allowed values are: "high", "medium", "critical", "low".
+#             For more info: https://github.com/projectdiscovery/nuclei#usage
+Options = """\
+    {\
+        "force_update_templates": false,\
+        "template_inclusion_list": ["cves", "default-logins", "dns", "exposed-panels", "exposed-tokens", "exposures", "misconfiguration", "takeovers", "technologies", "vulnerabilities"],\
+        "template_exclusion_list": ["fuzzing", "helpers", "miscellaneous", "workflows"],\
+        "severities": []\
+    }\
+"""

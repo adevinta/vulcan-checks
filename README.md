@@ -37,6 +37,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-masscan** - Checks if a host has any port opened by scanning the whole TCP port range using masscan
 * **vulcan-mx** - Looks for MX DNS Records on a given domain
 * **vulcan-nessus** - Runs a Nessus scan
+* **vulcan-nuclei** - Runs [Nuclei](https://github.com/projectdiscovery/nuclei) scanner tool with selected [templates](https://github.com/projectdiscovery/nuclei-templates/)
 * **vulcan-prowler** - Checks compliance against CIS AWS Foundations Benchmark
 * **vulcan-results-load-test** - Internal testing check, not for production
 * **vulcan-retirejs** - Checks for vulnerabilities in JS frontend dependencies
