@@ -24,16 +24,18 @@ type prowlerReport struct {
 }
 
 type entry struct {
-	Profile   string
-	Account   string
-	Control   string
-	Message   string
-	Status    string
-	Scored    string
-	Level     string
-	ControlID string `json:"Control ID"`
-	Region    string
-	Timestamp string
+	Profile    string
+	Account    string `json:"Account Number"`
+	Control    string
+	Message    string
+	Status     string
+	Scored     string
+	Level      string
+	ControlID  string `json:"Control ID"`
+	Region     string
+	Timestamp  string
+	Compliance string
+	Service    string
 }
 
 /*
