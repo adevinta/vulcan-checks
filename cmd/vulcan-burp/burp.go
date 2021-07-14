@@ -253,6 +253,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						{
 							Name: "Found In",
 							Header: []string{
+								"Ref.",
 								"Path",
 								"Confidence",
 								"CWEs",
@@ -262,8 +263,8 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						{
 							Name: "Details",
 							Header: []string{
-								"Path",
-								"Detail",
+								"Ref.",
+								"Finding Details",
 							},
 							Rows: []map[string]string{},
 						},
@@ -278,16 +279,19 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					}
 				}
 				rowFoundIn := map[string]string{
+					"Ref.":       strconv.Itoa(i),
 					"Path":       e.Issue.Path,
 					"Confidence": e.Issue.Confidence,
 					"CWEs":       issueDefinition.VulnerabilityClassifications,
 				}
 				vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, rowFoundIn)
-				rowDetails := map[string]string{
-					"Path":   e.Issue.Path,
-					"Detail": e.Issue.Description,
+				if e.Issue.Description != "" {
+					rowDetails := map[string]string{
+						"Ref.":            strconv.Itoa(i),
+						"Finding Details": e.Issue.Description,
+					}
+					vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
 				}
-				vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
 			}
 			sort.Strings(vulnIDs)
 			vulnID := computeVulnerabilityID(vuln.AffectedResource, vuln.AffectedResource, vulnIDs)
