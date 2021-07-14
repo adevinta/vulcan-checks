@@ -270,7 +270,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						},
 					}
 					if issueDefinition.References != "" {
-						vuln.Recommendations = append(vuln.Recommendations, "<br>", issueDefinition.References)
+						vuln.Recommendations = append(vuln.Recommendations, issueDefinition.References)
 					}
 					if vuln.Score == 0 {
 						vuln.Labels = append(vuln.Labels, "informational")
@@ -292,6 +292,10 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					}
 					vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
 				}
+			}
+			// If vulnerability does not provide details then remove from resources table.
+			if len(vuln.Resources[1].Rows) == 0 {
+				vuln.Resources = vuln.Resources[:len(vuln.Resources)-1]
 			}
 			sort.Strings(vulnIDs)
 			vulnID := computeVulnerabilityID(vuln.AffectedResource, vuln.AffectedResource, vulnIDs)
