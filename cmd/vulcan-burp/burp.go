@@ -270,7 +270,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						},
 					}
 					if issueDefinition.References != "" {
-						vuln.Recommendations = append(vuln.Recommendations, issueDefinition.References)
+						vuln.Recommendations[0] = vuln.Recommendations[0] + issueDefinition.References
 					}
 					if vuln.Score == 0 {
 						vuln.Labels = append(vuln.Labels, "informational")
