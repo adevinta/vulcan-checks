@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -269,8 +270,15 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 							Rows: []map[string]string{},
 						},
 					}
+					// Parse Burp issue references to match Vulnerability Report format.
 					if issueDefinition.References != "" {
-						vuln.Recommendations[0] = vuln.Recommendations[0] + issueDefinition.References
+						hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
+						referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
+						for _, r := range referenceLinkList {
+							if len(r) > 1 {
+								vuln.References = append(vuln.References, string(r[1]))
+							}
+						}
 					}
 					if vuln.Score == 0 {
 						vuln.Labels = append(vuln.Labels, "informational")
@@ -281,7 +289,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 				rowFoundIn := map[string]string{
 					"Ref.":       strconv.Itoa(i),
 					"Path":       e.Issue.Path,
-					"Confidence": e.Issue.Confidence,
+					"Confidence": strings.Title(e.Issue.Confidence),
 					"CWEs":       issueDefinition.VulnerabilityClassifications,
 				}
 				vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, rowFoundIn)
