@@ -254,7 +254,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						{
 							Name: "Found In",
 							Header: []string{
-								"Ref.",
 								"Path",
 								"Confidence",
 								"CWEs",
@@ -264,7 +263,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 						{
 							Name: "Details",
 							Header: []string{
-								"Ref.",
 								"Finding Details",
 							},
 							Rows: []map[string]string{},
@@ -287,7 +285,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					}
 				}
 				rowFoundIn := map[string]string{
-					"Ref.":       strconv.Itoa(i),
 					"Path":       e.Issue.Path,
 					"Confidence": strings.Title(e.Issue.Confidence),
 					"CWEs":       issueDefinition.VulnerabilityClassifications,
@@ -295,7 +292,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 				vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, rowFoundIn)
 				if e.Issue.Description != "" {
 					rowDetails := map[string]string{
-						"Ref.":            strconv.Itoa(i),
 						"Finding Details": e.Issue.Description,
 					}
 					vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
