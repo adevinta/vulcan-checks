@@ -46,6 +46,25 @@ var (
 	templateResource           = "$resource"
 
 	rfrshInterval = time.Duration(5 * time.Second)
+
+	// Words to capture for the AffectedResourceString.
+	captureWords = []string{
+		"Snapshot",
+		"Volume",
+		"DB Instance",
+		"Security Group",
+		"Hosted Zone",
+		"Record Set",
+		"Bucket",
+		"Trail",
+		"Function",
+		"Certificate",
+		"Origin",
+		"Load Balancer",
+		"Access Key",
+		"User",
+		"Password Policy",
+	}
 )
 
 type options struct {
@@ -199,6 +218,11 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 
 	// Retrieve checks summaries
 	var alias *string
+	captureWordsRegexp, err := regexp.Compile(strings.Join(captureWords, "|"))
+	if err != nil {
+		return err
+	}
+
 	for _, v := range checks.Checks {
 		// Ignore results if we can't know the category
 		if v.Category == nil {
@@ -221,14 +245,6 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				CheckIds: []*string{v.Id}})
 		if err != nil {
 			return err
-		}
-
-		resourcesRed := report.ResourcesGroup{
-			Name: "Level: Red",
-		}
-
-		resourcesYellow := report.ResourcesGroup{
-			Name: "Level: Yellow",
 		}
 
 		for _, summary := range checkSummaries.Summaries {
@@ -295,11 +311,13 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 					}
 					alias = &res
 				}
+
 				// Alias can not be nil because the protection before.
-				header := []string{"Account"}
 				row := map[string]string{"Account": *alias}
+				header := []string{"Account"}
+				affectedResourceStr := "|"
+				score := float32(0.0)
 				for i := 0; i < len(v.Metadata); i++ {
-					// TODO drop column STATUS
 					fieldName := ""
 					if v.Metadata[i] != nil {
 						fieldName = *v.Metadata[i]
@@ -309,66 +327,54 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 						value = *fr.Metadata[i]
 					}
 
+					if fieldName == "Status" {
+						score = severityMap[*v.Id][value]
+						continue
+					}
+
 					if v.Metadata[i] != nil && fr.Metadata[i] != nil {
 						row[fieldName] = value
 						header = append(header, fieldName)
+
+						if captureWordsRegexp.MatchString(fieldName) {
+							affectedResourceStr = fmt.Sprintf("%s %s : %s |", affectedResourceStr, fieldName, value)
+						}
 					}
 				}
 
-				if row["Status"] == "Yellow" {
-					resourcesYellow.Rows = append(resourcesYellow.Rows, row)
-					resourcesYellow.Header = header
+				// If there is no value that we can use for the
+				// AffectedResourceString just leave it empty.
+				if affectedResourceStr == "|" {
+					affectedResourceStr = ""
 				}
 
-				if row["Status"] == "Red" {
-					resourcesRed.Rows = append(resourcesRed.Rows, row)
-					resourcesRed.Header = header
+				occurrences := report.ResourcesGroup{
+					Name: "Occurrences",
 				}
-			}
+				occurrences.Rows = append(occurrences.Rows, row)
+				occurrences.Header = header
 
-			score := float32(0.0)
-
-			// Avoid nil pointer dereference when reading *v.Id
-			// Score will be zeroed
-			if v.Id != nil {
-				if len(resourcesYellow.Rows) > 0 {
-					score = severityMap[*v.Id]["yellow"]
-				}
-				if len(resourcesRed.Rows) > 0 {
-					score = severityMap[*v.Id]["red"]
-				}
-			}
-
-			if len(resourcesRed.Rows) > 0 || len(resourcesYellow.Rows) > 0 {
 				summary := ""
 				// Avoid nil pointer dereference when reading *v.Name
 				if v.Name != nil {
 					summary = "AWS " + *v.Name
 				}
 
-				v := report.Vulnerability{
-					Summary:     summary,
-					Description: description,
-					Score:       score,
+				vuln := report.Vulnerability{
+					Summary:                summary,
+					Description:            description,
+					Score:                  score,
+					AffectedResource:       aws.StringValue(fr.ResourceId),
+					AffectedResourceString: affectedResourceStr,
+					Labels:                 []string{"issue", "aws"},
+					Resources:              []report.ResourcesGroup{occurrences},
 				}
+				vuln.Recommendations = append(vuln.Recommendations, recommendedActions...)
+				vuln.References = append(vuln.References, additionalResources...)
 
-				for _, r := range recommendedActions {
-					v.Recommendations = append(v.Recommendations, r)
-				}
+				vuln.Fingerprint = helpers.ComputeFingerprint()
 
-				for _, ar := range additionalResources {
-					v.References = append(v.References, ar)
-				}
-
-				if len(resourcesRed.Rows) > 0 {
-					v.Resources = append(v.Resources, resourcesRed)
-				}
-
-				if len(resourcesYellow.Rows) > 0 {
-					v.Resources = append(v.Resources, resourcesYellow)
-				}
-
-				state.AddVulnerabilities(v)
+				state.AddVulnerabilities(vuln)
 			}
 		}
 	}
