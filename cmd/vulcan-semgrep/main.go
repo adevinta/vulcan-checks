@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,7 +122,7 @@ func main() {
 			return err
 		}
 
-		addVulnsToState(state, r, repoPath)
+		addVulnsToState(state, r, repoPath, target)
 
 		return nil
 	}
@@ -130,7 +131,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) {
+func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target string) {
 	if r == nil || len(r.Results) < 1 {
 		return
 	}
@@ -139,30 +140,35 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 
 	vulns := make(map[string]report.Vulnerability)
 	for _, result := range r.Results {
-		v := vuln(result, vulns)
+		filepath := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
+		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
 
-		path := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
+		v := vuln(result, filepath, vulns)
+
 		row := map[string]string{
-			"Path":  fmt.Sprintf("%s:%d", path, result.Start.Line),
+			"Path":  path,
 			"Match": result.Extra.Lines,
 			"Fix":   result.Extra.Fix,
+			// Message will be removed afterwards if it has the same value in
+			// all the rows.
+			"Message": result.Extra.Message,
 		}
 
 		// In almost all cases the message is the same for all the results of
 		// the same rule, but there are few cases where message differs. In
 		// those few cases we will be adding the alternative messages in the
 		// resources table.
-		if result.Extra.Message != v.Description {
-			if len(v.Resources[0].Header) == 3 {
-				v.Resources[0].Header = append(v.Resources[0].Header, "Message")
-				logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
-			}
-			row["Message"] = result.Extra.Message
+		if result.Extra.Message != v.Description && len(v.Resources[0].Header) == 3 {
+			logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
+
+			v.Resources[0].Header = append(v.Resources[0].Header, "Message")
+			v.Description = ""
 		}
 
 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
 
-		vulns[v.Summary] = v
+		key := fmt.Sprintf("%s - %s", v.Summary, filepath)
+		vulns[key] = v
 	}
 
 	for _, v := range vulns {
@@ -171,22 +177,25 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath string) 
 			return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
 		})
 
-		// Fix vuln in case it contains alternative messages.
-		if len(v.Resources[0].Header) == 4 {
-			for _, row := range v.Resources[0].Rows {
-				if row["Message"] == "" {
-					row["Message"] = v.Description
-				}
-			}
+		// Compute vulnerability fingerprint based on Match.
+		var matches []string
+		for _, row := range v.Resources[0].Rows {
+			matches = append(matches, row["Match"])
 
-			v.Description = ""
+			// Delete Message from the row to avoid storing unnecesary messages
+			// when are all the same.
+			if len(v.Resources[0].Header) == 3 {
+				delete(row, "Message")
+			}
 		}
+
+		v.ID = computeVulnerabilityID(target, v.AffectedResource, matches)
 
 		state.AddVulnerabilities(v)
 	}
 }
 
-func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerability {
+func vuln(result Result, filepath string, vulns map[string]report.Vulnerability) report.Vulnerability {
 	logger.WithFields(logrus.Fields{"check_id": result.CheckID, "cwe": result.Extra.Metadata.Cwe}).Debug("processing result")
 
 	// Check ID example:
@@ -218,7 +227,8 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 
 	summary = strings.Title(summary)
 
-	v, ok := vulns[summary]
+	key := fmt.Sprintf("%s - %s", summary, filepath)
+	v, ok := vulns[key]
 	if ok {
 		return v
 	}
@@ -230,9 +240,11 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	v.References = append(v.References, "https://semgrep.dev/")
 	v.References = append(v.References, result.Extra.Metadata.References...)
 	v.CWEID = uint32(cweID)
+	v.AffectedResource = filepath
+	v.Labels = []string{"potential_issue"}
 	v.Resources = []report.ResourcesGroup{
 		report.ResourcesGroup{
-			Name: "Ocurrences",
+			Name: "Found in",
 			Header: []string{
 				"Path",
 				"Match",
@@ -242,4 +254,16 @@ func vuln(result Result, vulns map[string]report.Vulnerability) report.Vulnerabi
 	}
 
 	return v
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
