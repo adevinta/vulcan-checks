@@ -239,8 +239,8 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 		for affectedResource, findings := range v {
 			vuln := report.Vulnerability{}
 			vulnIDs := []string{}
-			for i, idexFinding := range findings {
-				e := ievents[idexFinding]
+			for i, indexFinding := range findings {
+				e := ievents[indexFinding]
 				vulnIDs = append(vulnIDs, e.ID)
 				issueDefinition, _ := defsIndex[strconv.Itoa(int(e.Issue.TypeIndex))]
 				if i == 0 {
