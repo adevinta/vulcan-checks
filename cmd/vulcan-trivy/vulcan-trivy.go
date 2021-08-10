@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -261,7 +260,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	for _, r := range rows {
 		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
-		vulnerabilityID := computeVulnerabilityID(target, affectedResource, r["Severity"], apCVEs)
+		fingerprint := helpers.ComputeFingerprint(target, affectedResource, r["Severity"], apCVEs)
 		description := fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities", r["Name"], r["Version"])
 		cves := apCVEs[r["Name"]]
 		// Build vulnerabilities Rsources table.
@@ -278,7 +277,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		vp.Rows = []map[string]string{vResourcesTable}
 		// Build the vulnerability.
 		vuln := report.Vulnerability{
-			ID:               vulnerabilityID,
+			Fingerprint:      fingerprint,
 			AffectedResource: affectedResource,
 			Summary:          "Outdated Packages in Docker Image",
 			Score:            getScore(r["Severity"]),
@@ -295,18 +294,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	return nil
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func generateDetails(registry, target string) string {
