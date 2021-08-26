@@ -254,6 +254,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		Header: []string{
 			"Name",
 			"Version",
+			"FixedBy",
 			"Vulnerabilities",
 		},
 	}
@@ -261,12 +262,12 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	for _, r := range rows {
 		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
 		fingerprint := helpers.ComputeFingerprint(target, affectedResource, r["Severity"], apCVEs)
-		description := fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities", r["Name"], r["Version"])
 		cves := apCVEs[r["Name"]]
 		// Build vulnerabilities Rsources table.
 		vResourcesTable := make(map[string]string)
 		vResourcesTable["Name"] = r["Name"]
 		vResourcesTable["Version"] = r["Version"]
+		vResourcesTable["FixedBy"] = r["FixedBy"]
 		for i := 0; i < len(cves) && i < vulnCVETrucateLimit; i++ {
 			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | [%s](https://nvd.nist.gov/vuln/detail/%s)", vResourcesTable["Vulnerabilities"], cves[i], cves[i])
 		}
@@ -277,18 +278,21 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		vp.Rows = []map[string]string{vResourcesTable}
 		// Build the vulnerability.
 		vuln := report.Vulnerability{
+			// Issue attributes.
+			Summary:     "Outdated Packages in Docker Image",
+			Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
+			Recommendations: []string{
+				"Update affected packages to the versions specified in the resources table or newer.",
+			},
+			CWEID:  937,
+			Labels: []string{"potential", "docker"},
+			// Finding attributes.
 			Fingerprint:      fingerprint,
 			AffectedResource: affectedResource,
-			Summary:          "Outdated Packages in Docker Image",
 			Score:            getScore(r["Severity"]),
-			Description:      description,
 			Details:          generateDetails(registryEnvDomain, target),
-			CWEID:            937,
-			Labels:           []string{"potential", "docker"},
-			Recommendations: []string{
-				fmt.Sprintf("Update the base docker image or [%s] package to at least version [%s]", r["Name"], r["FixedBy"]),
-			},
-			Resources: []report.ResourcesGroup{vp},
+			ImpactDetails:    fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities. If this package is used by your application attackers may be able to exploit the vulnerability.", r["Name"], r["Version"]),
+			Resources:        []report.ResourcesGroup{vp},
 		}
 		state.AddVulnerabilities(vuln)
 	}
