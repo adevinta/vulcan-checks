@@ -1,2 +1,6 @@
 *.swp
 local.toml
+
+# editor files
+.idea/
+vulcan-checks.iml
