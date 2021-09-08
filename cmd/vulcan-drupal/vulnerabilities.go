@@ -507,7 +507,7 @@ var (
 			},
 		},
 		drupalVulnerability{
-			Constraints: []string{">=7,<8", ">=8,<8.5.11", ">=8.6,<8.6.10"},
+			Constraints: []string{">=8,<8.5.11", ">=8.6,<8.6.10"},
 			Vulnerability: report.Vulnerability{
 				Summary:         "Drupal - SA-CORE-2019-003 - Remote Code Execution",
 				CWEID:           937,
