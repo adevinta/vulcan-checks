@@ -58,13 +58,18 @@ This project is primarily built using the [vulcan-checks-bsys](https://github.co
 
 But it's possible to build each one of the checks with `go build`.
 
-In every check directory there is an example configuration file called `local.toml.example`, the checks reads a
-file named `local.toml` by default, so by copying that file you can do a local test of your code before you commit.
+In every check directory there is an example configuration file called `local.toml.example`, most checks reads a
+file named `local.toml` if you pass the `-t` parameter, so by copying that file you can do a local test of your code
+before you commit.
+
+The checks that are not self-contained, and instead relay on external binaries, can be locally tested with
+`vulcan-checks-bsys`. By running `vulcan-build-images -r PATH_TO_THE_CHECK_DIR` it will create a docker image and
+run it, feeding the check the input from local.toml.
 
 Full example to build and test run one check:
 ```
 cd cmd/vulcan-drupal
 go build
 cp local.toml.example local.toml
-./vulcan-drupal
+./vulcan-drupal -t
 ```
