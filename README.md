@@ -62,9 +62,9 @@ In every check directory there is an example configuration file called `local.to
 file named `local.toml` if you pass the `-t` parameter, so by copying that file you can do a local test of your code
 before you commit.
 
-The checks that are not self-contained, and instead relay on external binaries, can be locally tested with
+The checks that are not self-contained, and instead rely on external binaries, can be locally tested with
 `vulcan-checks-bsys`. By running `vulcan-build-images -r PATH_TO_THE_CHECK_DIR` it will create a docker image and
-run it, feeding the check the input from local.toml.
+run it, feeding the check with the input from local.toml.
 
 Full example to build and test run one check:
 ```
