@@ -73,3 +73,11 @@ go build
 cp local.toml.example local.toml
 ./vulcan-drupal -t
 ```
+
+If you are running go version 1.17 or later, you can easily use the build system project with `go run`:
+```
+cd cmd/vulcan-drupal
+go run github.com/adevinta/vulcan-checks-bsys/cmd/vulcan-build-images@master -r ../vulcan-drupal
+```
+
+For older versions of go you should use `go install` or `go get`, depending on version.
