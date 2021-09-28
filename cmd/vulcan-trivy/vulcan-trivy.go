@@ -261,7 +261,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	for _, r := range rows {
 		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
-		fingerprint := helpers.ComputeFingerprint(target, affectedResource, r["Severity"], apCVEs)
+		fingerprint := helpers.ComputeFingerprint(r["Severity"], apCVEs)
 		cves := apCVEs[r["Name"]]
 		// Build vulnerabilities Rsources table.
 		vResourcesTable := make(map[string]string)
