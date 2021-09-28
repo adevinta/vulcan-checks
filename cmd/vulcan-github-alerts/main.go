@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +30,7 @@ const graphqlDefaultElements = 100
 const graphqlNumberFilter = "first:%v"
 const graphqlPageFilter = `after:\"%v\"`
 const graphqlQuery = `
-query { 
+query {
 	repository(owner:\"%v\", name:\"%v\") {
 		vulnerabilityAlerts(%v) {
 			number: totalCount
@@ -271,11 +270,9 @@ func main() {
 		})
 
 		for _, r := range rows {
-			affectedResource := fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"])
-			vulnerabilityID := computeVulnerabilityID(target, affectedResource, fmt.Sprintf("%v", r))
 			vulnerability := report.Vulnerability{
-				ID:               vulnerabilityID,
-				AffectedResource: affectedResource,
+				Fingerprint:      helpers.ComputeFingerprint(fmt.Sprintf("%v", r)),
+				AffectedResource: fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"]),
 				Score:            scoreSeverity(r["Max. Severity"]),
 				Summary:          "Vulnerable Code Dependencies in Github Repository",
 				Labels:           []string{"potential", "dependency", "code", "github"},
@@ -307,18 +304,6 @@ func main() {
 	c := check.NewCheckFromHandler(checkName, run)
 
 	c.RunAndServe()
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func scoreSeverity(githubSeverity string) float32 {
