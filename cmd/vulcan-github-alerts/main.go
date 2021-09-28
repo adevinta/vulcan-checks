@@ -271,12 +271,13 @@ func main() {
 
 		for _, r := range rows {
 			vulnerability := report.Vulnerability{
+				Summary: "Vulnerable Code Dependencies in Github Repository",
+				Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
+You can find more specific information in the resources table for the repository.`,
 				Fingerprint:      helpers.ComputeFingerprint(fmt.Sprintf("%v", r)),
 				AffectedResource: fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"]),
 				Score:            scoreSeverity(r["Max. Severity"]),
-				Summary:          "Vulnerable Code Dependencies in Github Repository",
 				Labels:           []string{"potential", "dependency", "code", "github"},
-				Description:      fmt.Sprintf("Dependency [%s] installed by [%s] have published security vulnerabilities.\nYou can find more specific information in the resources table for the repository.", r["Dependency"], r["Ecosystem"]),
 				ImpactDetails:    "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
 				CWEID:            937,
 				Recommendations:  []string{"Update the dependency to at least the minimum recommended version in the resources table."},
