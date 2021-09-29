@@ -183,6 +183,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return errors.New("unmarshal trivy output failed")
 	}
 
+	return processVulns(results, registryEnvDomain, target, state)
+}
+
+func processVulns(results ScanResponse, registryEnvDomain, target string, state checkstate.State) error {
 	// If there are no vulnerabilities we can return.
 	if len(results) < 1 || len(results) == 1 && len(results[0].Vulnerabilities) == 0 {
 		return nil
