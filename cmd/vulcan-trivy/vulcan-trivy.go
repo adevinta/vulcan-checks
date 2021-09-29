@@ -62,6 +62,7 @@ type outdatedPackage struct {
 	version  string
 	severity string
 	fixedBy  string
+	cves     []string
 }
 
 type vulnerability struct {
@@ -187,66 +188,60 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return nil
 	}
 
-	var rows []map[string]string
-	duppedPackageVulns := make(map[string]map[string]string)
-	apCVEs := make(map[string][]string)
-
+	outdatedPackageVulns := make(map[string]outdatedPackage)
 	for _, trivyTarget := range results {
 		for _, dockerVuln := range trivyTarget.Vulnerabilities {
-			ap := map[string]string{
-				"Name":     dockerVuln.PkgName,
-				"Version":  dockerVuln.InstalledVersion,
-				"Severity": dockerVuln.Severity,
-				"FixedBy":  dockerVuln.FixedVersion,
-			}
-			apCVEs[ap["Name"]] = append(apCVEs[ap["Name"]], dockerVuln.VulnerabilityID)
-
-			// Check if affected package has already been indexed.
-			key, ok := duppedPackageVulns[ap["Name"]]
-			if !ok {
-				duppedPackageVulns[ap["Name"]] = ap
-				continue
-			}
-			if isMoreSevere(ap["Severity"], key["Severity"]) {
-				key["Severity"] = ap["Severity"]
-			}
-			if version.Compare(version.Normalize(ap["FixedBy"]), version.Normalize(key["FixedBy"]), ">") {
-				key["FixedBy"] = ap["FixedBy"]
+			op, ok := outdatedPackageVulns[dockerVuln.PkgName]
+			if ok {
+				if isMoreSevere(dockerVuln.Severity, op.severity) {
+					op.severity = dockerVuln.Severity
+				}
+				if version.Compare(version.Normalize(dockerVuln.FixedVersion), version.Normalize(op.fixedBy), ">") {
+					op.fixedBy = dockerVuln.FixedVersion
+				}
+			} else {
+				op = outdatedPackage{
+					name:     dockerVuln.PkgName,
+					version:  dockerVuln.InstalledVersion,
+					severity: dockerVuln.Severity,
+					fixedBy:  dockerVuln.FixedVersion,
+					cves:     []string{},
+				}
 			}
 
-			duppedPackageVulns[ap["Name"]] = key
+			op.cves = append(op.cves, dockerVuln.VulnerabilityID)
+
+			outdatedPackageVulns[op.name] = op
 		}
 	}
 
-	for _, v := range duppedPackageVulns {
-		rows = append(rows, v)
+	var opvArr []outdatedPackage
+	for _, op := range outdatedPackageVulns {
+		sort.Strings(op.cves)
+		opvArr = append(opvArr, op)
 	}
 
-	// Sort rows by severity, alphabetical order of the package name and version.
-	sort.Slice(rows, func(i, j int) bool {
-		si := getScore(rows[i]["Severity"])
-		sj := getScore(rows[j]["Severity"])
+	// Sort outdated packages by severity, alphabetical order of the package
+	// name and version.
+	sort.Slice(opvArr, func(i, j int) bool {
+		si := getScore(opvArr[i].severity)
+		sj := getScore(opvArr[j].severity)
 		switch {
 		case si != sj:
 			return si > sj
-		case rows[i]["Name"] != rows[j]["Name"]:
-			return rows[i]["Name"] < rows[j]["Name"]
+		case opvArr[i].name != opvArr[j].name:
+			return opvArr[i].name < opvArr[j].name
 		default:
-			return rows[i]["Version"] < rows[j]["Version"]
+			return opvArr[i].version < opvArr[j].version
 		}
 	})
 
 	// To avoid report size overflow only top 30 most vulnerable packages
 	// are reported.
-	totalVulnerablePackages := len(rows)
+	totalVulnerablePackages := len(opvArr)
 	if totalVulnerablePackages > vulnTruncateLimit {
 		logger.Warnf("truncate to top %d vulnerabilities\n", vulnTruncateLimit)
-		rows = rows[0:vulnTruncateLimit]
-	}
-
-	// Sort apCVEs for a consistent fingerprinting.
-	for _, v := range apCVEs {
-		sort.Strings(v)
+		opvArr = opvArr[0:vulnTruncateLimit]
 	}
 
 	vp := report.ResourcesGroup{
@@ -258,24 +253,26 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			"Vulnerabilities",
 		},
 	}
+	for _, op := range opvArr {
+		affectedResource := fmt.Sprintf("%s-%s", op.name, op.version)
+		fingerprint := helpers.ComputeFingerprint(op.severity, op.cves)
 
-	for _, r := range rows {
-		affectedResource := fmt.Sprintf("%s-%s", r["Name"], r["Version"])
-		fingerprint := helpers.ComputeFingerprint(r["Severity"], apCVEs)
-		cves := apCVEs[r["Name"]]
 		// Build vulnerabilities Rsources table.
 		vResourcesTable := make(map[string]string)
-		vResourcesTable["Name"] = r["Name"]
-		vResourcesTable["Version"] = r["Version"]
-		vResourcesTable["FixedBy"] = r["FixedBy"]
-		for i := 0; i < len(cves) && i < vulnCVETrucateLimit; i++ {
-			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | [%s](https://nvd.nist.gov/vuln/detail/%s)", vResourcesTable["Vulnerabilities"], cves[i], cves[i])
+		vResourcesTable["Name"] = op.name
+		vResourcesTable["Version"] = op.version
+		vResourcesTable["FixedBy"] = op.fixedBy
+
+		for i := 0; i < len(op.cves) && i < vulnCVETrucateLimit; i++ {
+			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | [%s](https://nvd.nist.gov/vuln/detail/%s)", vResourcesTable["Vulnerabilities"], op.cves[i], op.cves[i])
 		}
-		if len(cves) > vulnCVETrucateLimit {
-			logger.Warnf("truncate affected package [%s] CVE list to [%d]\n", r["Name"], vulnCVETrucateLimit)
+		if len(op.cves) > vulnCVETrucateLimit {
+			logger.Warnf("truncate affected package [%s] CVE list to [%d]\n", op.name, vulnCVETrucateLimit)
 			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | and some others ...)", vResourcesTable["Vulnerabilities"])
 		}
+
 		vp.Rows = []map[string]string{vResourcesTable}
+
 		// Build the vulnerability.
 		vuln := report.Vulnerability{
 			// Issue attributes.
@@ -286,14 +283,16 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			},
 			CWEID:  937,
 			Labels: []string{"potential", "docker"},
+
 			// Finding attributes.
 			Fingerprint:      fingerprint,
 			AffectedResource: affectedResource,
-			Score:            getScore(r["Severity"]),
+			Score:            getScore(op.severity),
 			Details:          generateDetails(registryEnvDomain, target),
-			ImpactDetails:    fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities. If this package is used by your application attackers may be able to exploit the vulnerability.", r["Name"], r["Version"]),
+			ImpactDetails:    fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities. If this package is used by your application attackers may be able to exploit the vulnerability.", op.name, op.version),
 			Resources:        []report.ResourcesGroup{vp},
 		}
+
 		state.AddVulnerabilities(vuln)
 	}
 
