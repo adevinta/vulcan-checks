@@ -40,9 +40,10 @@ func main() {
 			spf.evaluate()
 		}
 
-		if len(spf.vulnerabilities) > 0 {
-			state.AddVulnerabilities(spf.vulnerabilities...)
-		}
+		// [TEST] Force return 0 vulns.
+		// if len(spf.vulnerabilities) > 0 {
+		// 	state.AddVulnerabilities(spf.vulnerabilities...)
+		// }
 
 		logger.WithFields(logrus.Fields{
 			"spf_response": spf,
