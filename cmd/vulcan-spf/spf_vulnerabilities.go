@@ -35,6 +35,7 @@ var vulns = map[string]report.Vulnerability{
 			"Create a single SPF TXT record beginning with 'v=spf1'",
 			"For easy SPF deployment in AWS Route53, check our CloudFormation template in References",
 		},
+		Fingerprint: "test",
 	},
 	"mechanisms-after-first-all-are-ignored": report.Vulnerability{
 		CWEID:   358,
@@ -52,6 +53,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Remove any mechanisms and modifiers appearing after 'all'",
 		},
+		Fingerprint: "test",
 	},
 	"no-all-or-redirect": report.Vulnerability{
 		CWEID:   358,
@@ -70,6 +72,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explictly define an 'all' or a 'redirect'",
 		},
+		Fingerprint: "test",
 	},
 	"all-configured-as-PASS": report.Vulnerability{
 		CWEID:   358,
@@ -90,6 +93,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Fingerprint: "test",
 	},
 	"all-configured-as-NEUTRAL": report.Vulnerability{
 		CWEID:   358,
@@ -107,6 +111,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Fingerprint: "test",
 	},
 	"all-configured-as-SOFTFAIL": report.Vulnerability{
 		CWEID:   358,
@@ -125,6 +130,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Fingerprint: "test",
 	},
 	"dns-queries-exceeded-limit": report.Vulnerability{
 		CWEID:   358,
@@ -145,6 +151,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the SPF policy and reduce the number of DNS queries invoked to be equal or less than 10",
 		},
+		Fingerprint: "test",
 	},
 	"multiple-spf-found": report.Vulnerability{
 		CWEID:   358,
@@ -161,5 +168,6 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Create a single SPF TXT record",
 		},
+		Fingerprint: "test",
 	},
 }
