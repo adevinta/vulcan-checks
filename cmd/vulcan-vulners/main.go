@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -241,6 +242,18 @@ func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
 	return buildVulnersFinding(s, v, t)
 }
 
+func computeVulnerabilityID(elems []string) string {
+	h := sha256.New()
+
+	sort.Strings(elems)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, "%s - ", e)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerability, error) {
 	type vulnData struct {
 		Vuln     report.Vulnerability
@@ -265,20 +278,28 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 					continue
 				}
 				summary := fmt.Sprintf(vulnersVuln.Summary, port.Service.Product)
-				v, ok := uniqueVulns[summary]
+				uniqueVulnId := fmt.Sprintf("CPE: %s, Port: %d/%s", string(cpe), port.PortId, port.Protocol)
+				var cves []string
+
+				for _, row := range f.Resources.Rows {
+					cves = append(cves, row["CVE"])
+				}
+				v, ok := uniqueVulns[uniqueVulnId]
 				if !ok {
 					v.Vuln = report.Vulnerability{
-						Summary:         summary,
-						Description:     fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
-						Recommendations: vulnersVuln.Recommendations,
+						ID:               computeVulnerabilityID(cves),
+						Summary:          summary,
+						Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
+						Recommendations:  vulnersVuln.Recommendations,
+						AffectedResource: fmt.Sprintf("%s, %d/%s", string(cpe), port.PortId, port.Protocol),
 					}
 					v.CPEs = map[string]struct{}{}
-					uniqueVulns[summary] = v
+					uniqueVulns[uniqueVulnId] = v
 				}
 				if _, ok := v.CPEs[string(cpe)]; !ok {
 					v.CPEs[string(cpe)] = struct{}{}
 					v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
-					uniqueVulns[summary] = v
+					uniqueVulns[uniqueVulnId] = v
 					if f.Score > v.Vuln.Score {
 						v.Vuln.Score = f.Score
 					}
@@ -288,7 +309,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 					v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol,
 					port.Service.Product, port.Service.Version, port.Service.CPEs,
 				)
-				uniqueVulns[summary] = v
+				uniqueVulns[uniqueVulnId] = v
 			}
 			if done {
 				continue
@@ -306,22 +327,32 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 				return nil, err
 			}
 			summary := fmt.Sprintf(vulnersVuln.Summary, port.Service.Product)
-			v, ok := uniqueVulns[summary]
+			productID := port.Service.Product + port.Service.Version
+			uniqueVulnId := fmt.Sprintf("productID: %s, Port: %d/%s", productID, port.PortId, port.Protocol)
+			var cves []string
+
+			for _, row := range f.Resources.Rows {
+				cves = append(cves, row["CVE"])
+			}
+
+			v, ok := uniqueVulns[uniqueVulnId]
 			if !ok {
 				v.Vuln = report.Vulnerability{
-					Summary:         summary,
-					Description:     fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
-					Score:           f.Score,
-					Recommendations: vulnersVuln.Recommendations,
+
+					ID:               computeVulnerabilityID(cves),
+					Summary:          summary,
+					Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
+					Score:            f.Score,
+					Recommendations:  vulnersVuln.Recommendations,
+					AffectedResource: fmt.Sprintf("%s, %d/%s", productID, port.PortId, port.Protocol),
 				}
 				v.CPEs = map[string]struct{}{}
-				uniqueVulns[summary] = v
+				uniqueVulns[uniqueVulnId] = v
 			}
-			productID := port.Service.Product + port.Service.Version
 			if _, ok := v.Products[productID]; !ok {
 				v.CPEs[productID] = struct{}{}
 				v.Vuln.Resources = append(v.Vuln.Resources, f.Resources)
-				uniqueVulns[summary] = v
+				uniqueVulns[uniqueVulnId] = v
 				if f.Score > v.Vuln.Score {
 					v.Vuln.Score = f.Score
 				}
@@ -331,7 +362,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 				v.Vuln.Details, host.Hostnames[0].Name, port.PortId, port.Protocol,
 				port.Service.Product, port.Service.Version, port.Service.CPEs,
 			)
-			uniqueVulns[summary] = v
+			uniqueVulns[uniqueVulnId] = v
 		}
 	}
 	var vulns []report.Vulnerability
