@@ -24,11 +24,14 @@ import (
 	sourcedir "github.com/apuigsech/seekret-source-dir"
 	"github.com/apuigsech/seekret/models"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 type options struct {
 	Depth int `json:"depth"`
+	RulesPath string `json:"rules_path"`
+	Branch string `json:"branch"`
 }
 
 var (
@@ -51,7 +54,6 @@ var (
 		},
 	}
 
-	rulesPath   = "/opt/rules/"
 	ignoredDirs = []string{
 		// JavaScript
 		"(^|/)node_modules/.*",
@@ -74,6 +76,8 @@ func main() {
 
 		var opt options
 		opt.Depth = 1
+		opt.RulesPath = "/opt/rules"
+		opt.Branch = "refs/heads/master"
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
@@ -122,6 +126,7 @@ func main() {
 			URL:   target,
 			Auth:  auth,
 			Depth: opt.Depth,
+			ReferenceName: plumbing.ReferenceName(opt.Branch),
 		})
 		if err != nil {
 			return err
@@ -129,12 +134,12 @@ func main() {
 
 		s := seekret.NewSeekret()
 
-		ruleScores, err := loadRuleScoresFromDir(rulesPath)
+		ruleScores, err := loadRuleScoresFromDir(opt.RulesPath)
 		if err != nil {
 			return err
 		}
 
-		s.LoadRulesFromDir(rulesPath, true)
+		s.LoadRulesFromDir(opt.RulesPath, true)
 		s.LoadObjects(
 			sourcedir.SourceTypeDir,
 			repoPath,
