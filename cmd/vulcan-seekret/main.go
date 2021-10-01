@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -77,7 +78,7 @@ func main() {
 		var opt options
 		opt.Depth = 1
 		opt.RulesPath = "/opt/rules"
-		opt.Branch = "refs/heads/master"
+		opt.Branch = "master"
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
@@ -126,7 +127,7 @@ func main() {
 			URL:   target,
 			Auth:  auth,
 			Depth: opt.Depth,
-			ReferenceName: plumbing.ReferenceName(opt.Branch),
+			ReferenceName: plumbing.ReferenceName(path.Join("refs/heads", opt.Branch)),
 		})
 		if err != nil {
 			return err
