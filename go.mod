@@ -9,13 +9,13 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
 	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
-	github.com/adevinta/vulcan-check-sdk v0.0.0-20210810102821-d28365e404f5
-	github.com/adevinta/vulcan-report v0.0.0-20210810073843-6daabc8efe16
+	github.com/adevinta/vulcan-check-sdk v0.0.0-20210908082513-07ecc6af2520
+	github.com/adevinta/vulcan-report v0.0.0-20210830131559-d13f81ad6b01
 	github.com/adevinta/vulcan-types v0.0.0-20210430125916-dd7eaa6946f8
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.40.18
+	github.com/aws/aws-sdk-go v1.40.38
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
@@ -34,8 +34,9 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
-	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
-	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	golang.org/x/net v0.0.0-20210907225631-ff17edfbf26d
+	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
