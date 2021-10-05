@@ -65,12 +65,6 @@ type outdatedPackage struct {
 	cves     []string
 }
 
-type vulnerability struct {
-	name     string
-	severity string
-	link     string
-}
-
 func main() {
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
@@ -293,7 +287,6 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			AffectedResource: affectedResource,
 			Score:            getScore(op.severity),
 			Details:          generateDetails(registryEnvDomain, target),
-			ImpactDetails:    fmt.Sprintf("Docker image package %s-%s has one or more vulnerabilities. If this package is used by your application attackers may be able to exploit the vulnerability.", op.name, op.version),
 			Resources:        []report.ResourcesGroup{vp},
 		}
 
