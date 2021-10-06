@@ -31,7 +31,6 @@ import (
 
 type options struct {
 	Depth int `json:"depth"`
-	RulesPath string `json:"rules_path"`
 	Branch string `json:"branch"`
 }
 
@@ -55,6 +54,7 @@ var (
 		},
 	}
 
+	rulesPath   = "./rules/"
 	ignoredDirs = []string{
 		// JavaScript
 		"(^|/)node_modules/.*",
@@ -77,7 +77,6 @@ func main() {
 
 		var opt options
 		opt.Depth = 1
-		opt.RulesPath = "/opt/rules"
 		opt.Branch = "master"
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -135,12 +134,12 @@ func main() {
 
 		s := seekret.NewSeekret()
 
-		ruleScores, err := loadRuleScoresFromDir(opt.RulesPath)
+		ruleScores, err := loadRuleScoresFromDir(rulesPath)
 		if err != nil {
 			return err
 		}
 
-		s.LoadRulesFromDir(opt.RulesPath, true)
+		s.LoadRulesFromDir(rulesPath, true)
 		s.LoadObjects(
 			sourcedir.SourceTypeDir,
 			repoPath,
