@@ -105,17 +105,8 @@ type dependencyData struct {
 }
 
 var (
-	checkName              = "vulcan-github-alerts"
-	logger                 = check.NewCheckLog(checkName)
-	vulnerableDependencies = report.Vulnerability{
-		Summary: "Vulnerable Code Dependencies in Github Repository",
-		Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
-You can find more specific information in the resources table for the repository.`,
-		ImpactDetails:   "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
-		CWEID:           937,
-		Score:           report.SeverityThresholdNone,
-		Recommendations: []string{"Update all dependencies to at least the minimum recommended version in the resources table."},
-	}
+	checkName = "vulcan-github-alerts"
+	logger    = check.NewCheckLog(checkName)
 )
 
 func main() {
