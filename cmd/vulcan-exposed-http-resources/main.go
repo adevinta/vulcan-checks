@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -195,6 +194,9 @@ func main() {
 			// because the URLs are generated randomly every time the check is
 			// executed.
 			falseOKVuln.Resources[0].Rows = falseOKResources
+
+			falseOKVuln.Fingerprint = helpers.ComputeFingerprint()
+
 			state.AddVulnerabilities(falseOKVuln)
 		}
 
@@ -252,7 +254,7 @@ func main() {
 				v.Details = falsePositivesMessage
 			}
 
-			v.ID = computeVulnerabilityID(target, v.AffectedResource)
+			v.Fingerprint = helpers.ComputeFingerprint(resource["Score"], resource["Confidence"])
 
 			state.AddVulnerabilities(v)
 		}
@@ -262,18 +264,6 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func exposedResources(targetURL *url.URL, httpResources []Resource) []map[string]string {
