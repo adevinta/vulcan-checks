@@ -265,7 +265,7 @@ func main() {
 				Summary: "Vulnerable Code Dependencies in Github Repository",
 				Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
 You can find more specific information in the resources table for the repository.`,
-				Fingerprint:      helpers.ComputeFingerprint(fmt.Sprintf("%s - %s", r["Vulnerabilities"], r["Max. Severity"])),
+				Fingerprint:      helpers.ComputeFingerprint(r["Vulnerabilities"], r["Max. Severity"]),
 				AffectedResource: fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"]),
 				Score:            scoreSeverity(r["Max. Severity"]),
 				Labels:           []string{"potential", "dependency", "code", "github"},
