@@ -22,7 +22,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-exposed-http-endpoint** - Warns about private resources that are exposed over http/https 
 * **vulcan-exposed-http-resources** - Checks if a web address exposes sensitive resources
 * **vulcan-exposed-memcached** - Checks if an asset has exposed a memcached server
-* **vulcan-exposed-rdp** - Checks if an Microsoft Remote Desktop service is exposed to the Internet
+* **vulcan-exposed-rdp** - Checks if a Microsoft Remote Desktop service is exposed to the Internet
 * **vulcan-exposed-router-ports** - Checks if an asset has open router well known ports
 * **vulcan-exposed-services** - Checks if a host has any port opened by scanning the 1000 most common TCP and UDP ports
 * **vulcan-exposed-ssh** - Checks SSH server configuration for compliance with Mozilla OpenSSH guidelines
@@ -51,3 +51,33 @@ Currently there's no vendoring provided for this project.
 * **vulcan-vulners** - Runs https://vulners.com/api/v3/burp/software/
 * **vulcan-wpscan** - Checks Wordpress sites for vulnerabilities using the open source wpscan utility
 * **vulcan-zap** - Checks for vulnerabilities in web applications using OWASP ZAP
+
+## Building and testing
+
+This project is primarily built using the [vulcan-checks-bsys](https://github.com/adevinta/vulcan-checks-bsys) project.
+
+But it's possible to build each one of the checks with `go build`.
+
+In every check directory there is an example configuration file called `local.toml.example`, most checks reads a
+file named `local.toml` if you pass the `-t` parameter, so by copying that file you can do a local test of your code
+before you commit.
+
+The checks that are not self-contained, and instead rely on external binaries, can be locally tested with
+`vulcan-checks-bsys`. By running `vulcan-build-images -r PATH_TO_THE_CHECK_DIR` it will create a docker image and
+run it, feeding the check with the input from local.toml.
+
+Full example to build and test run one check:
+```
+cd cmd/vulcan-drupal
+go build
+cp local.toml.example local.toml
+./vulcan-drupal -t
+```
+
+If you are running go version 1.17 or later, you can easily use the build system project with `go run`:
+```
+cd cmd/vulcan-drupal
+go run github.com/adevinta/vulcan-checks-bsys/cmd/vulcan-build-images@master -r ../vulcan-drupal
+```
+
+For older versions of go you should use `go install` or `go get`, depending on version.

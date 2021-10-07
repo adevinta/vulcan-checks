@@ -91,6 +91,7 @@ func main() {
 			// Don't fail the check if the target can not be accessed.
 			return nil
 		}
+		defer resp.Body.Close()
 
 		logger.WithFields(logrus.Fields{
 			"status_code": resp.StatusCode,
@@ -109,6 +110,7 @@ func main() {
 					}
 
 					if s3Resp.Code == noSuchBucket {
+						s3Takeover.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%#v\n", website, s3Resp)
 						state.AddVulnerabilities(s3Takeover)
 					}
 				} else if strings.HasPrefix(contentType, "text/html") {
@@ -118,6 +120,7 @@ func main() {
 					}
 
 					if strings.Contains(string(body), noSuchBucket) {
+						s3Takeover.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%s\n", website, body)
 						state.AddVulnerabilities(s3Takeover)
 					}
 				}
