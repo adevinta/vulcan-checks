@@ -236,10 +236,15 @@ func main() {
 			v := exposedVuln
 			v.AffectedResource = resource["URL"]
 			v.Labels = []string{"issue", "http"}
+
+			// Deleting the URL from the resources table because it's already
+			// shown in the AffectedResource attribute.
+			delete(resource, "URL")
+
 			v.Resources = []report.ResourcesGroup{
 				report.ResourcesGroup{
 					Name:   "Exposed Resources",
-					Header: []string{"Score", "Severity", "Confidence", "Description", "URL"},
+					Header: []string{"Score", "Severity", "Confidence", "Description"},
 					Rows:   []map[string]string{resource},
 				},
 			}
