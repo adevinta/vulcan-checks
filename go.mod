@@ -1,6 +1,6 @@
 module github.com/adevinta/vulcan-checks
 
-go 1.13
+go 1.15
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
