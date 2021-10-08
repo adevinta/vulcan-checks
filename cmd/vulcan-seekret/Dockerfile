@@ -2,5 +2,5 @@
 
 FROM alpine
 ADD vulcan-seekret /vulcan-seekret
-ADD rules /opt/rules
+ADD rules /rules
 CMD ["/vulcan-seekret"]
