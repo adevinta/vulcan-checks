@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -388,7 +387,7 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		} else {
 			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "issue")
 		}
-		vulcanVulnerability.ID = computeVulnerabilityID(target, target, vulcanVulnerability.Score)
+		vulcanVulnerability.Fingerprint = helpers.ComputeFingerprint(vulcanVulnerability.Score)
 
 		return []report.Vulnerability{vulcanVulnerability}, nil
 	}
@@ -413,7 +412,7 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 			} else {
 				v.Labels = append(v.Labels, "issue")
 			}
-			v.ID = computeVulnerabilityID(target, target, v.Score, v.Details)
+			v.Fingerprint = helpers.ComputeFingerprint(v.Score, v.Details)
 
 			vulnerabilities = append(vulnerabilities, v)
 
@@ -451,23 +450,11 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 			} else {
 				v.Labels = append(v.Labels, "issue")
 			}
-			v.ID = computeVulnerabilityID(target, target, v.Score, v.Details, v.Resources)
+			v.Fingerprint = helpers.ComputeFingerprint(v.Score, v.Details, v.Resources)
 
 			vulnerabilities = append(vulnerabilities, v)
 		}
 	}
 
 	return vulnerabilities, nil
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
