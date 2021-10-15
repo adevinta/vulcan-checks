@@ -88,7 +88,7 @@ func checkVersion(changelogURL string, log *logrus.Entry) (drupal bool, version 
 	log.WithFields(logrus.Fields{
 		"status_code":      resp.StatusCode,
 		"response_headers": resp.Header,
-	}).Debug("recieved response from target")
+	}).Debug("received response from target")
 
 	if resp.StatusCode != http.StatusOK {
 		return false, "", errors.New("CHANGELOG.txt not found")
