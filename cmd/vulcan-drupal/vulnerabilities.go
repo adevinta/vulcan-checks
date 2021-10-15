@@ -20,13 +20,105 @@ var (
 
 	drupalVulnerabilities = []drupalVulnerability{
 		drupalVulnerability{
-			Constraints: []string{"<7", ">=8,<8.5"},
+			Constraints: []string{"<7", ">=8,<8.9", ">=9,<9.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:         "Drupal - End-of-Life",
 				CWEID:           937,
-				Description:     "Versions of Drupal 8 prior to 8.5 and versions prior to 7 are end-of-life and do not receive security coverage.",
+				Description:     "Versions of Drupal 9 prior to 9.1, 8 prior to 8.9 and versions prior to 7 are end-of-life and do not receive security coverage.",
 				Score:           report.SeverityThresholdCritical,
 				Recommendations: []string{"Update to a supported version"},
+			},
+		},
+		drupalVulnerability{
+			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
+			Vulnerability: report.Vulnerability{
+				Summary:         "Drupal - SA-CORE-2021-010 - Access Bypass",
+				CWEID:           284,
+				Description:     "Under some circumstances, the Drupal core JSON:API module does not properly restrict access to certain content, which may result in unintended access bypass. Sites that do not have the JSON:API module enabled are not affected. This advisory is not covered by Drupal Steward.",
+				Score:           report.SeverityThresholdMedium,
+				References:      []string{"https://www.drupal.org/sa-core-2021-010"},
+				Recommendations: []string{
+					"Install the latest version:",
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
+					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
+					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
+					"Drupal 7 core does not include the JSON:API module and therefore is not affected.",
+				},
+			},
+		},
+		drupalVulnerability{
+			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
+			Vulnerability: report.Vulnerability{
+				Summary:         "Drupal - SA-CORE-2021-009 - Access bypass",
+				CWEID:           284,
+				Description:     "The QuickEdit module does not properly check access to fields in some circumstances, which can lead to unintended disclosure of field data. Sites are only affected if the QuickEdit module (which comes with the Standard profile) is installed. This advisory is not covered by Drupal Steward.",
+				Score:           report.SeverityThresholdMedium,
+				References:      []string{"https://www.drupal.org/sa-core-2021-009"},
+				Recommendations: []string{
+					"Install the latest version:",
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
+					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
+					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
+					"Drupal 7 core does not include the QuickEdit module and therefore is not affected.",
+					"Uninstalling the QuickEdit module will also mitigate the vulnerability. Site owners may wish to consider this option as the QuickEdit module will be removed from core in Drupal 10.",
+				},
+			},
+		},
+		drupalVulnerability{
+			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
+			Vulnerability: report.Vulnerability{
+				Summary:         "Drupal - SA-CORE-2021-008 - Access bypass",
+				CWEID:           284,
+				Description:     "Drupal's JSON:API and REST/File modules allow file uploads through their HTTP APIs. The modules do not correctly run all file validation, which causes an access bypass vulnerability. An attacker might be able to upload files that bypass the file validation process implemented by modules on the site. This vulnerability is mitigated by three factors: The JSON:API or REST File upload modules must be enabled on the site. An attacker must have access to a file upload via JSON:API or REST. The site must employ a file validation module. This advisory is not covered by Drupal Steward. Also see GraphQL - Moderately critical - Access bypass - SA-CONTRIB-2021-029 which addresses a similar vulnerability for that module.",
+				Score:           report.SeverityThresholdMedium,
+				References:      []string{"https://www.drupal.org/sa-core-2021-008"},
+				Recommendations: []string{
+					"Install the latest version:",
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
+					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
+					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
+					"Drupal 7 core is not affected.",
+				},
+			},
+		},
+		drupalVulnerability{
+			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
+			Vulnerability: report.Vulnerability{
+				Summary:         "Drupal - SA-CORE-2021-007 - Cross Site Request Forgery",
+				CWEID:           352,
+				Description:     "The QuickEdit module does not properly validate access to routes, which could allow cross-site request forgery under some circumstances and lead to possible data integrity issues. Sites are only affected if the QuickEdit module (which comes with the Standard profile) is installed. Removing the \"access in-place editing\" permission from untrusted users will not fully mitigate the vulnerability. This advisory is not covered by Drupal Steward.",
+				Score:           report.SeverityThresholdMedium,
+				References:      []string{"https://www.drupal.org/sa-core-2021-007"},
+				Recommendations: []string{
+					"Install the latest version:" +
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
+					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
+					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
+					"Drupal 7 core does not include the QuickEdit module and therefore is not affected.",
+					"Uninstalling the QuickEdit module will also mitigate the vulnerability. Site owners may wish to consider this option as the QuickEdit module will be removed from core in Drupal 10.",
+				},
+			},
+		},
+		drupalVulnerability{
+			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
+			Vulnerability: report.Vulnerability{
+				Summary:         "Drupal - SA-CORE-2021-006 - Cross Site Request Forgery",
+				CWEID:           352,
+				Description:     "The Drupal core Media module allows embedding internal and external media in content fields. In certain circumstances, the filter could allow an unprivileged user to inject HTML into a page when it is accessed by a trusted user with permission to embed media. In some cases, this could lead to cross-site scripting. This advisory is not covered by Drupal Steward. Also see Entity Embed - Moderately critical - Cross Site Request Forgery - SA-CONTRIB-2021-028 which addresses a similar vulnerability for that module.",
+				Score:           report.SeverityThresholdMedium,
+				References:      []string{"https://www.drupal.org/sa-core-2021-006"},
+				Recommendations: []string{
+					"Install the latest version:",
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
+					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
+					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
+					"Drupal 7 core is not affected.",
+				},
 			},
 		},
 		drupalVulnerability{
