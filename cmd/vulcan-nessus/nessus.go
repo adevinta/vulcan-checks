@@ -315,6 +315,24 @@ func (r *runner) addVulnerabilities(scan restuss.ScanDetail, target string) ([]r
 	return vulns, nil
 }
 
+// translateFromNessusToVulcan converts the vulnerabilities reported by Nessus
+// into Vulcan vulnerabilities.
+//
+// The information of a Nessus vulnerability is spread in two different places:
+//
+// * The Nessus plugin (vulnerability) definition.
+//
+// * The output or execution context of that plugin against a concrete target.
+//
+// The plugin definition contains inherent information about the issue, like
+// the summary/title, description, score, solution, references, etc. For
+// example https://www.tenable.com/plugins/nessus/20007
+//
+// The output indicates runtime/execution context details, like the part of the
+// target where the issue was found (i.e. TCP/UDP ports) and the matching
+// information found to report the issue. For example for the `SSL Version 2
+// and 3 Protocol Detection` plugin it reports information about the protocols
+// and ciphersuites enabled for the target.
 func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessusVulnerability restuss.Vulnerability) ([]report.Vulnerability, error) {
 	p, err := r.nessusCli.GetPluginByID(nessusVulnerability.PluginID)
 	if err != nil {
@@ -333,10 +351,17 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		attributesMap[attr.Name] = append(attributesMap[attr.Name], attr.Value)
 	}
 
+	// Tenable is now using CVSS v3 score as their default scoring system. In
+	// order to match the score of the vulnerabilities we report with the score
+	// Tenable reports in the tenable.io UI, we will default to the CVSS v3
+	// Nessus score if available, falling back to the already used CVSS base
+	// score otherwise.
 	scores := attributesMap["cvss3_base_score"]
 	if len(scores) < 1 {
 		scores = attributesMap["cvss_base_score"]
 	}
+	// There might be the case where Nessus doesn't provide a CVSS score and in
+	// that case we will use the Severity they report.
 	if len(scores) > 0 {
 		score, errParse := strconv.ParseFloat(scores[0], 32)
 		if errParse != nil {
@@ -380,13 +405,19 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		return nil, err
 	}
 
+	// In the case Nessus doesn't provide runtime/context information there's
+	// no much we can state in addition from what the plugin itself describes.
 	if len(pluginOutput.Output) < 1 {
+		// As there are no ports specified in the Output, we can't be more
+		// specific for the affected resource than the whole target.
 		vulcanVulnerability.AffectedResource = target
 		if vulcanVulnerability.Score == 0 {
 			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "informational")
 		} else {
 			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "issue")
 		}
+		// As we don't have context information from the Output, at least we
+		// use the score as a fingerprint.
 		vulcanVulnerability.Fingerprint = helpers.ComputeFingerprint(vulcanVulnerability.Score)
 
 		return []report.Vulnerability{vulcanVulnerability}, nil
@@ -406,12 +437,21 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		if !ok || len(mapPorts) < 1 {
 			logger.Warnf("unexpected type for Output.Ports: %#v", output.Ports)
 
+			// Again, if there are no ports specified we can't be more precise
+			// than using the target as the affected resource.
 			v.AffectedResource = target
 			if v.Score == 0 {
 				v.Labels = append(v.Labels, "informational")
 			} else {
 				v.Labels = append(v.Labels, "issue")
 			}
+			// Apart from the score, we can use the Details as a fingerprint,
+			// that is supposed to give the context of the vulnerability in the
+			// scanned target.
+			//
+			// NOTE: in the examples we analyzed the Details field seemed to be
+			// stable between executions, but there might be plugins where this
+			// information changes more often than expected.
 			v.Fingerprint = helpers.ComputeFingerprint(v.Score, v.Details)
 
 			vulnerabilities = append(vulnerabilities, v)
