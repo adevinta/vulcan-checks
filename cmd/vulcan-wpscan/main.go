@@ -58,7 +58,7 @@ func main() {
 			return err
 		}
 
-		addVulnsToState(target, state, wpScanReport)
+		addVulnsToState(state, wpScanReport)
 
 		return nil
 	}
@@ -85,7 +85,7 @@ func resolveTarget(target string) (string, bool) {
 	return t, true
 }
 
-func addVulnsToState(target string, state checkstate.State, r *WpScanReport) {
+func addVulnsToState(state checkstate.State, r *WpScanReport) {
 	// Add informational vulnerability indicating the WordPress version.
 	if r.Version.Number != "" {
 		details := fmt.Sprintf("Version: %v, Confidence %v%%\n", r.Version.Number, r.Version.Confidence) +
@@ -122,12 +122,12 @@ func addVulnsToState(target string, state checkstate.State, r *WpScanReport) {
 		state.AddVulnerabilities(wpDetected)
 	}
 
-	addVulns(target, state, r, r.Version.Vulnerabilities)
-	addVulns(target, state, r, r.MainTheme.Vulnerabilities)
-	addVulns(target, state, r, r.MainTheme.Version.Vulnerabilities)
+	addVulns(state, r, r.Version.Vulnerabilities)
+	addVulns(state, r, r.MainTheme.Vulnerabilities)
+	addVulns(state, r, r.MainTheme.Version.Vulnerabilities)
 
 	for name, pl := range r.Plugins {
-		addPluginVulns(target, state, pl.Vulnerabilities, name, pl.Version, r)
+		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r)
 	}
 
 }
@@ -149,7 +149,7 @@ func getImpact(summary string) (float32, string) {
 	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
 }
 
-func addVulns(target string, state checkstate.State, r *WpScanReport, src []Vulnerability) {
+func addVulns(state checkstate.State, r *WpScanReport, src []Vulnerability) {
 	for _, v := range src {
 		impact, _ := getImpact(v.Title)
 
@@ -171,7 +171,7 @@ func addVulns(target string, state checkstate.State, r *WpScanReport, src []Vuln
 	}
 }
 
-func addPluginVulns(target string, state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion, r *WpScanReport) {
+func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion, r *WpScanReport) {
 	for _, v := range src {
 		title := strings.TrimSpace(v.Title)
 		var (
