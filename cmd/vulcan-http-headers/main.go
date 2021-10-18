@@ -7,11 +7,9 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -140,7 +138,7 @@ func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
 	}
 	behindOktaVuln.Resources = append(behindOktaVuln.Resources, res)
 
-	behindOktaVuln.ID = computeVulnerabilityID(target, target, behindOktaVuln.Resources)
+	behindOktaVuln.Fingerprint = helpers.ComputeFingerprint(behindOktaVuln.Resources)
 
 	return behindOktaVuln
 }
@@ -206,16 +204,4 @@ func hostnameToURL(hostname string) *url.URL {
 	}
 
 	return nil
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
