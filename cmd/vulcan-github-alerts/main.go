@@ -30,7 +30,7 @@ const graphqlDefaultElements = 100
 const graphqlNumberFilter = "first:%v"
 const graphqlPageFilter = `after:\"%v\"`
 const graphqlQuery = `
-query { 
+query {
 	repository(owner:\"%v\", name:\"%v\") {
 		vulnerabilityAlerts(%v) {
 			number: totalCount
@@ -105,17 +105,8 @@ type dependencyData struct {
 }
 
 var (
-	checkName              = "vulcan-github-alerts"
-	logger                 = check.NewCheckLog(checkName)
-	vulnerableDependencies = report.Vulnerability{
-		Summary: "Vulnerable Code Dependencies in Github Repository",
-		Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
-You can find more specific information in the resources table for the repository.`,
-		ImpactDetails:   "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
-		CWEID:           937,
-		Score:           report.SeverityThresholdNone,
-		Recommendations: []string{"Update all dependencies to at least the minimum recommended version in the resources table."},
-	}
+	checkName = "vulcan-github-alerts"
+	logger    = check.NewCheckLog(checkName)
 )
 
 func main() {
@@ -170,7 +161,6 @@ func main() {
 			return nil
 		}
 
-		var maxScore float32
 		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
 			vuln := alert.SecurityVulnerability
@@ -230,10 +220,6 @@ func main() {
 				)
 				dependencies[vuln.Package.Name].referencesCount++
 			}
-
-			if advisoryScore > maxScore {
-				maxScore = advisoryScore
-			}
 		}
 
 		rows := []map[string]string{}
@@ -274,22 +260,35 @@ func main() {
 			}
 		})
 
-		dependenciesResources := report.ResourcesGroup{
-			Name: "Vulnerable Dependencies",
-			Header: []string{
-				"Dependency",
-				"Ecosystem",
-				"Vulnerabilities",
-				"Max. Severity",
-				"Min. Recommended Version",
-				"References",
-			},
-			Rows: rows,
+		for _, r := range rows {
+			vulnerability := report.Vulnerability{
+				Summary: "Vulnerable Code Dependencies in Github Repository",
+				Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
+You can find more specific information in the resources table for the repository.`,
+				Fingerprint:      helpers.ComputeFingerprint(r["Vulnerabilities"], r["Max. Severity"]),
+				AffectedResource: fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"]),
+				Score:            scoreSeverity(r["Max. Severity"]),
+				Labels:           []string{"potential", "dependency", "code", "github"},
+				ImpactDetails:    "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
+				CWEID:            937,
+				Recommendations:  []string{"Update the dependency to at least the minimum recommended version in the resources table."},
+				Resources: []report.ResourcesGroup{
+					{
+						Name: "Vulnerable Dependencies",
+						Header: []string{
+							"Dependency",
+							"Ecosystem",
+							"Vulnerabilities",
+							"Max. Severity",
+							"Min. Recommended Version",
+							"References",
+						},
+						Rows: []map[string]string{r},
+					},
+				},
+			}
+			state.AddVulnerabilities(vulnerability)
 		}
-
-		vulnerableDependencies.Resources = []report.ResourcesGroup{dependenciesResources}
-		vulnerableDependencies.Score = maxScore
-		state.AddVulnerabilities(vulnerableDependencies)
 
 		return nil
 	}

@@ -1,7 +1,7 @@
 # Copyright 2019 Adevinta
 
-FROM alpine
-RUN apk update && apk add \
+FROM alpine:3.13.6
+RUN apk update && apk upgrade && apk add \
 	git \
 	gcc \
 	make \
