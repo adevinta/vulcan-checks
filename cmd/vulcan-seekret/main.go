@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -24,11 +25,13 @@ import (
 	sourcedir "github.com/apuigsech/seekret-source-dir"
 	"github.com/apuigsech/seekret/models"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 type options struct {
 	Depth int `json:"depth"`
+	Branch string `json:"branch"`
 }
 
 var (
@@ -51,7 +54,7 @@ var (
 		},
 	}
 
-	rulesPath   = "/opt/rules/"
+	rulesPath   = "./rules/"
 	ignoredDirs = []string{
 		// JavaScript
 		"(^|/)node_modules/.*",
@@ -74,6 +77,7 @@ func main() {
 
 		var opt options
 		opt.Depth = 1
+		opt.Branch = "master"
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
@@ -122,6 +126,7 @@ func main() {
 			URL:   target,
 			Auth:  auth,
 			Depth: opt.Depth,
+			ReferenceName: plumbing.ReferenceName(path.Join("refs/heads", opt.Branch)),
 		})
 		if err != nil {
 			return err
