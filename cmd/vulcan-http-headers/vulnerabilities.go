@@ -171,7 +171,7 @@ func processCookies(vuln report.Vulnerability, target string, r observatoryResul
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -219,7 +219,7 @@ func processCORS(vuln report.Vulnerability, target string, r observatoryResult, 
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -274,7 +274,7 @@ func processRedirect(vuln report.Vulnerability, target string, r observatoryResu
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -312,7 +312,7 @@ func processReferrer(vuln report.Vulnerability, target string, r observatoryResu
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -370,7 +370,7 @@ func processHSTS(vuln report.Vulnerability, target string, r observatoryResult, 
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -420,7 +420,7 @@ func processSRI(vuln report.Vulnerability, target string, r observatoryResult, s
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -460,7 +460,7 @@ func processXContent(vuln report.Vulnerability, target string, r observatoryResu
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -501,7 +501,7 @@ func processXFrame(vuln report.Vulnerability, target string, r observatoryResult
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -544,7 +544,7 @@ func processXXSS(vuln report.Vulnerability, target string, r observatoryResult, 
 
 	if add {
 		vuln.AffectedResource = target
-		vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 		s.AddVulnerabilities(vuln)
 	}
 }
@@ -576,7 +576,7 @@ func processGrading(vuln report.Vulnerability, target string, r observatoryResul
 	}
 
 	vuln.AffectedResource = target
-	vuln.ID = helpers.ComputeFingerprint(vuln.Details)
+	vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
 
 	s.AddVulnerabilities(vuln)
 }
