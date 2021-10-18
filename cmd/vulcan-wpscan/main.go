@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"os"
@@ -118,7 +117,7 @@ func addVulnsToState(target string, state checkstate.State, r *WpScanReport) {
 			wpDetected.Resources = []report.ResourcesGroup{res}
 		}
 
-		wpDetected.ID = computeVulnerabilityID(target, wpDetected.AffectedResource, wpDetected.Details)
+		wpDetected.Fingerprint = helpers.ComputeFingerprint(wpDetected.Details)
 
 		state.AddVulnerabilities(wpDetected)
 	}
@@ -131,18 +130,6 @@ func addVulnsToState(target string, state checkstate.State, r *WpScanReport) {
 		addPluginVulns(target, state, pl.Vulnerabilities, name, pl.Version, r)
 	}
 
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func getImpact(summary string) (float32, string) {
@@ -178,7 +165,7 @@ func addVulns(target string, state checkstate.State, r *WpScanReport, src []Vuln
 			vuln.Recommendations = []string{fmt.Sprintf("Update WordPress to version %v.", v.FixedIn)}
 		}
 
-		vuln.ID = computeVulnerabilityID(target, vuln.AffectedResource, v.References.Cve)
+		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
 
 		state.AddVulnerabilities(vuln)
 	}
@@ -210,7 +197,7 @@ func addPluginVulns(target string, state checkstate.State, src []Vulnerability, 
 			}
 		}
 
-		vuln.ID = computeVulnerabilityID(target, vuln.AffectedResource, v.References.Cve)
+		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
 
 		state.AddVulnerabilities(vuln)
 	}
