@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -165,6 +166,7 @@ func addVulns(state checkstate.State, r *WpScanReport, src []Vulnerability) {
 			vuln.Recommendations = []string{fmt.Sprintf("Update WordPress to version %v.", v.FixedIn)}
 		}
 
+		sort.Strings(v.References.Cve)
 		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
 
 		state.AddVulnerabilities(vuln)
@@ -197,6 +199,7 @@ func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, 
 			}
 		}
 
+		sort.Strings(v.References.Cve)
 		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
 
 		state.AddVulnerabilities(vuln)
