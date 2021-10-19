@@ -88,9 +88,40 @@ func resolveTarget(target string) (string, bool) {
 
 func addVulnsToState(state checkstate.State, r *WpScanReport) {
 	// Add informational vulnerability indicating the WordPress version.
+	addVersionInfoVuln(state, r)
+
+	addVulns(state, r.EffectiveURL, r.Version.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Version.Vulnerabilities)
+
+	for name, pl := range r.Plugins {
+		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
+	}
+
+}
+
+func getImpact(summary string) (float32, string) {
+	if highImpactRe.MatchString(summary) {
+		return report.SeverityThresholdHigh, fmt.Sprintf("Matched with regexp: /%v/i.", highImpactRe.String())
+	}
+
+	if mediumImpactRe.MatchString(summary) {
+		return report.SeverityThresholdMedium, fmt.Sprintf("Matched with regexp: /%v/i.", mediumImpactRe.String())
+
+	}
+
+	if lowImpactRe.MatchString(summary) {
+		return report.SeverityThresholdLow, fmt.Sprintf("Matched with regexp: /%v/i.", lowImpactRe.String())
+	}
+
+	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
+}
+
+func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {
 	if r.Version.Number != "" {
-		details := fmt.Sprintf("Version: %v, Confidence %v%%\n", r.Version.Number, r.Version.Confidence) +
-			fmt.Sprintf("Main Theme: %v, Version: %v, Confidence %v%%, Location: %v\n", r.MainTheme.Slug, r.MainTheme.Version.Number, r.MainTheme.Confidence, r.MainTheme.Location)
+		details := fmt.Sprintf("Version: %v, Confidence %v%%\n", r.Version.Number, r.Version.Confidence)
+		details += fmt.Sprintf("Main Theme: %v, Version: %v, Confidence %v%%, Location: %v\n",
+			r.MainTheme.Slug, r.MainTheme.Version.Number, r.MainTheme.Confidence, r.MainTheme.Location)
 
 		if len(r.Plugins) > 0 {
 			details += "\nPlugins:\n"
@@ -122,32 +153,6 @@ func addVulnsToState(state checkstate.State, r *WpScanReport) {
 
 		state.AddVulnerabilities(wpDetected)
 	}
-
-	addVulns(state, r.EffectiveURL, r.Version.Vulnerabilities)
-	addVulns(state, r.EffectiveURL, r.MainTheme.Vulnerabilities)
-	addVulns(state, r.EffectiveURL, r.MainTheme.Version.Vulnerabilities)
-
-	for name, pl := range r.Plugins {
-		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
-	}
-
-}
-
-func getImpact(summary string) (float32, string) {
-	if highImpactRe.MatchString(summary) {
-		return report.SeverityThresholdHigh, fmt.Sprintf("Matched with regexp: /%v/i.", highImpactRe.String())
-	}
-
-	if mediumImpactRe.MatchString(summary) {
-		return report.SeverityThresholdMedium, fmt.Sprintf("Matched with regexp: /%v/i.", mediumImpactRe.String())
-
-	}
-
-	if lowImpactRe.MatchString(summary) {
-		return report.SeverityThresholdLow, fmt.Sprintf("Matched with regexp: /%v/i.", lowImpactRe.String())
-	}
-
-	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
 }
 
 func addVulns(state checkstate.State, affectedResource string, src []Vulnerability) {
