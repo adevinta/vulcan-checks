@@ -123,12 +123,12 @@ func addVulnsToState(state checkstate.State, r *WpScanReport) {
 		state.AddVulnerabilities(wpDetected)
 	}
 
-	addVulns(state, r, r.Version.Vulnerabilities)
-	addVulns(state, r, r.MainTheme.Vulnerabilities)
-	addVulns(state, r, r.MainTheme.Version.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.Version.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Version.Vulnerabilities)
 
 	for name, pl := range r.Plugins {
-		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r)
+		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
 	}
 
 }
@@ -150,7 +150,7 @@ func getImpact(summary string) (float32, string) {
 	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
 }
 
-func addVulns(state checkstate.State, r *WpScanReport, src []Vulnerability) {
+func addVulns(state checkstate.State, affectedResource string, src []Vulnerability) {
 	for _, v := range src {
 		impact, _ := getImpact(v.Title)
 
@@ -158,7 +158,7 @@ func addVulns(state checkstate.State, r *WpScanReport, src []Vulnerability) {
 			Summary:          v.Title,
 			Score:            impact,
 			References:       v.References.URL,
-			AffectedResource: r.EffectiveURL,
+			AffectedResource: affectedResource,
 			Labels:           []string{"issue", "wordpress", "http"},
 		}
 
@@ -173,7 +173,7 @@ func addVulns(state checkstate.State, r *WpScanReport, src []Vulnerability) {
 	}
 }
 
-func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion, r *WpScanReport) {
+func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion, affectedResource string) {
 	for _, v := range src {
 		title := strings.TrimSpace(v.Title)
 		var (
@@ -188,7 +188,7 @@ func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, 
 			Summary:          "WordPress plugin " + title,
 			Score:            impact,
 			References:       v.References.URL,
-			AffectedResource: r.EffectiveURL,
+			AffectedResource: affectedResource,
 			Labels:           []string{"issue", "wordpress", "http"},
 		}
 		if v.FixedIn != "" {
