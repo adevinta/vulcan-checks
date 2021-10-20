@@ -361,7 +361,7 @@
   - "phpMyAdmin-3.3.4/"
   - "phpMyAdmin-3/"
   - "phpMyAdmin-4/"
-  regex: "phpMyAdmin"
+  regex: "(pma_username|<title>phpMyAdmin</title>)"
   status: 200
   severity: 8.9
   description: Potentially exposed MySQL management page.
