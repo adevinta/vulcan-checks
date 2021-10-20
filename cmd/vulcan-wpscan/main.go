@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -59,6 +60,7 @@ func main() {
 		}
 
 		addVulnsToState(state, wpScanReport)
+
 		return nil
 	}
 
@@ -86,26 +88,14 @@ func resolveTarget(target string) (string, bool) {
 
 func addVulnsToState(state checkstate.State, r *WpScanReport) {
 	// Add informational vulnerability indicating the WordPress version.
-	if r.Version.Number != "" {
-		wpDetected := report.Vulnerability{
-			Summary: "WordPress Detected",
-			Details: fmt.Sprintf("It has been detected, with %v%% confidence, that the WordPress version is %v.", r.Version.Confidence, r.Version.Number),
-			Score:   report.SeverityThresholdNone,
-			// ImpactDetails: "Informational information about the detected WordPress version.",
-		}
-		if len(r.InterestingFindings) > 0 {
-			res := buildResourcesForFindings(r.InterestingFindings)
-			wpDetected.Resources = []report.ResourcesGroup{res}
-		}
-		state.AddVulnerabilities(wpDetected)
-	}
+	addVersionInfoVuln(state, r)
 
-	addVulns(state, r.Version.Vulnerabilities)
-	addVulns(state, r.MainTheme.Vulnerabilities)
-	addVulns(state, r.MainTheme.Version.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.Version.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Vulnerabilities)
+	addVulns(state, r.EffectiveURL, r.MainTheme.Version.Vulnerabilities)
 
 	for name, pl := range r.Plugins {
-		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version)
+		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
 	}
 
 }
@@ -127,23 +117,68 @@ func getImpact(summary string) (float32, string) {
 	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
 }
 
-func addVulns(state checkstate.State, src []Vulnerability) {
+func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {
+	if r.Version.Number != "" {
+		details := fmt.Sprintf("Version: %v, Confidence %v%%\n", r.Version.Number, r.Version.Confidence)
+		details += fmt.Sprintf("Main Theme: %v, Version: %v, Confidence %v%%, Location: %v\n",
+			r.MainTheme.Slug, r.MainTheme.Version.Number, r.MainTheme.Confidence, r.MainTheme.Location)
+
+		if len(r.Plugins) > 0 {
+			details += "\nPlugins:\n"
+
+			for p, v := range r.Plugins {
+				version := "n/a"
+				if v.Version != nil {
+					version = v.Version.Number
+				}
+
+				details += fmt.Sprintf("\tPlugin: %v, Version: %v, Location: %v\n", p, version, v.Location)
+			}
+		}
+
+		wpDetected := report.Vulnerability{
+			Summary:          "WordPress Detected",
+			Details:          details,
+			Score:            report.SeverityThresholdNone,
+			AffectedResource: r.EffectiveURL,
+			Labels:           []string{"informational", "wordpress", "http"},
+		}
+
+		if len(r.InterestingFindings) > 0 {
+			res := buildResourcesForFindings(r.InterestingFindings)
+			wpDetected.Resources = []report.ResourcesGroup{res}
+		}
+
+		wpDetected.Fingerprint = helpers.ComputeFingerprint(wpDetected.Details)
+
+		state.AddVulnerabilities(wpDetected)
+	}
+}
+
+func addVulns(state checkstate.State, affectedResource string, src []Vulnerability) {
 	for _, v := range src {
 		impact, _ := getImpact(v.Title)
 
 		vuln := report.Vulnerability{
-			Summary:    v.Title,
-			Score:      impact,
-			References: v.References.URL,
+			Summary:          v.Title,
+			Score:            impact,
+			References:       v.References.URL,
+			AffectedResource: affectedResource,
+			Labels:           []string{"issue", "wordpress", "http"},
 		}
+
 		if v.FixedIn != "" {
 			vuln.Recommendations = []string{fmt.Sprintf("Update WordPress to version %v.", v.FixedIn)}
 		}
+
+		sort.Strings(v.References.Cve)
+		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
+
 		state.AddVulnerabilities(vuln)
 	}
 }
 
-func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion) {
+func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, version *PluginVersion, affectedResource string) {
 	for _, v := range src {
 		title := strings.TrimSpace(v.Title)
 		var (
@@ -155,9 +190,11 @@ func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, 
 			impact, _ = getImpact(v.Title)
 		}
 		vuln := report.Vulnerability{
-			Summary:    "WordPress plugin " + title,
-			Score:      impact,
-			References: v.References.URL,
+			Summary:          "WordPress plugin " + title,
+			Score:            impact,
+			References:       v.References.URL,
+			AffectedResource: affectedResource,
+			Labels:           []string{"issue", "wordpress", "http"},
 		}
 		if v.FixedIn != "" {
 			if version != nil {
@@ -166,6 +203,9 @@ func addPluginVulns(state checkstate.State, src []Vulnerability, plugin string, 
 				vuln.Recommendations = []string{fmt.Sprintf("Check if the WordPress plugin %s version is at least %s.", plugin, v.FixedIn)}
 			}
 		}
+
+		sort.Strings(v.References.Cve)
+		vuln.Fingerprint = helpers.ComputeFingerprint(v.References.Cve)
 
 		state.AddVulnerabilities(vuln)
 	}
