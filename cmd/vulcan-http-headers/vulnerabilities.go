@@ -9,8 +9,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 // CSP group of vulnerabilities.
@@ -18,8 +19,9 @@ var cspVuln = report.Vulnerability{
 	Description: "Content Security Policy (CSP) is an HTTP header that allows site operators fine-grained control over where resources on their site can be loaded from. " +
 		"The use of this header is the best method to prevent cross-site scripting (XSS) vulnerabilities. " +
 		"Due to the difficulty in retrofitting CSP into existing websites, CSP is mandatory for all new websites and is strongly recommended for all existing high-risk sites.",
-	Score: 1.0, // Low.
-	CWEID: 358,
+	Score:  1.0, // Low.
+	Labels: []string{"issue", "http"},
+	CWEID:  358,
 	Recommendations: []string{
 		"Implement a well-formed and correct CSP policy for this site.",
 		"The policy should not contain unsafe directive for anything but style.",
@@ -34,29 +36,31 @@ var cspVuln = report.Vulnerability{
 }
 
 // processCSP checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processCSP(r observatoryResult, s state.State) error {
+func processCSP(vuln report.Vulnerability, target string, r observatoryResult, s state.State) error {
 	add := false
 
 	switch r.Tests.ContentSecurityPolicy.Result {
 	case `csp-not-implemented`:
-		cspVuln.Summary = "HTTP Content Security Policy Not Implemented"
-		cspVuln.Score = report.SeverityThresholdLow // 3.9
+		vuln.Summary = "HTTP Content Security Policy Not Implemented"
+		vuln.Score = report.SeverityThresholdLow // 3.9
 		add = true
 	case `csp-header-invalid`:
-		cspVuln.Summary = "HTTP Content Security Policy Is Malformed"
-		cspVuln.Score = report.SeverityThresholdLow // 3.9
+		vuln.Summary = "HTTP Content Security Policy Is Malformed"
+		vuln.Score = report.SeverityThresholdLow // 3.9
 		add = true
 	default:
-		cspVuln.Summary = "HTTP Content Security Policy Implemented Unsafely"
+		vuln.Summary = "HTTP Content Security Policy Implemented Unsafely"
 		var err error
-		add, err = processCSPPolicy(r, s)
+		add, err = processCSPPolicy(&vuln, r, s)
 		if err != nil {
 			return err
 		}
 	}
 
 	if add {
-		s.AddVulnerabilities(cspVuln)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 
 	return nil
@@ -75,7 +79,7 @@ var cspDetails = map[string]string{
 // processPolicy will parse the Policy struct obtained from the Observatory scan.
 // The policy is a map where keys are the name of a (mis)configuration and the value
 // is a bool that indicates whether it applies or not.
-func processCSPPolicy(r observatoryResult, s state.State) (add bool, err error) {
+func processCSPPolicy(vuln *report.Vulnerability, r observatoryResult, s state.State) (add bool, err error) {
 	// As the CSP header exists and is well-formed, the field Policy should exist in the Test results.
 	var p interface{}
 	if err := json.Unmarshal(r.Tests.ContentSecurityPolicy.Policy, &p); err != nil {
@@ -98,11 +102,11 @@ func processCSPPolicy(r observatoryResult, s state.State) (add bool, err error) 
 			add = true
 
 			// Include newline if there are more than one details bullet.
-			if cspVuln.Details != "" {
-				cspVuln.Details += "\n"
+			if vuln.Details != "" {
+				vuln.Details += "\n"
 			}
 
-			cspVuln.Details += cspDetails[k]
+			vuln.Details += cspDetails[k]
 		}
 	}
 
@@ -129,37 +133,46 @@ var cookiesVuln = report.Vulnerability{
 }
 
 // processCookies checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processCookies(r observatoryResult, s state.State) {
+func processCookies(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.Cookies.Result {
 	case `cookies-without-secure-flag-but-protected-by-hsts`:
-		cookiesVuln.Details = "Cookies set without using the 'Secure' flag, but transmission over HTTP prevented by HSTS."
-		cookiesVuln.Score = report.SeverityThresholdNone
+		vuln.Details = "Cookies set without using the 'Secure' flag, but transmission over HTTP prevented by HSTS."
+		vuln.Score = report.SeverityThresholdNone
+		vuln.Labels = []string{"informational", "http"}
 	case `cookies-session-without-secure-flag-but-protected-by-hsts`:
-		cookiesVuln.Details = "Session cookie set without the 'Secure' flag, but transmission over HTTP prevented by HSTS."
-		cookiesVuln.Score = report.SeverityThresholdNone
+		vuln.Details = "Session cookie set without the 'Secure' flag, but transmission over HTTP prevented by HSTS."
+		vuln.Score = report.SeverityThresholdNone
+		vuln.Labels = []string{"informational", "http"}
 	case `cookies-without-secure-flag`:
-		cookiesVuln.Details = "Cookies set without using the 'Secure' flag or set over HTTP."
-		cookiesVuln.Score = 2.0 // Low.
+		vuln.Details = "Cookies set without using the 'Secure' flag or set over HTTP."
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-samesite-flag-invalid`:
-		cookiesVuln.Details = "Cookies use 'SameSite' flag, but set to something other than 'Strict' or 'Lax'."
-		cookiesVuln.Score = 2.0 // Low.
+		vuln.Details = "Cookies use 'SameSite' flag, but set to something other than 'Strict' or 'Lax'."
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-anticsrf-without-samesite-flag`:
-		cookiesVuln.Details = "Anti-CSRF tokens set without using the 'SameSite' flag."
-		cookiesVuln.Score = 2.0 // Low.
+		vuln.Details = "Anti-CSRF tokens set without using the 'SameSite' flag."
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-session-without-httponly-flag`:
-		cookiesVuln.Details = "Session cookie set without using the 'HttpOnly' flag."
-		cookiesVuln.Score = 3.0 // Low.
+		vuln.Details = "Session cookie set without using the 'HttpOnly' flag."
+		vuln.Score = 3.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-session-without-secure-flag`:
-		cookiesVuln.Details = "Session cookie set without using the 'Secure' flag or set over HTTP."
-		cookiesVuln.Score = report.SeverityThresholdLow // 3.9
+		vuln.Details = "Session cookie set without using the 'Secure' flag or set over HTTP."
+		vuln.Score = report.SeverityThresholdLow // 3.9
+		vuln.Labels = []string{"issue", "http"}
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(cookiesVuln)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
@@ -169,7 +182,8 @@ var corsVuln = report.Vulnerability{
 	Description: "`Access-Control-Allow-Origin` is an HTTP header that defines which foreign origins are allowed to access the content " +
 		"of pages on your domain via scripts using methods such as XMLHttpRequest. The `crossdomain.xml` and `clientaccesspolicy.xml` provide " +
 		"similar functionality, but for Flash and Silverlight-based applications, respectively.",
-	Score: report.SeverityThresholdMedium,
+	Labels: []string{"issue", "http"},
+	Score:  report.SeverityThresholdMedium,
 	ImpactDetails: "Incorrectly configured CORS settings can allow foreign sites to read your site's contents, possibly allowing them access " +
 		"to private user information.",
 	CWEID: 358,
@@ -185,37 +199,40 @@ var corsVuln = report.Vulnerability{
 }
 
 // processCORS checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processCORS(r observatoryResult, s state.State) {
+func processCORS(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := false
 
 	if r.Tests.CrossOriginResourceSharing.Result == `xml-not-parsable` {
-		corsVuln.Details += "* Claims to be xml, but cannot be parsed."
-		corsVuln.Recommendations = append(corsVuln.Recommendations, "Fix /crossdomain.xml and/or /clientaccesspolicy.xml so it becomes well-formed to be able to run the CORS check.")
-		corsVuln.Score = report.SeverityThresholdLow // 3.9
+		vuln.Details += "* Claims to be xml, but cannot be parsed."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix /crossdomain.xml and/or /clientaccesspolicy.xml so it becomes well-formed to be able to run the CORS check.")
+		vuln.Score = report.SeverityThresholdLow // 3.9
 		add = true
 	}
 
 	if r.Tests.CrossOriginResourceSharing.Result == `cross-origin-resource-sharing-implemented-with-universal-access` {
-		if corsVuln.Details != "" {
-			corsVuln.Details += "\n"
+		if vuln.Details != "" {
+			vuln.Details += "\n"
 		}
-		corsVuln.Details += "* Content is visible via cross-origin resource sharing (CORS) file or headers."
+		vuln.Details += "* Content is visible via cross-origin resource sharing (CORS) file or headers."
 		add = true
 	}
 
 	if add {
-		s.AddVulnerabilities(corsVuln)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // Redirection vulnerabilities.
-var redirectVulns = report.Vulnerability{
+var redirectVuln = report.Vulnerability{
 	Summary: "HTTP Redirect Misconfiguration",
 	Description: "Websites may continue to listen on port 80 (HTTP) so that users do not get connection errors when typing a URL into their address bar, " +
 		"as browsers currently connect via HTTP for their initial request. Sites that listen on port 80 should only redirect to the same resource on HTTPS. " +
 		"Once the redirection has occured, HSTS should ensure that all future attempts go to the site via HTTP are instead sent directly to the secure site. " +
 		"APIs or websites not intended for public consumption should disable the use of HTTP entirely.",
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	CWEID:  358,
 	Recommendations: []string{
 		"Redirect HTTP version of the site to HTTPS.",
 		"HTTP to HTTPS redirections should be done with the 301 redirects, unless they redirect to a different path, in which case they may be done with 302 redirections.",
@@ -229,46 +246,49 @@ var redirectVulns = report.Vulnerability{
 }
 
 // processRedirect checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processRedirect(r observatoryResult, s state.State) {
+func processRedirect(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.Redirection.Result {
 	case `redirection-off-host-from-http`:
-		redirectVulns.Details = "* Initial redirection from HTTP to HTTPS is to a different host, preventing HSTS."
-		redirectVulns.Score = 1.0 // Low.
+		vuln.Details = "* Initial redirection from HTTP to HTTPS is to a different host, preventing HSTS."
+		vuln.Score = 1.0 // Low.
 	case `redirection-not-to-https-on-initial-redirection`:
-		redirectVulns.Details = "* Redirects to HTTPS eventually, but initial redirection is to another HTTP URL."
-		redirectVulns.Score = 1.5 // Low.
+		vuln.Details = "* Redirects to HTTPS eventually, but initial redirection is to another HTTP URL."
+		vuln.Score = 1.5 // Low.
 	case `redirection-not-to-https`:
-		redirectVulns.Details = "* Redirects, but final destination is not an HTTPS URL. Final Destination: " + r.Tests.Redirection.Destination
-		redirectVulns.Score = report.SeverityThresholdMedium
+		vuln.Details = "* Redirects, but final destination is not an HTTPS URL. Final Destination: " + r.Tests.Redirection.Destination
+		vuln.Score = report.SeverityThresholdMedium
 	case `redirection-missing`:
-		redirectVulns.Summary = "Site Without HTTPS"
-		redirectVulns.Details = "* Does not redirect to an HTTPS site."
-		redirectVulns.Score = report.SeverityThresholdMedium
-		redirectVulns.References = append(redirectVulns.References, "https://security.googleblog.com/2018/02/a-secure-web-is-here-to-stay.html")
-		redirectVulns.Recommendations = append(redirectVulns.Recommendations, "Serve the site via HTTPS instead of HTTP.")
+		vuln.Summary = "Site Without HTTPS"
+		vuln.Details = "* Does not redirect to an HTTPS site."
+		vuln.Score = report.SeverityThresholdMedium
+		vuln.References = append(vuln.References, "https://security.googleblog.com/2018/02/a-secure-web-is-here-to-stay.html")
+		vuln.Recommendations = append(vuln.Recommendations, "Serve the site via HTTPS instead of HTTP.")
 	case `redirection-invalid-cert`:
-		redirectVulns.Details = "* Invalid certificate chain encountered during redirection."
-		redirectVulns.Score = 2.0 // Low.
+		vuln.Details = "* Invalid certificate chain encountered during redirection."
+		vuln.Score = 2.0 // Low.
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(redirectVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // Referrer vulnerabilities.
-var referrerVulns = report.Vulnerability{
+var referrerVuln = report.Vulnerability{
 	Summary: "HTTP Referrer Policy Misconfiguration",
 	Description: "When a user navigates to a site via a hyperlink or a website loads an external resource, " +
 		"browsers inform the destination site of the origin of the requests through the use of the HTTP Referer (sic) header. " +
 		"Although this can be useful for a variety of purposes, it can also place the privacy of users at risk. " +
 		"HTTP Referrer Policy allows sites to have fine-grained control over how and when browsers transmit the HTTP Referer header.",
-	Score: 1.0, // Low.
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	Score:  1.0, // Low.
+	CWEID:  358,
 	References: []string{
 		"https://wiki.mozilla.org/Security/Guidelines/Web_Security#Referrer_Policy",
 		"https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy",
@@ -277,26 +297,28 @@ var referrerVulns = report.Vulnerability{
 }
 
 // processReferrer checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processReferrer(r observatoryResult, s state.State) {
+func processReferrer(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.ReferrerPolicy.Result {
 	case `referrer-policy-unsafe`:
-		referrerVulns.Details = "* 'Referrer-Policy' header set unsafely to 'origin', 'origin-when-cross-origin', or 'unsafe-url'."
+		vuln.Details = "* 'Referrer-Policy' header set unsafely to 'origin', 'origin-when-cross-origin', or 'unsafe-url'."
 	case `referrer-policy-header-invalid`:
-		referrerVulns.Details = "* 'Referrer-Policy' header cannot be recognized."
-		referrerVulns.Recommendations = append(referrerVulns.Recommendations, "Fix the malformed Referrer Policy in the HTTP Header.")
+		vuln.Details = "* 'Referrer-Policy' header cannot be recognized."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the malformed Referrer Policy in the HTTP Header.")
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(referrerVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // HSTS vulnerabilities.
-var hstsVulns = report.Vulnerability{
+var hstsVuln = report.Vulnerability{
 	Summary: "HTTP Strict Transport Security Misconfiguration",
 	Description: "HTTP Strict Transport Security (HSTS) is an HTTP header that notifies user agents to only connect to a given site over HTTPS, " +
 		"even if the scheme chosen was HTTP. Browsers that have had HSTS set for a given site will transparently upgrade all requests to HTTPS. " +
@@ -310,51 +332,59 @@ var hstsVulns = report.Vulnerability{
 }
 
 // processHSTS checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processHSTS(r observatoryResult, s state.State) {
+func processHSTS(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.StrictTransportSecurity.Result {
 	case `hsts-implemented-max-age-less-than-six-months`:
-		hstsVulns.Details = "* HTTP Strict Transport Security (HSTS) header set to less than six months (15768000)."
-		hstsVulns.Recommendations = append(
-			hstsVulns.Recommendations,
+		vuln.Details = "* HTTP Strict Transport Security (HSTS) header set to less than six months (15768000)."
+		vuln.Recommendations = append(
+			vuln.Recommendations,
 			"max-age must be set to a minimum of six months (15768000), but longer periods such as two years (63072000) are recommended. "+
 				"Note that once this value is set, the site must continue to support HTTPS until the expiry time has been reached.",
 		)
+		vuln.Labels = []string{"informational", "http"}
 	case `hsts-not-implemented`:
-		hstsVulns.Summary = "HTTP Strict Transport Security Not Implemented"
-		hstsVulns.Recommendations = append(hstsVulns.Recommendations, "Implement HSTS in the site.")
-		hstsVulns.Score = 1.5 // Low.
+		vuln.Summary = "HTTP Strict Transport Security Not Implemented"
+		vuln.Recommendations = append(vuln.Recommendations, "Implement HSTS in the site.")
+		vuln.Score = 1.5 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `hsts-header-invalid`:
-		hstsVulns.Details = "* HTTP Strict Transport Security (HSTS) header cannot be recognized."
-		hstsVulns.Recommendations = append(hstsVulns.Recommendations, "Fix the malformed HSTS header.")
-		hstsVulns.Score = 2.0 // Low.
+		vuln.Details = "* HTTP Strict Transport Security (HSTS) header cannot be recognized."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the malformed HSTS header.")
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `hsts-not-implemented-no-https`:
-		hstsVulns.Details = "* HTTP Strict Transport Security (HSTS) header cannot be set for sites not available over https."
-		hstsVulns.Recommendations = append(hstsVulns.Recommendations, "Consider implementing HTTPS in your site, and enable HSTS.")
-		hstsVulns.Score = 2.0 // Low.
+		vuln.Details = "* HTTP Strict Transport Security (HSTS) header cannot be set for sites not available over https."
+		vuln.Recommendations = append(vuln.Recommendations, "Consider implementing HTTPS in your site, and enable HSTS.")
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	case `hsts-invalid-cert`:
-		hstsVulns.Details = "* HTTP Strict Transport Security (HSTS) header cannot be set, as site contains an invalid certificate chain."
-		hstsVulns.Recommendations = append(hstsVulns.Recommendations, "Fix the certificate chain of the site.")
-		hstsVulns.Score = 2.0 // Low.
+		vuln.Details = "* HTTP Strict Transport Security (HSTS) header cannot be set, as site contains an invalid certificate chain."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the certificate chain of the site.")
+		vuln.Score = 2.0 // Low.
+		vuln.Labels = []string{"issue", "http"}
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(hstsVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // SRI vulnerabilities.
-var sriVulns = report.Vulnerability{
+var sriVuln = report.Vulnerability{
 	Summary: "HTTP Subresource Integrity Misconfiguration",
 	Description: "Subresource integrity is a recent W3C standard that protects against attackers modifying the contents of JavaScript libraries " +
 		"hosted on content delivery networks (CDNs) in order to create vulnerabilities in all websites that make use of that hosted library. " +
 		"Subresource integrity locks an external JavaScript resource to its known contents at a specific point in time. " +
 		"If the file is modified at any point thereafter, supporting web browsers will refuse to load it. As such, " +
 		"the use of subresource integrity is mandatory for all external JavaScript resources loaded from sources not hosted on Mozilla-controlled systems.",
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	CWEID:  358,
 	Recommendations: []string{
 		"Add the 'integrity' attribute to every external resource loaded into the webpage.",
 		"Load external resources from https.",
@@ -367,40 +397,43 @@ var sriVulns = report.Vulnerability{
 }
 
 // processSRI checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processSRI(r observatoryResult, s state.State) {
+func processSRI(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.SubresourceIntegrity.Result {
 	case `sri-not-implemented-but-external-scripts-loaded-securely`:
-		sriVulns.Details = "* Subresource Integrity (SRI) not implemented, but all external scripts are loaded over HTTPS."
-		sriVulns.Score = 1.0 // Low.
+		vuln.Details = "* Subresource Integrity (SRI) not implemented, but all external scripts are loaded over HTTPS."
+		vuln.Score = 1.0 // Low.
 	case `sri-implemented-but-external-scripts-not-loaded-securely`:
-		sriVulns.Details = "* Subresource Integrity (SRI) implemented, but external scripts are loaded over HTTP."
-		sriVulns.Score = report.SeverityThresholdLow // 3.9
+		vuln.Details = "* Subresource Integrity (SRI) implemented, but external scripts are loaded over HTTP."
+		vuln.Score = report.SeverityThresholdLow // 3.9
 	case `sri-not-implemented-and-external-scripts-not-loaded-securely`:
-		sriVulns.Details = "* Subresource Integrity (SRI) is not implemented, and external scripts are loaded over HTTP."
-		sriVulns.Score = report.SeverityThresholdMedium // 6.9
+		vuln.Details = "* Subresource Integrity (SRI) is not implemented, and external scripts are loaded over HTTP."
+		vuln.Score = report.SeverityThresholdMedium // 6.9
 	case `html-not-parsable`:
-		sriVulns.Details = "* Claims to be HTML, but cannot be parsed."
-		sriVulns.Recommendations = append(sriVulns.Recommendations, "Fix HTML so it becomes well-formed to be able to run the SRI check.")
-		sriVulns.Score = report.SeverityThresholdLow // 3.9
+		vuln.Details = "* Claims to be HTML, but cannot be parsed."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix HTML so it becomes well-formed to be able to run the SRI check.")
+		vuln.Score = report.SeverityThresholdLow // 3.9
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(sriVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // X-Content-Type-Options vulnerabilities.
-var xContentVulns = report.Vulnerability{
+var xContentVuln = report.Vulnerability{
 	Summary: "HTTP X-Content-Type-Options Misconfiguration",
 	Description: "`X-Content-Type-Options` is a header supported by Internet Explorer, Chrome and Firefox 50+ that tells it " +
 		"not to load scripts and stylesheets unless the server indicates the correct MIME type. Without this header, " +
 		"these browsers can incorrectly detect files as scripts and stylesheets, leading to XSS attacks.",
-	Score: 1.0, // Low.
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	Score:  1.0, // Low.
+	CWEID:  358,
 	Recommendations: []string{
 		"All sites must set the X-Content-Type-Options header and the appropriate MIME types for files that they serve.",
 	},
@@ -412,33 +445,36 @@ var xContentVulns = report.Vulnerability{
 }
 
 // processXContent checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processXContent(r observatoryResult, s state.State) {
+func processXContent(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.XContentTypeOptions.Result {
 	case `x-content-type-options-not-implemented`:
-		xContentVulns.Summary = "HTTP X-Content-Type-Options Not Implemented"
+		vuln.Summary = "HTTP X-Content-Type-Options Not Implemented"
 	case `x-content-type-options-header-invalid`:
-		xContentVulns.Details = "* 'X-Content-Type-Options' header cannot be recognized."
-		xContentVulns.Recommendations = append(xContentVulns.Recommendations, "Fix the malformed X-Content-Type-Options HTTP Header.")
+		vuln.Details = "* 'X-Content-Type-Options' header cannot be recognized."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the malformed X-Content-Type-Options HTTP Header.")
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(xContentVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // X-Frame-Options vulnerabilities.
-var xFrameVulns = report.Vulnerability{
+var xFrameVuln = report.Vulnerability{
 	Summary: "HTTP X-Frame-Options Misconfiguration",
 	Description: "`X-Frame-Options` is an HTTP header that allows sites control over how your site may be framed within an iframe. " +
 		"Clickjacking is a practical attack that allows malicious sites to trick users into clicking links on your site even though " +
 		"they may appear to not be on your site at all. As such, the use of the `X-Frame-Options` header is mandatory for all new websites, " +
 		"and all existing websites are expected to add support for `X-Frame-Options` as soon as possible.",
-	Score: report.SeverityThresholdLow, // 3.9
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	Score:  report.SeverityThresholdLow, // 3.9
+	CWEID:  358,
 	Recommendations: []string{
 		"Sites that require the ability to be iframed must use either Content Security Policy and/or employ JavaScript defenses to prevent clickjacking from malicious origins.",
 	},
@@ -450,32 +486,35 @@ var xFrameVulns = report.Vulnerability{
 }
 
 // processXFrame checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processXFrame(r observatoryResult, s state.State) {
+func processXFrame(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.XFrameOptions.Result {
 	case `x-frame-options-not-implemented`:
-		xFrameVulns.Summary = "HTTP X-Frame-Options Not Implemented"
+		vuln.Summary = "HTTP X-Frame-Options Not Implemented"
 	case `x-frame-options-header-invalid`:
-		xFrameVulns.Details = "* 'X-Frame-Options' (XFO) header cannot be recognized."
-		xFrameVulns.Recommendations = append(xFrameVulns.Recommendations, "Fix the malformed X-Frame-Options HTTP Header.")
+		vuln.Details = "* 'X-Frame-Options' (XFO) header cannot be recognized."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the malformed X-Frame-Options HTTP Header.")
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(xFrameVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
 // X-XSS-Protection vulnerabilities.
-var xXSSVulns = report.Vulnerability{
+var xXSSVuln = report.Vulnerability{
 	Summary: "HTTP X-XSS-Protection Misconfiguration",
 	Description: "`X-XSS-Protection` is a feature of Internet Explorer and Chrome that stops pages from loading when they detect reflected cross-site scripting (XSS) attacks. " +
 		"Although these protections are largely unnecessary in modern browsers when sites implement a strong Content Security Policy that disables the use of " +
 		"inline JavaScript (`unsafe-inline`), they can still provide protections for users of older web browsers that don't yet support CSP.",
-	Score: 2.0, // Low.
-	CWEID: 358,
+	Labels: []string{"issue", "http"},
+	Score:  2.0, // Low.
+	CWEID:  358,
 	Recommendations: []string{
 		"New websites should use this header, but given the small risk of false positives, it is only recommended for existing sites.",
 		"This header is unnecessary for APIs, which should instead simply return a restrictive Content Security Policy header.",
@@ -488,23 +527,25 @@ var xXSSVulns = report.Vulnerability{
 }
 
 // processXXSS checks the Observatory scan results and adds a Vulnerability if a misconfiguration is found.
-func processXXSS(r observatoryResult, s state.State) {
+func processXXSS(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
 	add := true
 
 	switch r.Tests.XXSSProtection.Result {
 	case `x-xss-protection-disabled`:
-		xXSSVulns.Details = "* 'X-XSS-Protection' header set to '0' (disabled)."
+		vuln.Details = "* 'X-XSS-Protection' header set to '0' (disabled)."
 	case `x-xss-protection-not-implemented`:
-		xXSSVulns.Summary = "HTTP X-XSS-Protection Not Implemented"
+		vuln.Summary = "HTTP X-XSS-Protection Not Implemented"
 	case `x-xss-protection-header-invalid`:
-		xXSSVulns.Details = "* 'X-XSS-Protection' header cannot be recognized."
-		xXSSVulns.Recommendations = append(xXSSVulns.Recommendations, "Fix the malformed X-XSS-Protection HTTP Header.")
+		vuln.Details = "* 'X-XSS-Protection' header cannot be recognized."
+		vuln.Recommendations = append(vuln.Recommendations, "Fix the malformed X-XSS-Protection HTTP Header.")
 	default:
 		add = false
 	}
 
 	if add {
-		s.AddVulnerabilities(xXSSVulns)
+		vuln.AffectedResource = target
+		vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+		s.AddVulnerabilities(vuln)
 	}
 }
 
@@ -513,7 +554,8 @@ var observatoryGrading = report.Vulnerability{
 	Summary: "Mozilla HTTP Observatory",
 	Description: "The Mozilla HTTP Observatory is a set of tools to analyze your website and inform you if you are utilizing the many available methods to secure it. " +
 		"Some of the HTTP check results shown in this report come from using this tool. As the tool is giving a global score, we are showing it to you too. ",
-	Score: report.SeverityThresholdNone,
+	Score:  report.SeverityThresholdNone,
+	Labels: []string{"informational", "http"},
 	Recommendations: []string{
 		"Fix all the vulnerabilities reported for the HTTP headers of your website to improve the score.",
 	},
@@ -524,14 +566,17 @@ var observatoryGrading = report.Vulnerability{
 }
 
 // processGrading checks the Observatory scan results and adds the given grading.
-func processGrading(r observatoryResult, s state.State) {
-	observatoryGrading.Details = fmt.Sprintf("Global score given by Mozilla Observatory: %v", r.Scan.Grade)
+func processGrading(vuln report.Vulnerability, target string, r observatoryResult, s state.State) {
+	vuln.Details = fmt.Sprintf("Global score given by Mozilla Observatory: %v", r.Scan.Grade)
 
-	observatoryGrading.Details += "\n\nThe HTTP headers returned by your site were:\n\n"
+	vuln.Details += "\n\nThe HTTP headers returned by your site were:\n\n"
 
 	for k, v := range r.Scan.ResponseHeaders {
-		observatoryGrading.Details += fmt.Sprintf("%v: %v\n", k, v)
+		vuln.Details += fmt.Sprintf("%v: %v\n", k, v)
 	}
 
-	s.AddVulnerabilities(observatoryGrading)
+	vuln.AffectedResource = target
+	vuln.Fingerprint = helpers.ComputeFingerprint(vuln.Details)
+
+	s.AddVulnerabilities(vuln)
 }

@@ -39,6 +39,7 @@ var behindOktaVuln = report.Vulnerability{
 	Summary:     "Okta Authentication",
 	Description: "The asset is not reachable because it is behind Okta.",
 	Score:       report.SeverityThresholdNone,
+	Labels:      []string{"informational", "http"},
 }
 
 func main() {
@@ -112,7 +113,7 @@ func main() {
 
 		e.WithFields(logrus.Fields{"parsed": res}).Debug("Results parsed")
 
-		return processResults(res, state)
+		return processResults(target, res, state)
 	}
 
 	c := check.NewCheckFromHandler(checkName, run)
@@ -120,6 +121,8 @@ func main() {
 }
 
 func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
+	behindOktaVuln.AffectedResource = target
+
 	res := report.ResourcesGroup{
 		Name: "",
 		Header: []string{
@@ -134,37 +137,40 @@ func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
 		},
 	}
 	behindOktaVuln.Resources = append(behindOktaVuln.Resources, res)
+
+	behindOktaVuln.Fingerprint = helpers.ComputeFingerprint(behindOktaVuln.Resources)
+
 	return behindOktaVuln
 }
 
-func processResults(r observatoryResult, s state.State) error {
+func processResults(target string, r observatoryResult, s state.State) error {
 	if r.Error != "" {
 		return errors.New(r.Error)
 	}
 
-	if err := processCSP(r, s); err != nil {
+	if err := processCSP(cspVuln, target, r, s); err != nil {
 		return err
 	}
 
-	processCookies(r, s)
+	processCookies(cookiesVuln, target, r, s)
 
-	processCORS(r, s)
+	processCORS(corsVuln, target, r, s)
 
-	processRedirect(r, s)
+	processRedirect(redirectVuln, target, r, s)
 
-	processReferrer(r, s)
+	processReferrer(referrerVuln, target, r, s)
 
-	processHSTS(r, s)
+	processHSTS(hstsVuln, target, r, s)
 
-	processSRI(r, s)
+	processSRI(sriVuln, target, r, s)
 
-	processXContent(r, s)
+	processXContent(xContentVuln, target, r, s)
 
-	processXFrame(r, s)
+	processXFrame(xFrameVuln, target, r, s)
 
-	processXXSS(r, s)
+	processXXSS(xXSSVuln, target, r, s)
 
-	processGrading(r, s)
+	processGrading(observatoryGrading, target, r, s)
 
 	return nil
 }
