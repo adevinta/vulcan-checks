@@ -11,7 +11,7 @@ require (
 	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20210908082513-07ecc6af2520
 	github.com/adevinta/vulcan-report v0.0.0-20210830131559-d13f81ad6b01
-	github.com/adevinta/vulcan-types v0.0.0-20210430125916-dd7eaa6946f8
+	github.com/adevinta/vulcan-types v0.0.0-20211011153447-1b4d6804c22e
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -24,7 +24,6 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
-	github.com/miekg/dns v1.1.43 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/satori/go.uuid v1.2.0
@@ -35,8 +34,7 @@ require (
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
-	golang.org/x/net v0.0.0-20210907225631-ff17edfbf26d
-	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34 // indirect
+	golang.org/x/net v0.0.0-20211008194852-3b03d305991f
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
