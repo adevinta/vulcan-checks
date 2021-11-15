@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"regexp"
@@ -302,24 +300,12 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 				vuln.Resources = vuln.Resources[:len(vuln.Resources)-1]
 			}
 			sort.Strings(vulnIDs)
-			vulnID := computeVulnerabilityID(vuln.AffectedResource, vuln.AffectedResource, vulnIDs)
+			vulnID := helpers.ComputeFingerprint(vuln.Score, vulnIDs)
 			vuln.ID = vulnID
 			vulns = append(vulns, vuln)
 		}
 	}
 	return vulns
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func severityToScore(risk string) float32 {
