@@ -14,6 +14,12 @@ github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f h1:I74NfMCY6nR2+/u
 github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
 github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21 h1:UTCSVBGTK78jV0F/pDsYLIKRzmJD7pkz/vqP0OVOHfM=
 github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
+github.com/adevinta/restuss v0.0.0-20211119114242-cfba74b9f7f4 h1:/FocP9zfPRZz7kq+txHjFjnsUNU2yUZlsIdOnNfYgDI=
+github.com/adevinta/restuss v0.0.0-20211119114242-cfba74b9f7f4/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
+github.com/adevinta/restuss v0.0.0-20211119163734-54a305f3b622 h1:XHQiNu2X0e5L9zTIluRXEFyXSNLiE6Boye3FzrClhGg=
+github.com/adevinta/restuss v0.0.0-20211119163734-54a305f3b622/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
+github.com/adevinta/restuss v0.0.0-20211119171956-f9c34217753b h1:xM0Tagsa9FCo/U6A3fX2N4EXHwvhv1cvuqm2kggPAO8=
+github.com/adevinta/restuss v0.0.0-20211119171956-f9c34217753b/go.mod h1:8dMhe4LgwRr18Izq4gJHEb0JGWyDd4k7eJawvSwaqNM=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20211117083331-f1882f669b24 h1:emjXNCQ2HU5kGiwFV5swg0rsz2MEU6U6z6KoGuSXjw8=
 github.com/adevinta/vulcan-check-sdk v0.0.0-20211117083331-f1882f669b24/go.mod h1:gM66YMAf7o3rmf2WOKFxCdij+TV3aYwU3Qw+JHgd6Ok=
 github.com/adevinta/vulcan-report v0.0.0-20211117082128-cadc974cc14c h1:r5E2ZJe4FoIFrvOmTckP4b4h/EzOq8LY+9kYi1K2wPQ=

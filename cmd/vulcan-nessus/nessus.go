@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,11 @@ const (
 	defPollingInterval = 5 * 60
 	// Default delay range is 1min.
 	defDelayRange = 60
+	// Default timeout waiting for Managed Agent to be ready in seconds.
+	defLocalAgentStatusTimeout = 5 * 60
+	// Default timeout waiting for Managed Agent to be registered and online
+	// in Tenable in seconds.
+	defRemoteAgentStatusTimeout = 5 * 60
 )
 
 // Runner executes a Nessus check.
@@ -37,9 +43,13 @@ type Runner interface {
 }
 
 type runner struct {
-	nessusCli           *restuss.NessusClient
-	nessusPersistedScan *restuss.PersistedScan
-	Delete              bool
+	nessusCli                *restuss.NessusClient
+	nessusPersistedScan      *restuss.PersistedScan
+	nessusScanner            *restuss.Scanner
+	Delete                   bool
+	LocalAgent               bool
+	localAgentStatusTimeout  int
+	remoteAgentStatusTimeout int
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
@@ -101,7 +111,45 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	scan, err := r.launchScan(ctx, target, policy)
+
+	scannerUUID := ""
+	if r.LocalAgent {
+		// Set rediness timeouts.
+		r.localAgentStatusTimeout = opt.LocalAgentRedinessTimeout
+		if opt.LocalAgentRedinessTimeout == 0 {
+			r.localAgentStatusTimeout = defLocalAgentStatusTimeout
+		}
+		r.remoteAgentStatusTimeout = opt.RemoteAgentRedinessTimeout
+		if opt.RemoteAgentRedinessTimeout == 0 {
+			r.remoteAgentStatusTimeout = defRemoteAgentStatusTimeout
+		}
+
+		// Wait until local nessus agent is ready.
+		logger.Info("waiting local nessus agent to be ready")
+		err = r.waitLocalAgentReady()
+		if err != nil {
+			return err
+		}
+
+		// Fetch local nessus agent name.
+		logger.Info("fetching local nessus agent name")
+		scannerName, err := r.localAgentName()
+		if err != nil {
+			return err
+		}
+		logger.Infof("local nessus agent name: [%s]", scannerName)
+
+		// Fetch scanner from Tenable.
+		logger.Info("fetching scanner UUID")
+		r.nessusScanner, err = r.scannerUUIDByName(scannerName)
+		if err != nil {
+			return err
+		}
+		scannerUUID = r.nessusScanner.UUID
+		logger.Infof("scanner UUID: [%s]", scannerUUID)
+	}
+
+	scan, err := r.launchScan(ctx, target, policy, scannerUUID)
 	if err != nil {
 		return err
 	}
@@ -148,15 +196,16 @@ func (r *runner) loadPolicyDetails(ctx context.Context, policyID int64) (restuss
 	return *policyDetails, nil
 }
 
-func (r *runner) launchScan(ctx context.Context, target string, policy restuss.Policy) (*restuss.PersistedScan, error) {
+func (r *runner) launchScan(ctx context.Context, target string, policy restuss.Policy, scannerUUID string) (*restuss.PersistedScan, error) {
 	scan, err := r.nessusCli.CreateScanContext(ctx,
 		&restuss.Scan{
 			TemplateUUID: policy.UUID,
 			Settings: restuss.ScanSettings{
-				Enabled:  true,
-				Name:     policy.Settings.Name + ": " + target,
-				Targets:  target,
-				PolicyID: policy.ID,
+				Enabled:     true,
+				Name:        policy.Settings.Name + ": " + target,
+				Targets:     target,
+				PolicyID:    policy.ID,
+				ScannerUUID: scannerUUID,
 			}})
 	if err != nil {
 		return nil, err
@@ -203,6 +252,22 @@ func (r *runner) deleteScan(ctx context.Context, scanID int64) error {
 	logger.WithFields(log.Fields{
 		"scan": fmt.Sprintf("%+v", r.nessusPersistedScan),
 	}).Debug("Scan deleted from Nessus")
+
+	return err
+}
+
+func (r *runner) deleteScanner(ctx context.Context) error {
+	err := r.nessusCli.DeleteScannerContext(ctx, r.nessusScanner.ID)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"scanner": fmt.Sprintf("%+v", r.nessusScanner), "error": err,
+		}).Error("error deleting Nessus scanner")
+		return err
+	}
+
+	logger.WithFields(log.Fields{
+		"scanner": fmt.Sprintf("%+v", r.nessusScanner),
+	}).Debug("Scanner deleted from Nessus")
 
 	return err
 }
@@ -286,6 +351,12 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 
 	if r.Delete {
 		err = r.deleteScan(ctx, id)
+		if err != nil {
+			l.WithError(err).Error("error deleting scan")
+		}
+	}
+	if r.LocalAgent {
+		err := r.deleteScanner(ctx)
 		if err != nil {
 			l.WithError(err).Error("error deleting scan")
 		}
@@ -497,4 +568,71 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 	}
 
 	return vulnerabilities, nil
+}
+
+func (r *runner) localAgentName() (string, error) {
+	return os.Hostname()
+}
+
+func (r *runner) scannerUUIDByName(name string) (*restuss.Scanner, error) {
+	timeout := time.After(time.Duration(r.remoteAgentStatusTimeout) * time.Second)
+	tick := time.Tick(30 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			return nil, errors.New("timeout trying to obtain scanner UUID from Tenable")
+		case <-tick:
+			logger.Info("fetching scanner from Tenable")
+			scanner, err := r.nessusCli.ScannerByName(name)
+			if err != nil {
+				return nil, err
+			}
+			if scanner != nil {
+				if scanner.Status == "on" {
+					logger.Info("scanner [%+v] is ready", scanner)
+					return scanner, nil
+				}
+				logger.Info("scanner [%s] is not ready yet. Current status [%s]", scanner.UUID, scanner.Status)
+			}
+			logger.Info("scanner is not registered on Tenable yet, retrying in few seconds")
+		}
+	}
+}
+
+func (r *runner) waitLocalAgentReady() error {
+	timeout := time.After(time.Duration(r.localAgentStatusTimeout) * time.Second)
+	tick := time.Tick(10 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			return errors.New("timeout waiting local agent to be ready")
+		case <-tick:
+			logger.Info("checking local agent to be ready")
+			ready, err := r.checkLocalAgentStatus()
+			if err != nil {
+				return errors.New("could not check local agent managed status")
+			}
+			if ready {
+				logger.Info("local is ready")
+				return nil
+			}
+			logger.Info("local agent is not ready, retrying in few seconds")
+		}
+	}
+}
+
+func (r *runner) checkLocalAgentStatus() (bool, error) {
+	ready := false
+	out, err := exec.Command("/opt/nessus/sbin/nessuscli", "managed", "status").Output()
+	if werr, ok := err.(*exec.ExitError); ok {
+		logger.Infof("local agent managed status command return code: [%s]", werr.Error())
+		if s := werr.Error(); s == "2" {
+			return ready, nil
+		}
+	}
+	logger.Infof("local agent managed status: [%+v]", string(out))
+	if strings.Contains(string(out), "Linked to cloud.tenable.com") {
+		ready = true
+	}
+	return ready, nil
 }

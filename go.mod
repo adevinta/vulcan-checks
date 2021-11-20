@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
-	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
+	github.com/adevinta/restuss v0.0.0-20211119171956-f9c34217753b
 	github.com/adevinta/vulcan-check-sdk v0.0.0-20211117083331-f1882f669b24
 	github.com/adevinta/vulcan-report v0.0.0-20211117082128-cadc974cc14c
 	github.com/adevinta/vulcan-types v0.0.0-20211011153447-1b4d6804c22e
