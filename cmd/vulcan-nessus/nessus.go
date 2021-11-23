@@ -589,10 +589,10 @@ func (r *runner) scannerUUIDByName(name string) (*restuss.Scanner, error) {
 			}
 			if scanner != nil {
 				if scanner.Status == "on" {
-					logger.Info("scanner [%+v] is ready", scanner)
+					logger.Infof("scanner [%+v] is ready", *scanner)
 					return scanner, nil
 				}
-				logger.Info("scanner [%s] is not ready yet. Current status [%s]", scanner.UUID, scanner.Status)
+				logger.Infof("scanner [%s] is not ready yet. Current status [%s]", scanner.UUID, scanner.Status)
 			}
 			logger.Info("scanner is not registered on Tenable yet, retrying in few seconds")
 		}
