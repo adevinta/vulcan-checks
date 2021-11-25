@@ -245,7 +245,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					vuln.Summary = issueDefinition.Name
 					vuln.Description = issueDefinition.Description
 					vuln.Recommendations = []string{issueDefinition.Remediation}
-					vuln.Labels = []string{"web"}
+					vuln.Labels = []string{"web", "burp"}
 					vuln.AffectedResource = affectedResource
 					vuln.Score = severityToScore(e.Issue.Severity)
 					vuln.Resources = []report.ResourcesGroup{
