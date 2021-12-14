@@ -2,6 +2,7 @@ package resturp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -54,7 +55,12 @@ func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusC
 	if !statusCodeRiseException && err == ErrUnexpectedStatusCodeReceived {
 		return resp, nil
 	}
-	return resp, err
+
+	var errTokenRedacted error
+	if err != nil {
+		errTokenRedacted = errors.New(fmt.Sprintf(strings.Replace(err.Error(), r.apiKey, "<REDACTED>", -1)))
+	}
+	return resp, errTokenRedacted
 }
 
 // Resturp is a client for the Burp scanner rest API.

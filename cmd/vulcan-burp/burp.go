@@ -26,6 +26,7 @@ const (
 	burpScanConfigEnv         = "BURP_SCAN_CONFIG"
 
 	defaultBurpInsecureSkipVerify = false
+	defaultBurpScanConfig         = "Crawl strategy - fastest;Audit checks - all except time-based detection methods;Audit checks - light active;Never stop audit due to application errors"
 	scanPollingInterval           = 30 // In seconds.
 )
 
@@ -95,30 +96,35 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		return checkstate.ErrAssetUnreachable
 	}
 
-	apiToken, present := os.LookupEnv(burpAPITokenEnv)
-	if !present {
+	apiToken := os.Getenv(burpAPITokenEnv)
+	if apiToken == "" {
 		return ErrNoBurpAPIToken
 	}
 
-	baseURL, present := os.LookupEnv(burpBaseURLEnv)
-	if !present {
+	baseURL := os.Getenv(burpBaseURLEnv)
+	if baseURL == "" {
 		return ErrNoBurpBaseURL
 	}
+	baseURL = strings.TrimSuffix(baseURL, "/")
 
-	scanConfig, present := os.LookupEnv(burpScanConfigEnv)
-	if !present {
-		return ErrNoBurpScanConfig
+	scanConfig := os.Getenv(burpScanConfigEnv)
+	if scanConfig == "" {
+		scanConfig = defaultBurpScanConfig
 	}
 
 	// InsecureSkipVerify should be set only for local testing.
-	apiInsecureSkipVerifyStr, _ := os.LookupEnv(burpInsecureSkipVerifyEnv)
-	apiInsecureSkipVerify, err := strconv.ParseBool(apiInsecureSkipVerifyStr)
-	if err != nil {
-		apiInsecureSkipVerify = defaultBurpInsecureSkipVerify
+	apiInsecureSkipVerify := defaultBurpInsecureSkipVerify
+	apiInsecureSkipVerifyStr := os.Getenv(burpInsecureSkipVerifyEnv)
+	if apiInsecureSkipVerifyStr != "" {
+		apiInsecureSkipVerify, err = strconv.ParseBool(apiInsecureSkipVerifyStr)
+		if err != nil {
+			apiInsecureSkipVerify = defaultBurpInsecureSkipVerify
+		}
 	}
 	if apiInsecureSkipVerify {
 		logger.Warn("contacting Burp API with `InsecureSkipVerify` set to true")
 	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: apiInsecureSkipVerify},
 	}
@@ -208,103 +214,89 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 		defsIndex[d.IssueTypeID] = d
 	}
 
-	// Group vulnerabilities per AffectedResource.
-	vAR := make(map[string]map[string][]int)
-	for i, e := range ievents {
-		issueId := strconv.Itoa(int(e.Issue.TypeIndex))
+	vulnsMap := make(map[string]report.Vulnerability)
+	for _, i := range ievents {
+		issueId := strconv.Itoa(int(i.Issue.TypeIndex))
 		issueDefinition, found := defsIndex[issueId]
 		if !found {
-			logger.Errorf("Burp issue [%s] not found in Burp issue definition list", issueId)
+			logger.Errorf("Burp issue [%d] not found in Burp issue definition list", issueId)
 			continue
 		}
-		if v, found := vAR[issueDefinition.Name]; !found {
-			affectedResourceVulnerabilityGroup := map[string][]int{
-				e.Issue.Path: {i},
+
+		if v, ok := vulnsMap[issueDefinition.Name]; !ok {
+			vuln := report.Vulnerability{
+				Summary:         issueDefinition.Name,
+				Description:     issueDefinition.Description,
+				Recommendations: []string{issueDefinition.Remediation},
+				Score:           severityToScore(i.Issue.Severity),
+				Labels:          []string{"web", "burp"},
+				Details:         i.Issue.Description,
+				Resources: []report.ResourcesGroup{
+					{
+						Name: "Found In",
+						Header: []string{
+							"Path",
+							"Confidence",
+							"CWEs",
+						},
+						Rows: []map[string]string{},
+					},
+				},
 			}
-			vAR[issueDefinition.Name] = affectedResourceVulnerabilityGroup
-		} else {
-			if ar, arFound := v[e.Issue.Path]; !arFound {
-				v[e.Issue.Path] = []int{i}
+			row := map[string]string{
+				"Path":       i.Issue.Path,
+				"Confidence": i.Issue.Confidence,
+				"CWEs":       issueDefinition.VulnerabilityClassifications,
+			}
+			vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, row)
+			if issueDefinition.References != "" {
+				hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
+				referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
+				for _, r := range referenceLinkList {
+					if len(r) > 1 {
+						vuln.References = append(vuln.References, string(r[1]))
+					}
+				}
+			}
+			if vuln.Score == 0 {
+				vuln.Labels = append(vuln.Labels, "informational")
 			} else {
-				ar = append(ar, i)
-				v[e.Issue.Path] = ar
+				vuln.Labels = append(vuln.Labels, confidenceToLabel(i.Issue.Confidence))
 			}
+			vulnsMap[issueDefinition.Name] = vuln
+		} else {
+			// Vulnerability already exists in vulnsMap.
+			score := severityToScore(i.Issue.Severity)
+			if v.Score < score {
+				v.Score = score
+			}
+			row := map[string]string{
+				"Path":       i.Issue.Path,
+				"Confidence": i.Issue.Confidence,
+				"CWEs":       issueDefinition.VulnerabilityClassifications,
+			}
+			v.Resources[0].Rows = append(v.Resources[0].Rows, row)
+			vulnsMap[issueDefinition.Name] = v
 		}
 	}
 
-	var vulns []report.Vulnerability
-	for _, v := range vAR {
-		for affectedResource, findings := range v {
-			vuln := report.Vulnerability{}
-			vulnIDs := []string{}
-			for i, indexFinding := range findings {
-				e := ievents[indexFinding]
-				vulnIDs = append(vulnIDs, e.ID)
-				issueDefinition, _ := defsIndex[strconv.Itoa(int(e.Issue.TypeIndex))]
-				if i == 0 {
-					vuln.Summary = issueDefinition.Name
-					vuln.Description = issueDefinition.Description
-					vuln.Recommendations = []string{issueDefinition.Remediation}
-					vuln.Labels = []string{"web", "burp"}
-					vuln.AffectedResource = affectedResource
-					vuln.Score = severityToScore(e.Issue.Severity)
-					vuln.Resources = []report.ResourcesGroup{
-						{
-							Name: "Found In",
-							Header: []string{
-								"Path",
-								"Confidence",
-								"CWEs",
-							},
-							Rows: []map[string]string{},
-						},
-						{
-							Name: "Details",
-							Header: []string{
-								"Finding Details",
-							},
-							Rows: []map[string]string{},
-						},
-					}
-					// Parse Burp issue references to match Vulnerability Report format.
-					if issueDefinition.References != "" {
-						hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
-						referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
-						for _, r := range referenceLinkList {
-							if len(r) > 1 {
-								vuln.References = append(vuln.References, string(r[1]))
-							}
-						}
-					}
-					if vuln.Score == 0 {
-						vuln.Labels = append(vuln.Labels, "informational")
-					} else {
-						vuln.Labels = append(vuln.Labels, confidenceToLabel(e.Issue.Confidence))
-					}
-				}
-				rowFoundIn := map[string]string{
-					"Path":       e.Issue.Path,
-					"Confidence": strings.Title(e.Issue.Confidence),
-					"CWEs":       issueDefinition.VulnerabilityClassifications,
-				}
-				vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, rowFoundIn)
-				if e.Issue.Description != "" {
-					rowDetails := map[string]string{
-						"Finding Details": e.Issue.Description,
-					}
-					vuln.Resources[1].Rows = append(vuln.Resources[1].Rows, rowDetails)
-				}
+	// Target vulnerability array.
+	vulns := []report.Vulnerability{}
+	for _, v := range vulnsMap {
+		// Compute fingerprint.
+		affectedPaths := []string{}
+		for _, affectedPathMap := range v.Resources[0].Rows {
+			if path, ok := affectedPathMap["Path"]; ok {
+				affectedPaths = append(affectedPaths, path)
 			}
-			// If vulnerability does not provide details then remove from resources table.
-			if len(vuln.Resources[1].Rows) == 0 {
-				vuln.Resources = vuln.Resources[:len(vuln.Resources)-1]
-			}
-			sort.Strings(vulnIDs)
-			vulnID := helpers.ComputeFingerprint(vuln.Score, vulnIDs)
-			vuln.ID = vulnID
-			vulns = append(vulns, vuln)
 		}
+		sort.Strings(affectedPaths)
+		v.Fingerprint = helpers.ComputeFingerprint(v.Score, strings.Join(affectedPaths, "|"))
+
+		// Append vulnerability to target vulnerability array.
+		vulns = append(vulns, v)
 	}
+
 	return vulns
 }
 

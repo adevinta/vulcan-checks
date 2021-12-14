@@ -1,5 +1,5 @@
 Description = "Runs a Burp Suite Enterprise Edition scan."
-Timeout = 10800 # 3 hour. Expressed in seconds as an integer.
+Timeout = 36000 # 10 hours. Expressed in seconds as an integer.
 AssetTypes = ["WebAddress"]
 
 # BURP_INSECURE_SKIP_VERIFY must be set to false in production.
