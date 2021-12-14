@@ -219,7 +219,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 		issueId := strconv.Itoa(int(i.Issue.TypeIndex))
 		issueDefinition, found := defsIndex[issueId]
 		if !found {
-			logger.Errorf("Burp issue [%d] not found in Burp issue definition list", issueId)
+			logger.Errorf("Burp issue [%s] not found in Burp issue definition list", issueId)
 			continue
 		}
 
