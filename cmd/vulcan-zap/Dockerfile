@@ -1,6 +1,6 @@
 # Copyright 2019 Adevinta
 
-FROM owasp/zap2docker-weekly:w2020-08-03
+FROM owasp/zap2docker-stable:latest
 
 USER root
 RUN chown -R zap /zap/
