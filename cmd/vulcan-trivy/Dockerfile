@@ -1,6 +1,6 @@
 # Copyright 2020 Adevinta
 
-FROM aquasec/trivy:0.5.2 as dependency_builder
+FROM aquasec/trivy:0.21.2 as dependency_builder
 
 ARG TRIVY_CACHE_DIR=trivy_cache
 
