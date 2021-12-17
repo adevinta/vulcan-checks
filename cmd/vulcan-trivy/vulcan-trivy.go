@@ -43,6 +43,10 @@ type options struct {
 	Severities    string `json:"severities"`
 }
 
+type Results struct {
+	Results ScanResponse `json:"Results"`
+}
+
 type ScanResponse []struct {
 	Target          string `json:"Target"`
 	Vulnerabilities []struct {
@@ -119,6 +123,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	triviCmd := "./trivy"
 	triviArgs := []string{
 		"--cache-dir", trivyCachePath,
+		"image",
 		"-f", "json",
 		"-o", reportOutputFile,
 	}
@@ -171,13 +176,13 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return errors.New("trivy report output file read failed")
 	}
 
-	var results ScanResponse
+	var results Results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
 		return errors.New("unmarshal trivy output failed")
 	}
 
-	return processVulns(results, registryEnvDomain, target, state)
+	return processVulns(results.Results, registryEnvDomain, target, state)
 }
 
 func processVulns(results ScanResponse, registryEnvDomain, target string, state checkstate.State) error {
