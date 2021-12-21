@@ -130,11 +130,7 @@ func main() {
 		if opt.Branch != "" {
 			co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
 		}
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
-			URL:   target,
-			Auth:  auth,
-			Depth: opt.Depth,
-		})
+		_, err = git.PlainClone(repoPath, false, &co)
 		if err != nil {
 			return err
 		}
