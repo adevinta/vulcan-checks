@@ -30,7 +30,7 @@ import (
 )
 
 type options struct {
-	Depth int `json:"depth"`
+	Depth  int    `json:"depth"`
 	Branch string `json:"branch"`
 }
 
@@ -117,17 +117,20 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
+		repoPath := filepath.Join(os.TempDir(), "repo")
 		if err := os.Mkdir(repoPath, 0755); err != nil {
 			return err
 		}
 
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
+		co := git.CloneOptions{
 			URL:   target,
 			Auth:  auth,
 			Depth: opt.Depth,
-			ReferenceName: plumbing.ReferenceName(path.Join("refs/heads", opt.Branch)),
-		})
+		}
+		if opt.Branch != "" {
+			co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
+		}
+		_, err = git.PlainClone(repoPath, false, &co)
 		if err != nil {
 			return err
 		}
