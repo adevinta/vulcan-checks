@@ -1,0 +1,3 @@
+Description = ""
+AssetTypes = ["Hostname", "WebAddress"]
+Timeout = 240
