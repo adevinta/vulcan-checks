@@ -214,7 +214,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 
 	vulnsMap := make(map[string]report.Vulnerability)
 	for _, i := range ievents {
-		issueId := strconv.Itoa(int(i.Issue.TypeIndex))
+		issueId := strconv.FormatInt(i.Issue.TypeIndex, 10)
 		issueDefinition, found := defsIndex[issueId]
 		if !found {
 			logger.Errorf("Burp issue [%s] not found in Burp issue definition list", issueId)
