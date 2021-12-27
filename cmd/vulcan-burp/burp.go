@@ -221,48 +221,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 			continue
 		}
 
-		if v, ok := vulnsMap[issueDefinition.Name]; !ok {
-			vuln := report.Vulnerability{
-				Summary:         issueDefinition.Name,
-				Description:     issueDefinition.Description,
-				Recommendations: []string{issueDefinition.Remediation},
-				Score:           severityToScore(i.Issue.Severity),
-				Labels:          []string{"web", "burp"},
-				Details:         i.Issue.Description,
-				Resources: []report.ResourcesGroup{
-					{
-						Name: "Found In",
-						Header: []string{
-							"Path",
-							"Confidence",
-							"CWEs",
-						},
-						Rows: []map[string]string{},
-					},
-				},
-			}
-			row := map[string]string{
-				"Path":       i.Issue.Path,
-				"Confidence": i.Issue.Confidence,
-				"CWEs":       issueDefinition.VulnerabilityClassifications,
-			}
-			vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, row)
-			if issueDefinition.References != "" {
-				hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
-				referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
-				for _, r := range referenceLinkList {
-					if len(r) > 1 {
-						vuln.References = append(vuln.References, string(r[1]))
-					}
-				}
-			}
-			if vuln.Score == 0 {
-				vuln.Labels = append(vuln.Labels, "informational")
-			} else {
-				vuln.Labels = append(vuln.Labels, confidenceToLabel(i.Issue.Confidence))
-			}
-			vulnsMap[issueDefinition.Name] = vuln
-		} else {
+		if v, ok := vulnsMap[issueDefinition.Name]; ok {
 			// Vulnerability already exists in vulnsMap.
 			score := severityToScore(i.Issue.Severity)
 			if v.Score < score {
@@ -275,7 +234,49 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 			}
 			v.Resources[0].Rows = append(v.Resources[0].Rows, row)
 			vulnsMap[issueDefinition.Name] = v
+			continue
 		}
+		// New vulnerability in vulnsMap.
+		vuln := report.Vulnerability{
+			Summary:         issueDefinition.Name,
+			Description:     issueDefinition.Description,
+			Recommendations: []string{issueDefinition.Remediation},
+			Score:           severityToScore(i.Issue.Severity),
+			Labels:          []string{"web", "burp"},
+			Details:         i.Issue.Description,
+			Resources: []report.ResourcesGroup{
+				{
+					Name: "Found In",
+					Header: []string{
+						"Path",
+						"Confidence",
+						"CWEs",
+					},
+					Rows: []map[string]string{},
+				},
+			},
+		}
+		row := map[string]string{
+			"Path":       i.Issue.Path,
+			"Confidence": i.Issue.Confidence,
+			"CWEs":       issueDefinition.VulnerabilityClassifications,
+		}
+		vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, row)
+		if issueDefinition.References != "" {
+			hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
+			referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
+			for _, r := range referenceLinkList {
+				if len(r) > 1 {
+					vuln.References = append(vuln.References, string(r[1]))
+				}
+			}
+		}
+		if vuln.Score == 0 {
+			vuln.Labels = append(vuln.Labels, "informational")
+		} else {
+			vuln.Labels = append(vuln.Labels, confidenceToLabel(i.Issue.Confidence))
+		}
+		vulnsMap[issueDefinition.Name] = vuln
 	}
 
 	// Target vulnerability array.
