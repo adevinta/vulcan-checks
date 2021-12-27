@@ -32,13 +32,13 @@ const (
 
 // Runner defines the check interface.
 type Runner interface {
+	WaitScanFinished(ctx context.Context) (*resturp.ScanStatus, error)
 }
 
 type runner struct {
 	burpCli    *resturp.Resturp
 	burpScanID uint
 	delete     bool
-	ctx        context.Context
 }
 
 var scanTerminalStatus = map[string]bool{
@@ -76,7 +76,6 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-	r.ctx = ctx
 	var opt Options
 	if optJSON != "" {
 		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -152,7 +151,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		if err != nil {
 			return err
 		}
-		s, err = waitScanFinished(r)
+		s, err = r.WaitScanFinished(ctx)
 	}
 	if err != nil {
 		return err
@@ -167,7 +166,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	return nil
 }
 
-func waitScanFinished(r *runner) (*resturp.ScanStatus, error) {
+func (r *runner) WaitScanFinished(ctx context.Context) (*resturp.ScanStatus, error) {
 	t := time.NewTicker(scanPollingInterval * time.Second)
 	var (
 		err error
@@ -177,10 +176,10 @@ func waitScanFinished(r *runner) (*resturp.ScanStatus, error) {
 LOOP:
 	for {
 		select {
-		case <-r.ctx.Done():
+		case <-ctx.Done():
 			logger.Infof("ctx.Done")
 			t.Stop()
-			return nil, r.ctx.Err()
+			return nil, ctx.Err()
 		case <-t.C:
 			s, err = r.burpCli.GetScanStatus(r.burpScanID)
 			if err != nil {
