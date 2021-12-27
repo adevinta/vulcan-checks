@@ -1,6 +1,7 @@
 package resturp
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -71,6 +73,24 @@ type Resturp struct {
 	apiKey     string
 	logger     *log.Entry
 }
+
+type GraphQLQueryTemplateParams struct {
+	OperationName         string
+	VariablesInputID      uint
+	QueryMutationFunction string
+}
+
+var (
+	GraphQLQueryTemplate = `{
+		"operationName":"{{.OperationName}}",
+		"variables":{
+			"input":{
+				"id":"{{.VariablesInputID}}"
+			}
+		},
+		"query":"mutation {{.OperationName}}($input: {{.OperationName}}Input!) {\n  {{.QueryMutationFunction}}(input: $input) {\n    id\n    __typename\n  }\n}\n"
+	}`
+)
 
 // New returns a ready to use Burp REST client.
 // The burpRESTURL must have the form: https://hostname:port.
@@ -207,10 +227,23 @@ func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
 	return defs, nil
 }
 
+func graphQLPayloadGenerator(params GraphQLQueryTemplateParams) (string, error) {
+	tmpl := template.Must(template.New("").Parse(GraphQLQueryTemplate))
+	var payload bytes.Buffer
+	if err := tmpl.Execute(&payload, params); err != nil {
+		return "", err
+	}
+	return payload.String(), nil
+}
+
 // DeleteScan deletes the scan with the given id.
 func (r *Resturp) DeleteScan(ID uint) {
-	payload := fmt.Sprintf("{\"operationName\":\"DeleteScan\",\"variables\":{\"input\":{\"id\":\"%d\"}},\"query\":\"mutation DeleteScan($input: DeleteScanInput!) {\\n  delete_scan(input: $input) {\\n    id\\n    __typename\\n  }\\n}\\n\"}", ID)
-	err := r.gDo(payload)
+	params := GraphQLQueryTemplateParams{
+		OperationName:         "DeleteScan",
+		VariablesInputID:      ID,
+		QueryMutationFunction: "delete_scan",
+	}
+	err := r.gDo(params)
 	if err != nil {
 		r.logger.Errorf("unable to delete Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -220,8 +253,12 @@ func (r *Resturp) DeleteScan(ID uint) {
 
 // CancelScan cancels the scan with the given id.
 func (r *Resturp) CancelScan(ID uint) {
-	payload := fmt.Sprintf("{\"operationName\":\"CancelScan\",\"variables\":{\"input\":{\"id\":\"%d\"}},\"query\":\"mutation CancelScan($input: CancelScanInput!) {\\n  cancel_scan(input: $input) {\\n    id\\n    __typename\\n  }\\n}\\n\"}", ID)
-	err := r.gDo(payload)
+	params := GraphQLQueryTemplateParams{
+		OperationName:         "CancelScan",
+		VariablesInputID:      ID,
+		QueryMutationFunction: "cancel_scan",
+	}
+	err := r.gDo(params)
 	if err != nil {
 		r.logger.Errorf("unable to cancel Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -229,7 +266,11 @@ func (r *Resturp) CancelScan(ID uint) {
 	r.logger.Infof("Burp scan ID [%d] cancelled successfully", ID)
 }
 
-func (r *Resturp) gDo(payload string) error {
+func (r *Resturp) gDo(params GraphQLQueryTemplateParams) error {
+	payload, err := graphQLPayloadGenerator(params)
+	if err != nil {
+		return err
+	}
 	preader := strings.NewReader(string(payload))
 	req, err := http.NewRequest(http.MethodPost, r.graphQLURL, preader)
 	if err != nil {
