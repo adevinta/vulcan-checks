@@ -2,12 +2,12 @@
 Target = "https://example.com"
 AssetType = "WebAddress"
 
-# You can add check options to reuse an existing Brup scan summary by
+# You can add check options to reuse an existing Burp scan summary by
 # specifying the scan_id to generate a Vulcan vulnerability report which
 # may be convinient for local testing.
 # Options = '{"scan_id": 124}'
 
-# You can also instruct Vulcan check to skip Brup scan summary deletion
+# You can also instruct Vulcan check to skip Burp scan summary deletion
 # specifying skip_delete_scan in the Options so you can reuse it later.
 # Options = '{"skip_delete_scan": true}'
 

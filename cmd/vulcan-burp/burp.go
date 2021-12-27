@@ -135,7 +135,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	var s *resturp.ScanStatus
 	if opt.ScanID != 0 {
 		// If a scan ID is specified try to generate the vulns from the
-		// given existing Brup scan ID.
+		// given existing Burp scan ID.
 		// This is not intended to be used running in production, only
 		// for local testing.
 		logger.Infof("extracting vulnerabilities from an existing scan with ID [%d]", opt.ScanID)
