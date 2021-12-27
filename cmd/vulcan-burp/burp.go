@@ -30,11 +30,6 @@ const (
 	scanPollingInterval           = 30 // In seconds.
 )
 
-// Runner defines the check interface.
-type Runner interface {
-	WaitScanFinished(ctx context.Context) (*resturp.ScanStatus, error)
-}
-
 type runner struct {
 	burpCli    *resturp.Resturp
 	burpScanID uint
