@@ -32,7 +32,6 @@ const (
 
 // Runner defines the check interface.
 type Runner interface {
-	Run(ctx context.Context) (err error)
 }
 
 type runner struct {
