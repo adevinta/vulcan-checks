@@ -2,6 +2,7 @@ package resturp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -111,7 +112,7 @@ func New(d Doer, burpBaseURL string, APIKey string, logger *log.Entry) (*Resturp
 // LaunchScan runs a new scan using the specified configurations against the
 // given target url. The configurations must exist in the Burp library, for
 // instance: "Minimize false positives". It returns the id of the created scan.
-func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
+func (r *Resturp) LaunchScan(ctx context.Context, targetURL string, configs []string) (uint, error) {
 	sURL := fmt.Sprintf("%s/scan", r.restURL)
 	var sconfigs []ScanConfiguration
 	for _, s := range configs {
@@ -129,7 +130,7 @@ func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
 		return 0, err
 	}
 	preader := strings.NewReader(string(payload))
-	req, err := http.NewRequest(http.MethodPost, sURL, preader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sURL, preader)
 	if err != nil {
 		return 0, err
 	}
@@ -170,9 +171,9 @@ func (r *Resturp) LaunchScan(targetURL string, configs []string) (uint, error) {
 }
 
 // GetScanStatus returns the status of a scan.
-func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
+func (r *Resturp) GetScanStatus(ctx context.Context, ID uint) (*ScanStatus, error) {
 	sURL := fmt.Sprintf("%s/scan/%d", r.restURL, ID)
-	req, err := http.NewRequest(http.MethodGet, sURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -199,9 +200,9 @@ func (r *Resturp) GetScanStatus(ID uint) (*ScanStatus, error) {
 }
 
 // GetIssueDefinitions gets the current defined issues in burp.
-func (r *Resturp) GetIssueDefinitions() ([]IssueDefinition, error) {
+func (r *Resturp) GetIssueDefinitions(ctx context.Context) ([]IssueDefinition, error) {
 	sURL := fmt.Sprintf("%s/knowledge_base/issue_definitions", r.restURL)
-	req, err := http.NewRequest(http.MethodGet, sURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,13 +238,13 @@ func graphQLPayloadGenerator(params GraphQLQueryTemplateParams) (string, error) 
 }
 
 // DeleteScan deletes the scan with the given id.
-func (r *Resturp) DeleteScan(ID uint) {
+func (r *Resturp) DeleteScan(ctx context.Context, ID uint) {
 	params := GraphQLQueryTemplateParams{
 		OperationName:         "DeleteScan",
 		VariablesInputID:      ID,
 		QueryMutationFunction: "delete_scan",
 	}
-	err := r.gDo(params)
+	err := r.gDo(ctx, params)
 	if err != nil {
 		r.logger.Errorf("unable to delete Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -252,13 +253,13 @@ func (r *Resturp) DeleteScan(ID uint) {
 }
 
 // CancelScan cancels the scan with the given id.
-func (r *Resturp) CancelScan(ID uint) {
+func (r *Resturp) CancelScan(ctx context.Context, ID uint) {
 	params := GraphQLQueryTemplateParams{
 		OperationName:         "CancelScan",
 		VariablesInputID:      ID,
 		QueryMutationFunction: "cancel_scan",
 	}
-	err := r.gDo(params)
+	err := r.gDo(ctx, params)
 	if err != nil {
 		r.logger.Errorf("unable to cancel Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -266,13 +267,13 @@ func (r *Resturp) CancelScan(ID uint) {
 	r.logger.Infof("Burp scan ID [%d] cancelled successfully", ID)
 }
 
-func (r *Resturp) gDo(params GraphQLQueryTemplateParams) error {
+func (r *Resturp) gDo(ctx context.Context, params GraphQLQueryTemplateParams) error {
 	payload, err := graphQLPayloadGenerator(params)
 	if err != nil {
 		return err
 	}
 	preader := strings.NewReader(string(payload))
-	req, err := http.NewRequest(http.MethodPost, r.graphQLURL, preader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.graphQLURL, preader)
 	if err != nil {
 		return err
 	}

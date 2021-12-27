@@ -57,12 +57,12 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 	defer func() {
 		logger.Infof("Burp scan summary deletion after finish set to [%t]", r.delete)
 		if r.delete {
-			r.burpCli.DeleteScan(r.burpScanID)
+			r.burpCli.DeleteScan(ctx, r.burpScanID)
 		}
 		logger.Infof("cleanup process finished")
 	}()
 
-	scanStatus, err := r.burpCli.GetScanStatus(r.burpScanID)
+	scanStatus, err := r.burpCli.GetScanStatus(ctx, r.burpScanID)
 	if err != nil {
 		logger.Warnf("could't get scan status: %s", err)
 		return
@@ -71,7 +71,7 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 	// If we reach here and the scan is not in a terminal status something went
 	// wrong and we should try to cancel the scan in Burp.
 	if !scanTerminalStatus[scanStatus.Status] {
-		r.burpCli.CancelScan(r.burpScanID)
+		r.burpCli.CancelScan(ctx, r.burpScanID)
 	}
 }
 
@@ -139,7 +139,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		// This is not intended to be used running in production, only
 		// for local testing.
 		logger.Infof("extracting vulnerabilities from an existing scan with ID [%d]", opt.ScanID)
-		s, err = r.burpCli.GetScanStatus(opt.ScanID)
+		s, err = r.burpCli.GetScanStatus(ctx, opt.ScanID)
 	} else {
 		configs := strings.Split(scanConfig, ";")
 		for i := range configs {
@@ -147,7 +147,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		}
 		logger.Infof("scanning with config %+v", configs)
 		logger.Info("launching Burp scan")
-		r.burpScanID, err = r.burpCli.LaunchScan(target, configs)
+		r.burpScanID, err = r.burpCli.LaunchScan(ctx, target, configs)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	defs, err := r.burpCli.GetIssueDefinitions()
+	defs, err := r.burpCli.GetIssueDefinitions(ctx)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ LOOP:
 			t.Stop()
 			return nil, ctx.Err()
 		case <-t.C:
-			s, err = r.burpCli.GetScanStatus(r.burpScanID)
+			s, err = r.burpCli.GetScanStatus(ctx, r.burpScanID)
 			if err != nil {
 				break LOOP
 			}
