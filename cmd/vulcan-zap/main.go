@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os/exec"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -326,6 +327,12 @@ func main() {
 				continue
 			}
 
+			resourcesFingerprint := ""
+			if len(v.Resources) > 0 {
+				resourcesFingerprint = fingerprintFromResources(v.Resources[0].Rows)
+			}
+			v.Fingerprint = helpers.ComputeFingerprint(v.Score, resourcesFingerprint)
+
 			state.AddVulnerabilities(*v)
 		}
 
@@ -334,6 +341,39 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+func fingerprintFromResources(resources []map[string]string) string {
+	var empty struct{}
+	occurrences := []string{}
+	occurrencesMap := make(map[string]struct{})
+	// AffectedResource report data:
+	//   {"Attack":"", "Evidence":"", "Method":"", "Parameter":"", "URL":""}
+	// In order to compute the fingerprint we are gathering all elements from
+	// the resources table except the URL because due to the nature of the
+	// crawling/spider process results are not deterministic.
+	for _, r := range resources {
+		var a, e, m, p string
+		if v, ok := r["Attack"]; ok {
+			a = strings.ToLower(strings.TrimSpace(v))
+		}
+		if v, ok := r["Evidence"]; ok {
+			e = strings.ToLower(strings.TrimSpace(v))
+		}
+		if v, ok := r["Method"]; ok {
+			m = strings.ToLower(strings.TrimSpace(v))
+		}
+		if v, ok := r["Parameter"]; ok {
+			p = strings.ToLower(strings.TrimSpace(v))
+		}
+		occurrenceKey := fmt.Sprintf("%s|%s|%s|%s", a, e, m, p)
+		if _, ok := occurrencesMap[occurrenceKey]; !ok {
+			occurrencesMap[occurrenceKey] = empty
+			occurrences = append(occurrences, occurrenceKey)
+		}
+	}
+	sort.Strings(occurrences)
+	return strings.Join(occurrences, "#")
 }
 
 func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string) error {
