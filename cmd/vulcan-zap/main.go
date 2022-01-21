@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/url"
 	"os/exec"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,6 +30,11 @@ var (
 	logger    = check.NewCheckLog(checkName)
 	client    zap.Interface
 	err       error
+)
+
+const (
+	contextName = "target"
+	contextID   = "1"
 )
 
 type options struct {
@@ -116,24 +120,21 @@ func main() {
 			return fmt.Errorf("error parsing target URL: %w", err)
 		}
 
-		_, err = client.Context().NewContext("target")
+		_, err = client.Context().NewContext(contextName)
 		if err != nil {
 			return fmt.Errorf("error creating scope context: %w", err)
 		}
 
 		// Add base URL to the scope.
-		_, err = client.Context().IncludeInContext("target", targetURL.String())
+		hostnameRegExQuote := strings.Replace(targetURL.Hostname(), `.`, `\.`, -1)
+		includeInContextRegEx := fmt.Sprintf(`http(s)?:\/\/%s.*`, hostnameRegExQuote)
+		logger.Printf("include in context regexp: %s", includeInContextRegEx)
+		_, err = client.Context().IncludeInContext(contextName, includeInContextRegEx)
 		if err != nil {
 			return fmt.Errorf("error including target URL to context: %w", err)
 		}
 
-		// Add all paths from base URL to the scope.
-		_, err = client.Context().IncludeInContext("target", path.Join(targetURL.String(), ".*"))
-		if err != nil {
-			return fmt.Errorf("error including children paths to context: %w", err)
-		}
-
-		_, err = client.Context().SetContextInScope("target", "True")
+		_, err = client.Context().SetContextInScope(contextName, "True")
 		if err != nil {
 			return fmt.Errorf("error setting context in scope: %w", err)
 		}
@@ -156,7 +157,7 @@ func main() {
 		logger.Printf("Running spider %v levels deep...", opt.Depth)
 
 		client.Spider().SetOptionMaxDepth(opt.Depth)
-		resp, err := client.Spider().Scan(targetURL.String(), "", "", "", "")
+		resp, err := client.Spider().Scan(targetURL.String(), "", contextName, "", "")
 		if err != nil {
 			return fmt.Errorf("error executing the spider: %w", err)
 		}
@@ -230,7 +231,7 @@ func main() {
 		logger.Printf("Running AJAX spider %v levels deep...", opt.Depth)
 
 		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
-		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", "", "")
+		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", contextName, "")
 		if err != nil {
 			return fmt.Errorf("error executing the AJAX spider: %w", err)
 		}
@@ -382,7 +383,7 @@ func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State,
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)
 	}
 
-	resp, err := client.Ascan().Scan(targetURL.String(), "True", "True", "", "", "", "")
+	resp, err := client.Ascan().Scan("", "True", "", "", "", "", contextID)
 	if err != nil {
 		return fmt.Errorf("error executing the active scan: %w", err)
 	}
