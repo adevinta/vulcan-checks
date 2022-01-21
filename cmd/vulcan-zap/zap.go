@@ -116,7 +116,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	}
 
 	v.Resources = []report.ResourcesGroup{
-		report.ResourcesGroup{
+		{
 			Name: "Affected Requests",
 			Header: []string{
 				"Method",
@@ -126,11 +126,11 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 				"Evidence",
 			},
 			Rows: []map[string]string{
-				map[string]string{
+				{
 					"Method":    resMethod,
 					"URL":       resURL,
 					"Parameter": resParam,
-					"Attack":    resAttack,
+					"Attack":    fmt.Sprintf("```%s```", resAttack),
 					"Evidence":  resEvidence,
 				},
 			},
