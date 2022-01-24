@@ -315,7 +315,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				// Alias can not be nil because the protection before.
 				row := map[string]string{"Account": *alias}
 				header := []string{"Account"}
-				affectedResourceStr := "|"
+				affectedResourceStr := ""
 				score := float32(0.0)
 				for i := 0; i < len(v.Metadata); i++ {
 					fieldName := ""
@@ -337,16 +337,11 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 						header = append(header, fieldName)
 
 						if captureWordsRegexp.MatchString(fieldName) {
-							affectedResourceStr = fmt.Sprintf("%s %s : %s |", affectedResourceStr, fieldName, value)
+							affectedResourceStr = fmt.Sprintf("%s%s: %s | ", affectedResourceStr, strings.ReplaceAll(fieldName, " ", ""), value)
 						}
 					}
 				}
-
-				// If there is no value that we can use for the
-				// AffectedResourceString just leave it empty.
-				if affectedResourceStr == "|" {
-					affectedResourceStr = ""
-				}
+				affectedResourceStr = strings.TrimSuffix(affectedResourceStr, " | ")
 
 				occurrences := report.ResourcesGroup{
 					Name: "Occurrences",
