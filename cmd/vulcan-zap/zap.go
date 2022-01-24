@@ -130,7 +130,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 					"Method":    resMethod,
 					"URL":       resURL,
 					"Parameter": resParam,
-					"Attack":    fmt.Sprintf("```%s```", resAttack),
+					"Attack":    resAttack,
 					"Evidence":  resEvidence,
 				},
 			},
