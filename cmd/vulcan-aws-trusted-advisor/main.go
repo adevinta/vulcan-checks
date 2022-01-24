@@ -49,6 +49,7 @@ var (
 
 	// Words to capture for the AffectedResourceString.
 	captureWords = []string{
+		"Region",
 		"Snapshot",
 		"Volume",
 		"DB Instance",
