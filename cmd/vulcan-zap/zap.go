@@ -68,6 +68,13 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	}
 	v.Score = riskToScore(risk)
 
+	v.Labels = []string{"web", "zap"}
+	if strings.ToLower(risk) == "informational" {
+		v.Labels = append(v.Labels, "informational")
+	} else {
+		v.Labels = append(v.Labels, "issue")
+	}
+
 	cweID, ok := a["cweid"].(string)
 	if !ok {
 		return report.Vulnerability{}, fmt.Errorf("Error retrieving CWE ID for \"%v\".", v.Summary)
@@ -109,7 +116,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	}
 
 	v.Resources = []report.ResourcesGroup{
-		report.ResourcesGroup{
+		{
 			Name: "Affected Requests",
 			Header: []string{
 				"Method",
@@ -119,7 +126,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 				"Evidence",
 			},
 			Rows: []map[string]string{
-				map[string]string{
+				{
 					"Method":    resMethod,
 					"URL":       resURL,
 					"Parameter": resParam,
