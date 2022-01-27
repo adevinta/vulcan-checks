@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -121,10 +122,24 @@ func isExposedRDP(host, port string, timeout int) []report.Vulnerability {
 
 	if CCPDURegex.Match(b) && b[5] == byte('\xd0') {
 		exposedRDP.Details += fmt.Sprintf("RDP host detected in port: %s", port)
+		exposedRDP.AffectedResource = fmt.Sprintf("%s", port)
+		exposedRDP.ID = computeVulnerabilityID(host, exposedRDP.AffectedResource, port)
+		exposedRDP.Labels = []string{"issue", "rdp"}
 		return []report.Vulnerability{exposedRDP}
 	}
 
 	return nil
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
