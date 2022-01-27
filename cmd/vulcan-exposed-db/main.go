@@ -6,7 +6,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -61,18 +63,7 @@ var (
 )
 
 func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *regexp.Regexp, e *logrus.Entry) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-		},
-	}
-
-	add := false
+	vulns := []report.Vulnerability{}
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" {
@@ -85,8 +76,16 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 				continue
 			}
 
-			add = true
-
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+				},
+			}
 			networkResource := map[string]string{
 				"Hostname": target,
 				"Port":     strconv.Itoa(port.PortId),
@@ -95,18 +94,25 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 				"Version":  port.Service.Version,
 			}
 			gr.Rows = append(gr.Rows, networkResource)
-
-			e.WithFields(logrus.Fields{"resource": networkResource}).Debug("Resource added")
+			v := exposedVuln
+			v.Resources = []report.ResourcesGroup{gr}
+			v.ID = computeVulnerabilityID(target, v.AffectedResource, port.PortId, port.Protocol, port.Service.Product, port.Service.Version)
+			v.Labels = []string{"issue", "db"}
+			vulns = append(vulns, v)
 		}
 	}
+	return vulns
+}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		e.WithFields(logrus.Fields{"vulnerability": exposedVuln}).Debug("Vulnerability added")
-		return []report.Vulnerability{exposedVuln}
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
 	}
-
-	return nil
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func main() {
