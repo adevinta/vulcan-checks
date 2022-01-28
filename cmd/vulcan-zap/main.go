@@ -46,7 +46,12 @@ type options struct {
 	MinScore float32 `json:"min_score"`
 	// List of active/passive scanners to disable by their identifiers:
 	// https://www.zaproxy.org/docs/alerts/
-	DisabledScanners []string `json:"disabled_scanners"`
+	DisabledScanners  []string `json:"disabled_scanners"`
+	MaxSpiderDuration int      `json:"max_spider_duration"`
+	MaxScanDuration   int      `json:"max_scan_duration"`
+	MaxRuleDuration   int      `json:"max_rule_duration"`
+	OpenapiUrl        string   `json:"openapi_url"`
+	OpenapiHost       string   `json:"openapi_host"`
 }
 
 func main() {
@@ -153,6 +158,13 @@ func main() {
 			users.SetUserEnabled("1", "0", "True")
 		}
 
+		if opt.OpenapiUrl != "" {
+			_, err = client.Openapi().ImportUrl(opt.OpenapiUrl, opt.OpenapiHost)
+			if err != nil {
+				return fmt.Errorf("error importing openapi url: %w", err)
+			}
+		}
+
 		_, err = client.Pscan().DisableScanners(disabledScanners)
 		if err != nil {
 			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
@@ -161,6 +173,13 @@ func main() {
 		logger.Printf("Running spider %v levels deep...", opt.Depth)
 
 		client.Spider().SetOptionMaxDepth(opt.Depth)
+		if err != nil {
+			return fmt.Errorf("error setting max depth: %w", err)
+		}
+		client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
+		if err != nil {
+			return fmt.Errorf("error setting max duration: %w", err)
+		}
 		resp, err := client.Spider().Scan(targetURL.String(), "", contextName, "", "")
 		if err != nil {
 			return fmt.Errorf("error executing the spider: %w", err)
@@ -280,7 +299,7 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Print("Running active scan...")
-			err := activeScan(ctx, targetURL, state, disabledScanners)
+			err := activeScan(ctx, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration)
 			if err != nil {
 				return err
 			}
@@ -381,10 +400,20 @@ func fingerprintFromResources(resources []map[string]string) string {
 	return strings.Join(occurrences, "#")
 }
 
-func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string) error {
+func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int) error {
 	_, err := client.Ascan().DisableScanners(disabledScanners, "")
 	if err != nil {
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)
+	}
+
+	_, err = client.Ascan().SetOptionMaxScanDurationInMins(maxScanDuration)
+	if err != nil {
+		return fmt.Errorf("error setting max scan duration for active scan: %w", err)
+	}
+
+	_, err = client.Ascan().SetOptionMaxRuleDurationInMins(maxRuleDuration)
+	if err != nil {
+		return fmt.Errorf("error setting max rule duration for active scan: %w", err)
 	}
 
 	resp, err := client.Ascan().Scan("", "True", "", "", "", "", contextID)
