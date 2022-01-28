@@ -6,18 +6,18 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
-
-	gonmap "github.com/lair-framework/go-nmap"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
+	gonmap "github.com/lair-framework/go-nmap"
 )
 
 type options struct {
@@ -54,7 +54,7 @@ var (
 		"990", // FTPS Protocol (control), FTP over TLS/SSL
 	}
 
-	exposedVuln = report.Vulnerability{
+	exposedFTP = report.Vulnerability{
 		Summary:         "Exposed FTP Ports",
 		Description:     "An attacker may be able to use the exposed port to exploit a vulnerability in the service.",
 		Score:           report.SeverityThresholdMedium,
@@ -80,19 +80,7 @@ var (
 	}
 )
 
-func exposedFTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-		},
-	}
-
-	add := false
+func processExposedFTPVulns(target string, nmapReport *gonmap.NmapRun, state checkstate.State) {
 	var vulns []report.Vulnerability
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
@@ -100,7 +88,9 @@ func exposedFTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabilit
 				continue
 			}
 
-			add = true
+			v := exposedFTP
+			v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+			v.Labels = []string{"ftp", "issue"}
 
 			networkResource := map[string]string{
 				"Hostname": target,
@@ -109,30 +99,53 @@ func exposedFTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabilit
 				"Service":  port.Service.Product,
 				"Version":  port.Service.Version,
 			}
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+				},
+			}
 			gr.Rows = append(gr.Rows, networkResource)
+			v.Resources = []report.ResourcesGroup{gr}
+			v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "exposed")
+			vulns = append(vulns, v)
 
 			// Check scripts
 			for _, script := range port.Scripts {
-				if script.Id != anonScriptID && script.Id != bounceScriptID {
-					continue
-				} else if script.Id == anonScriptID && strings.Contains(script.Output, anonLoginAllowedString) {
+				if script.Id == anonScriptID && strings.Contains(script.Output, anonLoginAllowedString) {
 					v := anonLogins
-					v.Details = fmt.Sprintf("Port: %v", port.PortId)
+					v.Resources = []report.ResourcesGroup{gr}
+					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+					v.Labels = []string{"ftp", "issue"}
+					v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "anon")
 					vulns = append(vulns, v)
 				} else if script.Id == bounceScriptID && strings.Contains(script.Output, bounceAllowedString) {
 					v := bounceAllowed
-					v.Details = fmt.Sprintf("Port: %v", port.PortId)
+					v.Resources = []report.ResourcesGroup{gr}
+					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+					v.Labels = []string{"ftp", "issue"}
+					v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "bounce")
 					vulns = append(vulns, v)
 				}
 			}
 		}
 	}
+	state.AddVulnerabilities(vulns...)
+}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		vulns = append(vulns, exposedVuln)
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
 	}
-	return vulns
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func main() {
@@ -159,7 +172,7 @@ func main() {
 		if len(opt.Ports) == 0 {
 			opt.Ports = defaultPorts
 		} else if opt.AllowedOpenPorts {
-			exposedVuln.Score = report.SeverityThresholdNone
+			exposedFTP.Score = report.SeverityThresholdNone
 		}
 
 		if opt.Password != "" {
@@ -188,8 +201,7 @@ func main() {
 			return err
 		}
 
-		vulns := exposedFTP(target, nmapReport)
-		state.AddVulnerabilities(vulns...)
+		processExposedFTPVulns(target, nmapReport, state)
 
 		return nil
 	}
