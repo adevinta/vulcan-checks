@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -157,7 +158,7 @@ type runner struct {
 	notes  string
 }
 
-func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
+func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 	kexRecommendationPattern := "key exchange algorithms"
 	ciphersRecommendationPattern := "encryption ciphers"
 	macsRecommendationPattern := "MAC algorithms"
@@ -179,6 +180,8 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 		vulnDb := map[string]report.Vulnerability{}
 		// Exposed SSH
 		exposedSSHVuln.Details += fmt.Sprintf("* Exposed SSH Port in %v\n", i.Port)
+		exposedSSHVuln.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+		exposedSSHVuln.ID = computeVulnerabilityID(target, exposedSSHVuln.AffectedResource, exposedSSHVuln.Summary, exposedSSHVuln.Score)
 		vulnDb["exposedSSHVuln"] = exposedSSHVuln
 
 		if strings.Contains(strings.ToLower(i.ServerBanner), "libssh") {
@@ -194,6 +197,8 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				if err == nil {
 					if c6.Check(v) || c7.Check(v) || c8.Check(v) {
 						libsshVuln.Details += fmt.Sprintf("* libssh version %v in port %v may be vulnerable\n", v.String(), i.Port)
+						libsshVuln.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+						libsshVuln.ID = computeVulnerabilityID(target, libsshVuln.AffectedResource, libsshVuln.Summary, libsshVuln.Score)
 						vulnDb["libsshVuln"] = libsshVuln
 					}
 				}
@@ -215,8 +220,10 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				if !ok {
 					tmp = weakKexConfigVuln
 				}
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
 				vulnDb["weakKexConfigVuln"] = tmp
 			} else if strings.Contains(j, ciphersRecommendationPattern) {
 				tmp, ok := vulnDb["weakCiphersConfigVuln"]
@@ -225,6 +232,8 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				}
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
 				vulnDb["weakCiphersConfigVuln"] = tmp
 			} else if strings.Contains(j, macsRecommendationPattern) {
 				tmp, ok := vulnDb["weakMACsConfigVuln"]
@@ -233,6 +242,8 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				}
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
 				vulnDb["weakMACsConfigVuln"] = tmp
 			} else if strings.Contains(j, authRecommendationPattern) {
 				tmp, ok := vulnDb["passAuthVuln"]
@@ -241,6 +252,8 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				}
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
 				vulnDb["passAuthVuln"] = tmp
 			} else if strings.Contains(j, sshv1RecommendationPattern) {
 				tmp, ok := vulnDb["allowSSHv1Vuln"]
@@ -249,6 +262,7 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				}
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
 				vulnDb["allowSSHv1Vuln"] = tmp
 			} else if strings.Contains(j, comprRecommendationPattern) {
 				tmp, ok := vulnDb["comprAlgoConfigVuln"]
@@ -257,6 +271,7 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 				}
 				tmp.Recommendations = append(tmp.Recommendations, j)
 				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
 				vulnDb["comprAlgoConfigVuln"] = tmp
 			}
 
@@ -274,6 +289,17 @@ func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 func (r *runner) ProcessOutputChunk(chunk []byte) bool {
 	r.output = append(r.output, chunk...)
 	return true
+}
+
+func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
+	h := sha256.New()
+
+	fmt.Fprintf(h, "%s - %s", target, affectedResource)
+
+	for _, e := range elems {
+		fmt.Fprintf(h, " - %v", e)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) error {
@@ -332,7 +358,7 @@ func main() {
 			return err
 		}
 
-		vulnArray, err := r.gradeVuln()
+		vulnArray, err := r.gradeVuln(target)
 		if err != nil {
 			return err
 		}
