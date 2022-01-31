@@ -126,8 +126,12 @@ func main() {
 		}
 
 		// Add base URL to the scope.
+		targetPort := ""
+		if targetURL.Port() != "" {
+			targetPort = fmt.Sprintf(":%s", targetURL.Port())
+		}
 		hostnameRegExQuote := strings.Replace(targetURL.Hostname(), `.`, `\.`, -1)
-		includeInContextRegEx := fmt.Sprintf(`http(s)?:\/\/%s\/.*`, hostnameRegExQuote)
+		includeInContextRegEx := fmt.Sprintf(`http(s)?:\/\/%s%s\/.*`, hostnameRegExQuote, targetPort)
 		logger.Printf("include in context regexp: %s", includeInContextRegEx)
 		_, err = client.Context().IncludeInContext(contextName, includeInContextRegEx)
 		if err != nil {
