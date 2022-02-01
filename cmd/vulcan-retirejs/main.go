@@ -193,10 +193,12 @@ func getScore(severity string) float32 {
 }
 
 type RetireJsReport struct {
-	Version string               `json:"version"`
-	Start   time.Time            `json:"start"`
-	Data    []RetireJsFileResult `json:"data"`
-	Time    float64              `json:"time"`
+	Data     []RetireJsFileResult          `json:"data"`
+	Errors   []map[interface{}]interface{} `json:"errors"`
+	Messages []map[interface{}]interface{} `json:"messages"`
+	Start    time.Time                     `json:"start"`
+	Time     float64                       `json:"time"`
+	Version  string                        `json:"version"`
 }
 
 type RetireJsFileResult struct {
@@ -205,21 +207,25 @@ type RetireJsFileResult struct {
 }
 
 type RetireJsResult struct {
-	Version         string `json:"version"`
 	Component       string `json:"component"`
 	Detection       string `json:"detection"`
+	Version         string `json:"version"`
 	Vulnerabilities []RetireJsVulnerability
 }
 
 type RetireJsResultId struct {
-	Issue   string `json:"issue"`
-	Summary string `json:"summary"`
+	Cve     []string `json:"CVE"`
+	Bug     string   `json:"bug"`
+	Issue   string   `json:"issue"`
+	Summary string   `json:"summary"`
 }
 
 type RetireJsVulnerability struct {
+	AtOrAbove   string           `json:"atOrAbove"`
+	Below       string           `json:"below"`
+	Identifiers RetireJsResultId `json:"identifiers"`
 	Info        []string         `json:"info"`
 	Severity    string           `json:"severity"`
-	Identifiers RetireJsResultId `json:"identifiers"`
 }
 
 func findScriptFiles(target string) (int, error) {

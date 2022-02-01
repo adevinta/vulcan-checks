@@ -226,7 +226,11 @@ func TestResolveTarget(t *testing.T) {
 }
 
 func TestAddVulnsToState(t *testing.T) {
-	retireJsVulnerability := RetireJsVulnerability{[]string{"https://bugs.jquery.com/ticket/11974", "http://research.insecurelabs.org/jquery/test/"}, "high", RetireJsResultId{"Issue-123", "Summary text here"}}
+	retireJsVulnerability := RetireJsVulnerability{
+		Info:        []string{"https://bugs.jquery.com/ticket/11974", "http://research.insecurelabs.org/jquery/test/"},
+		Severity:    "high",
+		Identifiers: RetireJsResultId{Issue: "Issue-123", Summary: "Summary text here"},
+	}
 	retireJsResult := RetireJsResult{"1.10.2", "jquery", "detection", []RetireJsVulnerability{retireJsVulnerability}}
 	retireJsFileResult := RetireJsFileResult{"file", []RetireJsResult{retireJsResult}}
 	p := stateMock{}
