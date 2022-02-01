@@ -170,16 +170,17 @@ func main() {
 			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
 		}
 
-		logger.Printf("Running spider %v levels deep...", opt.Depth)
-
 		client.Spider().SetOptionMaxDepth(opt.Depth)
 		if err != nil {
-			return fmt.Errorf("error setting max depth: %w", err)
+			return fmt.Errorf("error setting spider max depth: %w", err)
 		}
 		client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
 		if err != nil {
-			return fmt.Errorf("error setting max duration: %w", err)
+			return fmt.Errorf("error setting spider max duration: %w", err)
 		}
+
+		logger.Printf("Running spider %v levels deep, max duration %v, ...", opt.Depth, opt.MaxSpiderDuration)
+
 		resp, err := client.Spider().Scan(targetURL.String(), "", contextName, "", "")
 		if err != nil {
 			return fmt.Errorf("error executing the spider: %w", err)
@@ -251,10 +252,15 @@ func main() {
 		}
 		logger.Printf("Spider found the following URLs: %+v", resp)
 
-		logger.Printf("Running AJAX spider %v levels deep...", opt.Depth)
+		client.AjaxSpider().SetOptionMaxDuration(opt.MaxSpiderDuration)
+		if err != nil {
+			return fmt.Errorf("error setting ajax spider max duration: %w", err)
+		}
+
+		logger.Printf("Running AJAX spider %v levels deep, max duration %v...", opt.Depth, opt.MaxSpiderDuration)
 
 		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
-		resp, err = client.AjaxSpider().Scan(targetURL.String(), "", contextName, "")
+		_, err = client.AjaxSpider().Scan(targetURL.String(), "", contextName, "")
 		if err != nil {
 			return fmt.Errorf("error executing the AJAX spider: %w", err)
 		}
