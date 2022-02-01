@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -38,6 +37,7 @@ var (
 	logger     = check.NewCheckLog(checkName)
 	retireArgs = []string{
 		"retire",
+		"--exitwith", "0",
 		"--js",
 		"--outputformat", "json",
 		"--jspath", jsPath,
@@ -105,16 +105,8 @@ func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, erro
 		args = retireArgs
 	}
 	var report RetireJsReport
-	noFindings, findings, _, err := command.ExecuteWithStdErr(ctx, logger, args[0], args[1:]...)
-	if err != nil {
-		return report.Data, err
-	}
+	_, err := command.ExecuteAndParseJSON(ctx, logger, &report, args[0], args[1:]...)
 
-	if len(findings) > 0 {
-		err = json.Unmarshal(findings, &report)
-	} else {
-		err = json.Unmarshal(noFindings, &report)
-	}
 	return report.Data, err
 }
 
