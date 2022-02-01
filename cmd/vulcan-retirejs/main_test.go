@@ -216,7 +216,7 @@ func TestResolveTarget(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"))
+	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"), "Hostname")
 	targetExpected := ts.URL + "/landing-page/?n=1"
 
 	if targetResolved != ts.URL+"/landing-page/?n=1" {
@@ -272,12 +272,13 @@ func TestScanTarget(t *testing.T) {
 	}
 
 	target := u.Host
+	assetType := "Hostname"
 	ctx := context.Background()
 	args := []string{"echo", mockRetireOutput}
 
 	l := check.NewCheckLog(checkName)
 	var state state.State
-	err = scanTarget(ctx, target, l, state, args)
+	err = scanTarget(ctx, target, assetType, l, state, args)
 	if err != nil {
 		t.Fatalf("Error when running scanTarget: %v", err)
 	}

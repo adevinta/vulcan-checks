@@ -50,6 +50,7 @@ func main() {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
+		logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
@@ -59,17 +60,18 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		return scanTarget(ctx, target, logger, state, nil)
+		return scanTarget(ctx, target, assetType, logger, state, nil)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
 
 }
 
-func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state checkstate.State, args []string) error {
-	target, err := resolveTarget(target)
+func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
+	target, err := resolveTarget(target, assetType)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
+		// It shouldn't reach here due to previous check with helpers.IsReachable().
 		if _, ok := err.(*url.Error); ok {
 			return nil
 		}
@@ -351,7 +353,7 @@ func getFilePath(url string) string {
 }
 
 // Follow redirects and return final URL.
-func resolveTarget(target string) (string, error) {
+func resolveTarget(target, assetType string) (string, error) {
 	timeout := 5 * time.Second
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -359,6 +361,16 @@ func resolveTarget(target string) (string, error) {
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   timeout,
+	}
+	if assetType == "WebAddress" {
+		resp, err := client.Get(target)
+		if err == nil {
+			t := resp.Request.URL.String()
+			if resp.Request.URL.Path == "" {
+				t = fmt.Sprintf("%s/", t)
+			}
+			return t, nil
+		}
 	}
 
 	// TODO: Consider other cases.

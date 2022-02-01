@@ -1,2 +1,2 @@
-Description = "Checks web pages for vulnerable JavaScript libraries"
-AssetTypes = ["Hostname"]
+Description = "Check web pages for vulnerable JavaScript libraries"
+AssetTypes = ["Hostname", "WebAddress"]
