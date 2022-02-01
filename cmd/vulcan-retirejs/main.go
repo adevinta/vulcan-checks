@@ -36,7 +36,13 @@ const (
 var (
 	checkName  = "vulcan-retirejs"
 	logger     = check.NewCheckLog(checkName)
-	retireArgs = []string{"retire", "--outputformat", "json", "--jspath", jsPath, "--jsrepo", "jsrepository.json"}
+	retireArgs = []string{
+		"retire",
+		"--js",
+		"--outputformat", "json",
+		"--jspath", jsPath,
+		"--jsrepo", "jsrepository.json",
+	}
 )
 
 func main() {
