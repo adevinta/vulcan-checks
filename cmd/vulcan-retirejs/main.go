@@ -176,6 +176,7 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 }
 
 func getScore(severity string) float32 {
+	severity = strings.ToLower(severity)
 	if severity == "critical" {
 		return report.SeverityThresholdCritical
 	}
