@@ -94,6 +94,25 @@ func TestGetFilePath(t *testing.T) {
 
 }
 
+func TestGetAffectedVersion(t *testing.T) {
+	var versions = []struct {
+		atOrAbove string
+		below     string
+		expected  string
+	}{
+		{"", "", "not specified"},
+		{"1.0.0", "", ">=1.0.0"},
+		{"", "3.0.0", "<3.0.0"},
+		{"1.0.0", "3.0.0", ">=1.0.0 and <3.0.0"},
+	}
+	for _, tt := range versions {
+		result := getAffectedVersion(tt.atOrAbove, tt.below)
+		if result != tt.expected {
+			t.Fatalf("getAffectedVersion(%s, %s): expected: %s, result: %s", tt.atOrAbove, tt.below, tt.expected, result)
+		}
+	}
+}
+
 func TestGetScoreCritical(t *testing.T) {
 	if getScore("critical") != report.SeverityThresholdCritical {
 		t.Fatalf("Critical severity should map to Severity score critical")
@@ -219,10 +238,30 @@ func TestResolveTarget(t *testing.T) {
 	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"), "Hostname")
 	targetExpected := ts.URL + "/landing-page/?n=1"
 
-	if targetResolved != ts.URL+"/landing-page/?n=1" {
+	if targetResolved != targetExpected {
 		t.Fatalf("resolveTarget did not follow the redirect. Should be %s, was %s", targetExpected, targetResolved)
 	}
+}
 
+func TestResolveWebAddress(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	var paths = []struct {
+		provided string
+		expected string
+	}{
+		{ts.URL, ts.URL + "/"},
+		{ts.URL + "/", ts.URL + "/"},
+		{ts.URL + "/test", ts.URL + "/test"},
+	}
+	for _, tt := range paths {
+		resolved, _ := resolveTarget(tt.provided, "WebAddress")
+		if resolved != tt.expected {
+			t.Fatalf("resolveTarget(%s, \"WebAddress\"): expected: %s, result: %s", tt.provided, tt.expected, resolved)
+		}
+	}
 }
 
 func TestAddVulnsToState(t *testing.T) {
