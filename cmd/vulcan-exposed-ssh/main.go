@@ -89,6 +89,7 @@ var (
 		ImpactDetails:   "An attacker may be able to use the exposed port to exploit a vulnerability in the service.",
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Block access to SSH ports from the internet."},
+		Labels:          []string{"issue", "ssh"},
 	}
 	libsshVuln = report.Vulnerability{
 		CWEID:           288,
@@ -97,6 +98,7 @@ var (
 		Score:           report.SeverityThresholdHigh,
 		Recommendations: []string{"Update to the latest version of the libssh library."},
 		References:      []string{"https://www.libssh.org/2018/10/16/libssh-0-8-4-and-0-7-6-security-and-bugfix-release/", "https://www.libssh.org/security/advisories/CVE-2018-10933.txt"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	passAuthVuln = report.Vulnerability{
 		CWEID:           309,
@@ -105,6 +107,7 @@ var (
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	allowSSHv1Vuln = report.Vulnerability{
 		CWEID:           937,
@@ -113,6 +116,7 @@ var (
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Disable SSH version 1."},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakKexConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -121,6 +125,7 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakCiphersConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -129,6 +134,7 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakMACsConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -137,12 +143,14 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	comprAlgoConfigVuln = report.Vulnerability{
 		Summary:         strings.Title("Compression Algorithms Misconfiguration"),
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 )
 
