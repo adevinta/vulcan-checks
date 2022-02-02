@@ -146,8 +146,8 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 			details := []string{"The following vulnerabilities were found in the vulnerable JavaScript dependency:"}
 			fingerprint = append(fingerprint, fmt.Sprintf("vulnerabilities#%d", len(v.Vulnerabilities)))
 			for _, i := range v.Vulnerabilities {
-				if vulnerability.Score < getScore(i.Severity) {
-					vulnerability.Score = getScore(i.Severity)
+				if score := getScore(i.Severity); vulnerability.Score < score {
+					vulnerability.Score = score
 				}
 				fingerprint = append(fingerprint, strings.ToLower(i.Severity))
 				if i.Identifiers.Bug != "" {
