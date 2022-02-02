@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -113,60 +114,93 @@ func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, erro
 }
 
 func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
-	vulns := make(map[string]report.Vulnerability)
-	for _, finding := range r {
-		for _, result := range finding.Results {
-			for _, vuln := range result.Vulnerabilities {
-				summaryText := vuln.Identifiers.Summary
-				if vuln.Identifiers.Summary == "" {
-					summaryText = "Vulnerabilities in JavaScript Dependencies"
+	for _, f := range r {
+		for _, v := range f.Results {
+			fingerprint := []string{}
+			vulnerability := report.Vulnerability{
+				Summary: "Vulnerabilities in JavaScript Dependencies",
+				CWEID:   1104,
+				Labels:  []string{"potential", "web", "retirejs"},
+				Description: "Vulnerabilities in dependencies may impact in the security of your program. For that reason " +
+					"it's important to check for issues not only in your code but in the 3rd party code you are using as a dependency.",
+				Recommendations: []string{
+					fmt.Sprintf("Check if there is an update available for the affected resource."),
+					"Additional vulnerability information can be found in the links in the resources table.",
+				},
+				References:       []string{"https://portswigger.net/kb/issues/00500080_vulnerable-javascript-dependency"},
+				AffectedResource: fmt.Sprintf("%s-%s", v.Component, v.Version), // example: jquery-1.9.0
+				Score:            0.0,
+				Resources: []report.ResourcesGroup{
+					{
+						Name: "Vulnerabilities",
+						Header: []string{
+							"Summary",
+							"Affected Versions",
+							"Severity",
+							"CVEs",
+							"References",
+						},
+					},
+				},
+			}
+			details := []string{"The following vulnerabilities were found in the vulnerable JavaScript dependency:"}
+			fingerprint = append(fingerprint, fmt.Sprintf("vulnerabilities#%d", len(v.Vulnerabilities)))
+			for _, i := range v.Vulnerabilities {
+				if vulnerability.Score < getScore(i.Severity) {
+					vulnerability.Score = getScore(i.Severity)
 				}
-
-				v, ok := vulns[summaryText]
-				if !ok {
-					v = report.Vulnerability{
-						Summary: summaryText,
-						Description: "Vulnerabilities in dependencies may impact in the security of your program. For that reason " +
-							"it's important to check for issues not only in your code but in the 3rd party code you are using as a dependency.",
-						Score: 0.0,
-						Recommendations: []string{
-							fmt.Sprintf("Check if there is an update available for the affected components."),
-							"Additional vulnerability information can be found in the links in resources",
-						},
-						Resources: []report.ResourcesGroup{
-							report.ResourcesGroup{
-								Name: "Vulnerable Components",
-								Header: []string{
-									"Component",
-									"Version",
-								},
-							},
-						},
+				fingerprint = append(fingerprint, strings.ToLower(i.Severity))
+				if i.Identifiers.Bug != "" {
+					fingerprint = append(fingerprint, i.Identifiers.Bug)
+				}
+				if i.Identifiers.Issue != "" {
+					fingerprint = append(fingerprint, i.Identifiers.Issue)
+				}
+				details = append(details, fmt.Sprintf("* %s", i.Identifiers.Summary))
+				references := ""
+				for i, reference := range i.Info {
+					if i > 0 {
+						references += ", "
 					}
+					references += fmt.Sprintf("[%d](%s)", i, reference)
 				}
-
-				if score := getScore(vuln.Severity); v.Score < score {
-					v.Score = score
-				}
-
-				v.References = append(v.References, vuln.Info...)
-
-				gr := v.Resources[0]
+				gr := vulnerability.Resources[0]
 				r := map[string]string{
-					"Component": result.Component,
-					"Version":   result.Version,
+					"Summary":           i.Identifiers.Summary,
+					"Affected Versions": getAffectedVersion(i.AtOrAbove, i.Below),
+					"CVEs":              strings.Join(i.Identifiers.Cve, ", "),
+					"Severity":          strings.ToLower(i.Severity),
+					"References":        references,
 				}
 				gr.Rows = append(gr.Rows, r)
-				v.Resources[0] = gr
-
-				vulns[summaryText] = v
+				vulnerability.Resources[0] = gr
 			}
+			vulnerability.Details = strings.Join(details, "\n")
+
+			// The fingerprint is computed in the following way:
+			// - Store the number of vulnerabilities for the affected resource
+			// - Store the severity for each of the vulnerabilities
+			// - Store the CVEs, IssueID and BugID for each of the vulnerabilities
+			// - Sort the slice and join the elements with a field separator
+			// A change on any of these values may generate a new fingerprint
+			sort.Strings(fingerprint)
+			vulnerability.Fingerprint = helpers.ComputeFingerprint(strings.Join(fingerprint, "|"))
+			state.AddVulnerabilities(vulnerability)
 		}
 	}
+}
 
-	for _, v := range vulns {
-		state.AddVulnerabilities(v)
+func getAffectedVersion(atOrAbove, below string) string {
+	if atOrAbove != "" && below != "" {
+		return fmt.Sprintf(">=%s and <%s", atOrAbove, below)
 	}
+	if atOrAbove == "" && below != "" {
+		return fmt.Sprintf("<%s", below)
+	}
+	if atOrAbove != "" && below == "" {
+		return fmt.Sprintf(">=%s", atOrAbove)
+	}
+	return "not specified"
 }
 
 func getScore(severity string) float32 {
