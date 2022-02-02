@@ -134,16 +134,16 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 					{
 						Name: "Vulnerabilities",
 						Header: []string{
-							"Summary",
+							"Dependency",
+							"CVEs",
 							"Affected Versions",
 							"Severity",
-							"CVEs",
 							"References",
 						},
 					},
 				},
 			}
-			details := []string{"The following vulnerabilities were found in the vulnerable JavaScript dependency:"}
+			details := []string{fmt.Sprintf("The following vulnerabilities were found in %s version %s JavaScript dependency:", v.Component, v.Version)}
 			fingerprint = append(fingerprint, fmt.Sprintf("vulnerabilities#%d", len(v.Vulnerabilities)))
 			for _, i := range v.Vulnerabilities {
 				if score := getScore(i.Severity); vulnerability.Score < score {
@@ -156,7 +156,7 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 				if i.Identifiers.Issue != "" {
 					fingerprint = append(fingerprint, i.Identifiers.Issue)
 				}
-				details = append(details, fmt.Sprintf("* %s", i.Identifiers.Summary))
+				details = append(details, fmt.Sprintf("- [%s] %s", strings.Join(i.Identifiers.Cve, ","), i.Identifiers.Summary))
 				references := ""
 				for i, reference := range i.Info {
 					if i > 0 {
@@ -166,9 +166,9 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 				}
 				gr := vulnerability.Resources[0]
 				r := map[string]string{
-					"Summary":           i.Identifiers.Summary,
-					"Affected Versions": getAffectedVersion(i.AtOrAbove, i.Below),
+					"Dependency":        vulnerability.AffectedResource,
 					"CVEs":              strings.Join(i.Identifiers.Cve, ", "),
+					"Affected Versions": getAffectedVersion(i.AtOrAbove, i.Below),
 					"Severity":          strings.ToLower(i.Severity),
 					"References":        references,
 				}
