@@ -7,12 +7,13 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +37,14 @@ const (
 var (
 	checkName  = "vulcan-retirejs"
 	logger     = check.NewCheckLog(checkName)
-	retireArgs = []string{"retire", "--outputformat", "json", "--jspath", jsPath, "--jsrepo", "jsrepository.json"}
+	retireArgs = []string{
+		"retire",
+		"--exitwith", "0",
+		"--js",
+		"--outputformat", "json",
+		"--jspath", jsPath,
+		"--jsrepo", "jsrepository.json",
+	}
 )
 
 func main() {
@@ -44,6 +52,7 @@ func main() {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
+		logger = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
@@ -53,15 +62,15 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		return scanTarget(ctx, target, logger, state, nil)
+		return scanTarget(ctx, target, assetType, logger, state, nil)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
 
 }
 
-func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state checkstate.State, args []string) error {
-	target, err := resolveTarget(target)
+func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
+	target, err := resolveTarget(target, assetType)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
 		if _, ok := err.(*url.Error); ok {
@@ -99,77 +108,101 @@ func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, erro
 		args = retireArgs
 	}
 	var report RetireJsReport
-	noFindings, findings, _, err := command.ExecuteWithStdErr(ctx, logger, args[0], args[1:]...)
-	if err != nil {
-		return report.Data, err
-	}
+	_, err := command.ExecuteAndParseJSON(ctx, logger, &report, args[0], args[1:]...)
 
-	if len(findings) > 0 {
-		err = json.Unmarshal(findings, &report)
-	} else {
-		err = json.Unmarshal(noFindings, &report)
-	}
 	return report.Data, err
 }
 
 func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
-	vulns := make(map[string]report.Vulnerability)
-	for _, finding := range r {
-		for _, result := range finding.Results {
-			for _, vuln := range result.Vulnerabilities {
-				summaryText := vuln.Identifiers.Summary
-				if vuln.Identifiers.Summary == "" {
-					summaryText = "Vulnerabilities in JavaScript Dependencies"
+	for _, f := range r {
+		for _, v := range f.Results {
+			fingerprint := []string{}
+			vulnerability := report.Vulnerability{
+				Summary: "Vulnerabilities in JavaScript Dependencies",
+				CWEID:   1104,
+				Labels:  []string{"potential", "web", "retirejs"},
+				Description: "Vulnerabilities in dependencies may impact in the security of your program. For that reason " +
+					"it's important to check for issues not only in your code but in the 3rd party code you are using as a dependency.",
+				Recommendations: []string{
+					fmt.Sprintf("Check if there is an update available for the affected resource."),
+					"Additional vulnerability information can be found in the links in the resources table.",
+				},
+				References:       []string{"https://portswigger.net/kb/issues/00500080_vulnerable-javascript-dependency"},
+				AffectedResource: fmt.Sprintf("%s-%s", v.Component, v.Version), // Example: jquery-1.9.0.
+				Score:            0.0,
+				Resources: []report.ResourcesGroup{
+					{
+						Name: "Vulnerabilities",
+						Header: []string{
+							"CVEs",
+							"Affected Versions",
+							"Severity",
+							"References",
+						},
+					},
+				},
+			}
+			details := []string{fmt.Sprintf("The following vulnerabilities were found in %s version %s JavaScript dependency:", v.Component, v.Version)}
+			fingerprint = append(fingerprint, fmt.Sprintf("vulnerabilities#%d", len(v.Vulnerabilities)))
+			for _, i := range v.Vulnerabilities {
+				if score := getScore(i.Severity); vulnerability.Score < score {
+					vulnerability.Score = score
 				}
-
-				v, ok := vulns[summaryText]
-				if !ok {
-					v = report.Vulnerability{
-						Summary: summaryText,
-						Description: "Vulnerabilities in dependencies may impact in the security of your program. For that reason " +
-							"it's important to check for issues not only in your code but in the 3rd party code you are using as a dependency.",
-						Score: 0.0,
-						Recommendations: []string{
-							fmt.Sprintf("Check if there is an update available for the affected components."),
-							"Additional vulnerability information can be found in the links in resources",
-						},
-						Resources: []report.ResourcesGroup{
-							report.ResourcesGroup{
-								Name: "Vulnerable Components",
-								Header: []string{
-									"Component",
-									"Version",
-								},
-							},
-						},
+				fingerprint = append(fingerprint, strings.ToLower(i.Severity))
+				if i.Identifiers.Bug != "" {
+					fingerprint = append(fingerprint, i.Identifiers.Bug)
+				}
+				if i.Identifiers.Issue != "" {
+					fingerprint = append(fingerprint, i.Identifiers.Issue)
+				}
+				details = append(details, fmt.Sprintf("- [%s] %s", strings.Join(i.Identifiers.Cve, ","), i.Identifiers.Summary))
+				references := ""
+				for i, reference := range i.Info {
+					if i > 0 {
+						references += ", "
 					}
+					references += fmt.Sprintf("[%d](%s)", i, reference)
 				}
-
-				if score := getScore(vuln.Severity); v.Score < score {
-					v.Score = score
-				}
-
-				v.References = append(v.References, vuln.Info...)
-
-				gr := v.Resources[0]
+				gr := vulnerability.Resources[0]
 				r := map[string]string{
-					"Component": result.Component,
-					"Version":   result.Version,
+					"CVEs":              strings.Join(i.Identifiers.Cve, ", "),
+					"Affected Versions": getAffectedVersion(i.AtOrAbove, i.Below),
+					"Severity":          strings.ToLower(i.Severity),
+					"References":        references,
 				}
 				gr.Rows = append(gr.Rows, r)
-				v.Resources[0] = gr
-
-				vulns[summaryText] = v
+				vulnerability.Resources[0] = gr
 			}
-		}
-	}
+			vulnerability.Details = strings.Join(details, "\n")
 
-	for _, v := range vulns {
-		state.AddVulnerabilities(v)
+			// The fingerprint is computed in the following way:
+			// - Store the number of vulnerabilities for the affected resource
+			// - Store the severity for each of the vulnerabilities
+			// - Store the CVEs, IssueID and BugID for each of the vulnerabilities
+			// - Sort the slice and join the elements with a field separator
+			// A change on any of these values may generate a new fingerprint.
+			sort.Strings(fingerprint)
+			vulnerability.Fingerprint = helpers.ComputeFingerprint(strings.Join(fingerprint, "|"))
+			state.AddVulnerabilities(vulnerability)
+		}
 	}
 }
 
+func getAffectedVersion(atOrAbove, below string) string {
+	if atOrAbove != "" && below != "" {
+		return fmt.Sprintf(">=%s and <%s", atOrAbove, below)
+	}
+	if atOrAbove == "" && below != "" {
+		return fmt.Sprintf("<%s", below)
+	}
+	if atOrAbove != "" && below == "" {
+		return fmt.Sprintf(">=%s", atOrAbove)
+	}
+	return "not specified"
+}
+
 func getScore(severity string) float32 {
+	severity = strings.ToLower(severity)
 	if severity == "critical" {
 		return report.SeverityThresholdCritical
 	}
@@ -186,10 +219,12 @@ func getScore(severity string) float32 {
 }
 
 type RetireJsReport struct {
-	Version string               `json:"version"`
-	Start   time.Time            `json:"start"`
-	Data    []RetireJsFileResult `json:"data"`
-	Time    float64              `json:"time"`
+	Data     []RetireJsFileResult          `json:"data"`
+	Errors   []map[interface{}]interface{} `json:"errors"`
+	Messages []map[interface{}]interface{} `json:"messages"`
+	Start    time.Time                     `json:"start"`
+	Time     float64                       `json:"time"`
+	Version  string                        `json:"version"`
 }
 
 type RetireJsFileResult struct {
@@ -198,21 +233,25 @@ type RetireJsFileResult struct {
 }
 
 type RetireJsResult struct {
-	Version         string `json:"version"`
 	Component       string `json:"component"`
 	Detection       string `json:"detection"`
+	Version         string `json:"version"`
 	Vulnerabilities []RetireJsVulnerability
 }
 
 type RetireJsResultId struct {
-	Issue   string `json:"issue"`
-	Summary string `json:"summary"`
+	Cve     []string `json:"CVE"`
+	Bug     string   `json:"bug"`
+	Issue   string   `json:"issue"`
+	Summary string   `json:"summary"`
 }
 
 type RetireJsVulnerability struct {
+	AtOrAbove   string           `json:"atOrAbove"`
+	Below       string           `json:"below"`
+	Identifiers RetireJsResultId `json:"identifiers"`
 	Info        []string         `json:"info"`
 	Severity    string           `json:"severity"`
-	Identifiers RetireJsResultId `json:"identifiers"`
 }
 
 func findScriptFiles(target string) (int, error) {
@@ -346,7 +385,7 @@ func getFilePath(url string) string {
 }
 
 // Follow redirects and return final URL.
-func resolveTarget(target string) (string, error) {
+func resolveTarget(target, assetType string) (string, error) {
 	timeout := 5 * time.Second
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -355,17 +394,29 @@ func resolveTarget(target string) (string, error) {
 		Transport: tr,
 		Timeout:   timeout,
 	}
+	switch assetType {
+	case "WebAddress":
+		resp, err := client.Get(target)
+		if err != nil {
+			return "", err
+		}
+		t := resp.Request.URL.String()
+		if resp.Request.URL.Path == "" {
+			t = fmt.Sprintf("%s/", t)
+		}
+		return t, nil
+	case "Hostname":
+		resp, err := client.Get(fmt.Sprintf("https://%s/", target))
+		if err == nil {
+			return resp.Request.URL.String(), nil
+		}
 
-	// TODO: Consider other cases.
-	resp, err := client.Get(fmt.Sprintf("https://%s/", target))
-	if err == nil {
+		resp, err = client.Get(fmt.Sprintf("http://%s/", target))
+		if err != nil {
+			return "", err
+		}
 		return resp.Request.URL.String(), nil
+	default:
+		return "", errors.New("unexpected assettype provided")
 	}
-
-	resp, err = client.Get(fmt.Sprintf("http://%s/", target))
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Request.URL.String(), nil
 }

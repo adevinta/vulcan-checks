@@ -94,6 +94,25 @@ func TestGetFilePath(t *testing.T) {
 
 }
 
+func TestGetAffectedVersion(t *testing.T) {
+	var versions = []struct {
+		atOrAbove string
+		below     string
+		expected  string
+	}{
+		{"", "", "not specified"},
+		{"1.0.0", "", ">=1.0.0"},
+		{"", "3.0.0", "<3.0.0"},
+		{"1.0.0", "3.0.0", ">=1.0.0 and <3.0.0"},
+	}
+	for _, tt := range versions {
+		result := getAffectedVersion(tt.atOrAbove, tt.below)
+		if result != tt.expected {
+			t.Fatalf("getAffectedVersion(%s, %s): expected: %s, result: %s", tt.atOrAbove, tt.below, tt.expected, result)
+		}
+	}
+}
+
 func TestGetScoreCritical(t *testing.T) {
 	if getScore("critical") != report.SeverityThresholdCritical {
 		t.Fatalf("Critical severity should map to Severity score critical")
@@ -216,17 +235,48 @@ func TestResolveTarget(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"))
+	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"), "Hostname")
 	targetExpected := ts.URL + "/landing-page/?n=1"
 
-	if targetResolved != ts.URL+"/landing-page/?n=1" {
+	if targetResolved != targetExpected {
 		t.Fatalf("resolveTarget did not follow the redirect. Should be %s, was %s", targetExpected, targetResolved)
 	}
+}
 
+func TestResolveWebAddress(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	var paths = []struct {
+		provided string
+		expected string
+	}{
+		{ts.URL, ts.URL + "/"},
+		{ts.URL + "/", ts.URL + "/"},
+		{ts.URL + "/test", ts.URL + "/test"},
+	}
+	for _, tt := range paths {
+		resolved, _ := resolveTarget(tt.provided, "WebAddress")
+		if resolved != tt.expected {
+			t.Fatalf("resolveTarget(%s, \"WebAddress\"): expected: %s, result: %s", tt.provided, tt.expected, resolved)
+		}
+	}
+}
+
+func TestResolveUnexpectedAssettype(t *testing.T) {
+	_, err := resolveTarget("http://www.example.com", "Unexpected")
+	if err == nil {
+		t.Fatalf("An 'unexpected assettype provided' error was expected")
+	}
 }
 
 func TestAddVulnsToState(t *testing.T) {
-	retireJsVulnerability := RetireJsVulnerability{[]string{"https://bugs.jquery.com/ticket/11974", "http://research.insecurelabs.org/jquery/test/"}, "high", RetireJsResultId{"Issue-123", "Summary text here"}}
+	retireJsVulnerability := RetireJsVulnerability{
+		Info:        []string{"https://bugs.jquery.com/ticket/11974", "http://research.insecurelabs.org/jquery/test/"},
+		Severity:    "high",
+		Identifiers: RetireJsResultId{Issue: "Issue-123", Summary: "Summary text here"},
+	}
 	retireJsResult := RetireJsResult{"1.10.2", "jquery", "detection", []RetireJsVulnerability{retireJsVulnerability}}
 	retireJsFileResult := RetireJsFileResult{"file", []RetireJsResult{retireJsResult}}
 	p := stateMock{}
@@ -268,12 +318,13 @@ func TestScanTarget(t *testing.T) {
 	}
 
 	target := u.Host
+	assetType := "Hostname"
 	ctx := context.Background()
 	args := []string{"echo", mockRetireOutput}
 
 	l := check.NewCheckLog(checkName)
 	var state state.State
-	err = scanTarget(ctx, target, l, state, args)
+	err = scanTarget(ctx, target, assetType, l, state, args)
 	if err != nil {
 		t.Fatalf("Error when running scanTarget: %v", err)
 	}
