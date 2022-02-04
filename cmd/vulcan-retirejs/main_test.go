@@ -264,6 +264,13 @@ func TestResolveWebAddress(t *testing.T) {
 	}
 }
 
+func TestResolveUnexpectedAssettype(t *testing.T) {
+	_, err := resolveTarget("http://www.example.com", "Unexpected")
+	if err == nil {
+		t.Fatalf("An 'unexpected assettype provided' error was expected")
+	}
+}
+
 func TestAddVulnsToState(t *testing.T) {
 	retireJsVulnerability := RetireJsVulnerability{
 		Info:        []string{"https://bugs.jquery.com/ticket/11974", "http://research.insecurelabs.org/jquery/test/"},

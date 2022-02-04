@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -396,27 +397,29 @@ func resolveTarget(target, assetType string) (string, error) {
 		Transport: tr,
 		Timeout:   timeout,
 	}
-	if assetType == "WebAddress" {
+	switch assetType {
+	case "WebAddress":
 		resp, err := client.Get(target)
-		if err == nil {
-			t := resp.Request.URL.String()
-			if resp.Request.URL.Path == "" {
-				t = fmt.Sprintf("%s/", t)
-			}
-			return t, nil
+		if err != nil {
+			return "", err
 		}
-	}
+		t := resp.Request.URL.String()
+		if resp.Request.URL.Path == "" {
+			t = fmt.Sprintf("%s/", t)
+		}
+		return t, nil
+	case "Hostname":
+		resp, err := client.Get(fmt.Sprintf("https://%s/", target))
+		if err == nil {
+			return resp.Request.URL.String(), nil
+		}
 
-	// TODO: Consider other cases.
-	resp, err := client.Get(fmt.Sprintf("https://%s/", target))
-	if err == nil {
+		resp, err = client.Get(fmt.Sprintf("http://%s/", target))
+		if err != nil {
+			return "", err
+		}
 		return resp.Request.URL.String(), nil
 	}
 
-	resp, err = client.Get(fmt.Sprintf("http://%s/", target))
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Request.URL.String(), nil
+	return "", errors.New("unexpected assettype provided")
 }
