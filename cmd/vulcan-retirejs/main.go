@@ -73,7 +73,6 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 	target, err := resolveTarget(target, assetType)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
-		// It shouldn't reach here due to previous check with helpers.IsReachable().
 		if _, ok := err.(*url.Error); ok {
 			return nil
 		}
