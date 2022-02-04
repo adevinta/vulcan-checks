@@ -29,7 +29,6 @@ var (
 	checkName = "vulcan-zap"
 	logger    = check.NewCheckLog(checkName)
 	client    zap.Interface
-	err       error
 )
 
 const (
@@ -170,11 +169,11 @@ func main() {
 			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
 		}
 
-		client.Spider().SetOptionMaxDepth(opt.Depth)
+		_, err = client.Spider().SetOptionMaxDepth(opt.Depth)
 		if err != nil {
 			return fmt.Errorf("error setting spider max depth: %w", err)
 		}
-		client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
+		_, err = client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
 		if err != nil {
 			return fmt.Errorf("error setting spider max duration: %w", err)
 		}
@@ -252,7 +251,7 @@ func main() {
 		}
 		logger.Printf("Spider found the following URLs: %+v", resp)
 
-		client.AjaxSpider().SetOptionMaxDuration(opt.MaxSpiderDuration)
+		_, err = client.AjaxSpider().SetOptionMaxDuration(opt.MaxSpiderDuration)
 		if err != nil {
 			return fmt.Errorf("error setting ajax spider max duration: %w", err)
 		}
