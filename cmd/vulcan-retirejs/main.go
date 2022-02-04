@@ -134,7 +134,6 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 					{
 						Name: "Vulnerabilities",
 						Header: []string{
-							"Dependency",
 							"CVEs",
 							"Affected Versions",
 							"Severity",
@@ -166,7 +165,6 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 				}
 				gr := vulnerability.Resources[0]
 				r := map[string]string{
-					"Dependency":        vulnerability.AffectedResource,
 					"CVEs":              strings.Join(i.Identifiers.Cve, ", "),
 					"Affected Versions": getAffectedVersion(i.AtOrAbove, i.Below),
 					"Severity":          strings.ToLower(i.Severity),
