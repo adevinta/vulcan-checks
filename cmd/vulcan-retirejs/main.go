@@ -416,7 +416,7 @@ func resolveTarget(target, assetType string) (string, error) {
 			return "", err
 		}
 		return resp.Request.URL.String(), nil
+	default:
+		return "", errors.New("unexpected assettype provided")
 	}
-
-	return "", errors.New("unexpected assettype provided")
 }
