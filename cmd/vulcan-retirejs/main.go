@@ -128,7 +128,7 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 					"Additional vulnerability information can be found in the links in the resources table.",
 				},
 				References:       []string{"https://portswigger.net/kb/issues/00500080_vulnerable-javascript-dependency"},
-				AffectedResource: fmt.Sprintf("%s-%s", v.Component, v.Version), // example: jquery-1.9.0
+				AffectedResource: fmt.Sprintf("%s-%s", v.Component, v.Version), // Example: jquery-1.9.0.
 				Score:            0.0,
 				Resources: []report.ResourcesGroup{
 					{
@@ -182,7 +182,7 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 			// - Store the severity for each of the vulnerabilities
 			// - Store the CVEs, IssueID and BugID for each of the vulnerabilities
 			// - Sort the slice and join the elements with a field separator
-			// A change on any of these values may generate a new fingerprint
+			// A change on any of these values may generate a new fingerprint.
 			sort.Strings(fingerprint)
 			vulnerability.Fingerprint = helpers.ComputeFingerprint(strings.Join(fingerprint, "|"))
 			state.AddVulnerabilities(vulnerability)
