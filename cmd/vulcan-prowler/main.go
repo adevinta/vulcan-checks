@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -25,7 +26,6 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
-	"github.com/aws/aws-sdk-go/aws/arn"
 )
 
 const (

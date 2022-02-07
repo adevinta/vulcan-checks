@@ -9,14 +9,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 )
 
 const (
-	prowlerCmd   = `/prowler/prowler`
-	reportFormat = `json`
+	prowlerCmd     = `/prowler/prowler`
+	reportFormat   = `json`
+	reportName     = `report`
+	reportLocation = `/prowler/output/report.json`
 )
 
 type prowlerReport struct {
@@ -40,7 +43,9 @@ type entry struct {
 
 /*
 	Command example:
-		prowler -r eu-west-1 -g cislevel1 -T 3600 -M json
+		prowler -r eu-west-1 -g cislevel1 -T 3600 -M json -F report
+
+	Output available at /prowler/output/report.json
 */
 
 func buildParams(region string, groups []string) []string {
@@ -48,6 +53,7 @@ func buildParams(region string, groups []string) []string {
 		"-r", region,
 		"-g", strings.Join(groups, ","),
 		"-M", reportFormat,
+		"-F", reportName,
 	}
 }
 
@@ -68,14 +74,22 @@ func runProwler(ctx context.Context, region string, groups []string) (*prowlerRe
 	logger.Infof("exit status: %v", status)
 	logger.Debugf("prowler output: %s", output)
 
+	fileReport, err := ioutil.ReadFile(reportLocation)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("file report: %s", fileReport)
+
+	scanner := bufio.NewScanner(bytes.NewReader(fileReport))
 	var report prowlerReport
-	scanner := bufio.NewScanner(bytes.NewReader(output))
 	for scanner.Scan() {
 		var e entry
 		if err := json.Unmarshal([]byte(scanner.Text()), &e); err != nil {
+			logger.Errorf("output line: %v", scanner.Text())
 			return nil, err
 		}
 		report.entries = append(report.entries, e)
 	}
+
 	return &report, nil
 }
