@@ -29,12 +29,13 @@ var (
 	// NOTE: should we increase to critical?
 	gozuulVuln = report.Vulnerability{
 		CWEID:           434,
-		Summary:         "Remote Code Exeucition in Zuul",
+		Summary:         "Remote Code Execution in Zuul",
 		Description:     "Zuul was configured with zuul.filter.admin.enabled to True, which can be used to upload filters via the default application port which may result in Remote Code Execution (RCE).",
 		Score:           report.SeverityThresholdHigh,
 		ImpactDetails:   "Allows remote attackers to execute code in the server via uploading a malicious filter.",
 		References:      []string{"https://github.com/Netflix/security-bulletins/blob/master/advisories/nflx-2016-003.md"},
 		Recommendations: []string{"Ensure the property ZUUL_FILTER_ADMIN_ENABLED is set to False."},
+		Labels:          []string{"issue", "http"},
 	}
 
 	ErrBadTarget  = errors.New("bad target")
@@ -70,31 +71,17 @@ func main() {
 			return err
 		}
 
-		gr := report.ResourcesGroup{
-			Name: "Network Resources",
-			Header: []string{
-				"URL",
-			},
-		}
-
-		vulnerable := false
 		for _, url := range urls {
 			res, err := gozuul.PassiveScan(url)
 			if err != nil {
 				return err
 			}
 			if res.Vulnerable {
-				vulnerable = true
-				networkResource := map[string]string{
-					"URL": url,
-				}
-				gr.Rows = append(gr.Rows, networkResource)
+				vuln := gozuulVuln
+				vuln.AffectedResource = url
+				vuln.Fingerprint = helpers.ComputeFingerprint()
+				state.AddVulnerabilities(vuln)
 			}
-		}
-
-		if vulnerable {
-			gozuulVuln.Resources = append(gozuulVuln.Resources, gr)
-			state.AddVulnerabilities(gozuulVuln)
 		}
 
 		return nil
