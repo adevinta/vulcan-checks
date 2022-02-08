@@ -59,18 +59,18 @@ var (
 			The CIS AWS Foundations Benchmark provides prescriptive
 			guidance for configuring security options for a subset of Amazon Web
 			Services with an emphasis on foundational, testable, and architecture
-			agnostic settings. The services included in the scope are: IAM, Confing, 
+			agnostic settings. The services included in the scope are: IAM, Confing,
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			Recommendations are provided in order to comply with all the controls required 
+			Recommendations are provided in order to comply with all the controls required
 			by the CIS Level 2.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
 			and more details.
 		</p>`,
-		Labels: []string{"compliance", "cis"},
+		Labels: []string{"compliance", "cis", "aws"},
 		References: []string{
 			"https://d0.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf",
 			"https://github.com/toniblyx/prowler",
@@ -87,25 +87,25 @@ var (
 		Summary: "Compliance With CIS Level 1 AWS Foundations Benchmark (BETA)",
 		Description: `<p>
 			This account has been checked for compliance with the CIS Level 1 according
-			to its security classification. You can check the security classification of the account in 
+			to its security classification. You can check the security classification of the account in
 			the details section.
 			</p>
 			<p>
 		    The CIS AWS Foundations Benchmark provides prescriptive
 			guidance for configuring security options for a subset of Amazon Web
 			Services with an emphasis on foundational, testable, and architecture
-			agnostic settings. The services included in the scope are: IAM, Confing, 
+			agnostic settings. The services included in the scope are: IAM, Confing,
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			Recommendations are provided in order to comply with all the controls required 
+			Recommendations are provided in order to comply with all the controls required
 			by the CIS Level 1.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
 			and more details.
 		</p>`,
-		Labels: []string{"compliance", "cis"},
+		Labels: []string{"compliance", "cis", "aws"},
 		References: []string{
 			"https://d0.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf",
 			"https://github.com/toniblyx/prowler",
@@ -129,18 +129,18 @@ var (
 		    The CIS AWS Foundations Benchmark provides prescriptive
 			guidance for configuring security options for a subset of Amazon Web
 			Services with an emphasis on foundational, testable, and architecture
-			agnostic settings. The services included in the scope are: IAM, Confing, 
+			agnostic settings. The services included in the scope are: IAM, Confing,
 			CloudTrail, CloudWatch, SNS, S3 and VPC (Default).
 		</p>
 		<p>
-			Recommendations are provided in order to comply with all the controls required 
+			Recommendations are provided in order to comply with all the controls required
 			by the CIS Level 2.
 		</p>
 		<p>
 			Check the Details and Resources sections to know the compliance status
 			and more details.
 		</p>`,
-		Labels: []string{"compliance", "cis"},
+		Labels: []string{"compliance", "cis", "aws"},
 		References: []string{
 			"https://d0.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf",
 			"https://github.com/toniblyx/prowler",
@@ -159,7 +159,7 @@ var (
 			     Information gathered by executing the CIS benchmark on the account.
 		</p>
 			`,
-		Labels: []string{"informational", "compliance", "cis"},
+		Labels: []string{"informational", "compliance", "cis", "aws"},
 		References: []string{
 			"https://d0.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf",
 			"https://github.com/toniblyx/prowler",
