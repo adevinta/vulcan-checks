@@ -1,3 +1,5 @@
 [Check]
 Target = "example.com"
 AssetType = "Hostname"
+# Testing site:
+# https://badssl.com
