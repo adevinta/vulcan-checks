@@ -61,25 +61,13 @@ var (
 		Description:     "The ports are commonly used by Hadoop Distributed File System, and exposing them may allow to execute jobs by external attackers.",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Block access to Hadoop related ports from the internet."},
+		Labels:          []string{"hdfs"},
 	}
 
 	logger *logrus.Entry
 )
 
-func isExposedHDFS(target string, nmapReport *gonmap.NmapRun, r *regexp.Regexp) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-			"Confirmed",
-		},
-	}
-
-	add := false
+func processExposedHDFSVulns(target string, nmapReport *gonmap.NmapRun, r *regexp.Regexp, state checkstate.State) {
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" {
@@ -92,12 +80,16 @@ func isExposedHDFS(target string, nmapReport *gonmap.NmapRun, r *regexp.Regexp) 
 				continue
 			}
 
-			add = true
+			vuln := exposedHDFS
+			vuln.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 
 			c := false
 			if confirmed(target, strconv.Itoa(port.PortId), port.Service.Product) {
-				exposedHDFS.Score = report.SeverityThresholdCritical
+				vuln.Score = report.SeverityThresholdCritical
+				vuln.Labels = append(vuln.Labels, "issue")
 				c = true
+			} else {
+				vuln.Labels = append(vuln.Labels, "informational")
 			}
 
 			networkResource := map[string]string{
@@ -108,20 +100,28 @@ func isExposedHDFS(target string, nmapReport *gonmap.NmapRun, r *regexp.Regexp) 
 				"Version":   port.Service.Version,
 				"Confirmed": strconv.FormatBool(c),
 			}
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+					"Confirmed",
+				},
+			}
 			gr.Rows = append(gr.Rows, networkResource)
+			vuln.Resources = []report.ResourcesGroup{gr}
 
 			logger.WithFields(logrus.Fields{"resource": networkResource}).Info("Resource added")
 
+			vuln.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, c)
+
+			state.AddVulnerabilities(vuln)
+			logger.WithFields(logrus.Fields{"vulnerability": vuln}).Info("Vulnerability added")
 		}
 	}
-
-	if add {
-		exposedHDFS.Resources = append(exposedHDFS.Resources, gr)
-		logger.WithFields(logrus.Fields{"vulnerability": exposedHDFS}).Info("Vulnerability added")
-		return []report.Vulnerability{exposedHDFS}
-	}
-
-	return nil
 }
 
 func confirmed(host, port, product string) bool {
@@ -239,8 +239,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return err
 	}
 
-	vulns := isExposedHDFS(target, nmapReport, r)
-	state.AddVulnerabilities(vulns...)
+	processExposedHDFSVulns(target, nmapReport, r, state)
 
 	return nil
 }
