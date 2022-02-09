@@ -373,11 +373,17 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 					// attribute.
 					AffectedResource:       aws.StringValue(fr.ResourceId),
 					AffectedResourceString: affectedResourceStr,
-					Labels:                 []string{"issue", "aws"},
+					Labels:                 []string{"aws"},
 					Resources:              []report.ResourcesGroup{occurrences},
 				}
 				vuln.Recommendations = append(vuln.Recommendations, recommendedActions...)
 				vuln.References = append(vuln.References, additionalResources...)
+
+				if score == report.SeverityThresholdNone {
+					vuln.Labels = append(vuln.Labels, "informational")
+				} else {
+					vuln.Labels = append(vuln.Labels, "issue")
+				}
 
 				// Doesn't seem to be any useful field to feed the fingerprint
 				// of the finding.
