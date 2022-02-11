@@ -218,8 +218,8 @@ func main() {
 		}
 
 		for _, certInfo := range checker.certificateInfo {
-			certInfo.AffectedResource = checker.fingerprint
-			certInfo.AffectedResourceString = target
+			certInfo.AffectedResource = fmt.Sprintf("%s:%d", checker.fingerprint, opt.Port)
+			certInfo.AffectedResourceString = fmt.Sprintf("%s:%d", target, opt.Port)
 			certInfo.Fingerprint = helpers.ComputeFingerprint()
 			state.AddVulnerabilities(certInfo)
 		}
