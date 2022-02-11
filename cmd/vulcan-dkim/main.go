@@ -57,7 +57,9 @@ var (
 				"Create a valid DKIM DNS Record",
 				"For easier deployment of DKIM record in AWS Route53 check our CloudFormation Template in References",
 			},
-			Details: "Selector: %s\n\n. You can check DKIM DNS record running the following command: dig -t txt %s",
+			Details:     "Selector: %s\n\n. You can check DKIM DNS record running the following command: dig -t txt %s",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"dkim-malformed": report.Vulnerability{
 			CWEID:         358,
@@ -73,7 +75,9 @@ var (
 			Recommendations: []string{
 				"Create a valid DKIM DNS TXT Record",
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"multiple-dkim-found": report.Vulnerability{
 			CWEID:       358,
@@ -88,7 +92,9 @@ var (
 			Recommendations: []string{
 				"Create a single record for DKIM.",
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"missing-v-tag": report.Vulnerability{
 			CWEID:       358,
@@ -103,7 +109,9 @@ var (
 			Recommendations: []string{
 				recommendations["v-tag"],
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"t-tag-test-mode": report.Vulnerability{
 			Summary: "DKIM Record In Test Mode",
@@ -113,7 +121,9 @@ var (
 				"https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail",
 				"https://tools.ietf.org/html/rfc6376#page-53",
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"t-tag-strict-mode": report.Vulnerability{
 			Summary: "DKIM Record In Strict Mode",
@@ -123,7 +133,9 @@ var (
 				"https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail",
 				"https://tools.ietf.org/html/rfc6376#page-53",
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"sha1": report.Vulnerability{
 			CWEID:   358,
@@ -140,7 +152,9 @@ var (
 			Recommendations: []string{
 				recommendations["h-tag"],
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"revoked-key": report.Vulnerability{
 			Summary:     "DKIM Key Revocation",
@@ -154,7 +168,9 @@ var (
 			Recommendations: []string{
 				recommendations["p-tag-empty"],
 			},
-			Details: "Selector: %s.",
+			Details:     "Selector: %s.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"weak-key": report.Vulnerability{
 			Summary:     "DKIM Public Key Is Too Short",
@@ -170,7 +186,9 @@ var (
 			Recommendations: []string{
 				"DKIM should use at least 2048 bit RSA key. NIST recommends RSA 2048 bit Digital Signature keys used for authentication and non-repudiation (for Users or Devices)",
 			},
-			Details: "Selector: %s.\nBits of the key: %d.",
+			Details:     "Selector: %s.\nBits of the key: %d.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 		"unable-to-parse-tags": report.Vulnerability{
 			CWEID:   358,
@@ -187,7 +205,9 @@ var (
 			Recommendations: []string{
 				"Review the record syntax and fix/remove the invalid tags/values.",
 			},
-			Details: "Selector: %s.\nInvalid tag values: %v.",
+			Details:     "Selector: %s.\nInvalid tag values: %v.",
+			Labels:      []string{"issue", "dns"},
+			Fingerprint: helpers.ComputeFingerprint(),
 		},
 	}
 )
@@ -206,6 +226,8 @@ type DKIM struct {
 	selector        string
 	otherFields     map[string]string
 	vulnerabilities []report.Vulnerability
+
+	target string
 }
 
 const (
@@ -263,6 +285,7 @@ func main() {
 				service: "*",
 				notes:   "",
 				flags:   "",
+				target:  target,
 			}
 			dkim.selector = s
 			if dkim.parse(target) {
@@ -292,6 +315,7 @@ func (dkim *DKIM) evaluate() {
 	// Check Version
 	if dkim.version != dkimVersion {
 		vuln := vulns["missing-v-tag"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 		dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 	}
@@ -302,6 +326,7 @@ func (dkim *DKIM) evaluate() {
 			malfRecommendations = append(malfRecommendations, recommendations["h-tag"])
 		} else if i != "sha256" {
 			vuln := vulns["sha1"]
+			vuln.AffectedResource = dkim.target
 			vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 			dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 		}
@@ -324,10 +349,12 @@ func (dkim *DKIM) evaluate() {
 			malfRecommendations = append(malfRecommendations, recommendations["t-tag"])
 		} else if i == "y" {
 			vuln := vulns["t-tag-test-mode"]
+			vuln.AffectedResource = dkim.target
 			vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 			dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 		} else if i == "t" {
 			vuln := vulns["t-tag-strict-mode"]
+			vuln.AffectedResource = dkim.target
 			vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 			dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 		}
@@ -335,6 +362,7 @@ func (dkim *DKIM) evaluate() {
 	// Check Public Key
 	if dkim.publicKey == "" {
 		vuln := vulns["revoked-key"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 		dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 	} else {
@@ -352,6 +380,7 @@ func (dkim *DKIM) evaluate() {
 					keyLength := pub.N.BitLen()
 					if keyLength < 2047 {
 						vuln := vulns["weak-key"]
+						vuln.AffectedResource = dkim.target
 						vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector, keyLength)
 						dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 					}
@@ -368,11 +397,13 @@ func (dkim *DKIM) evaluate() {
 			tmpArray = append(tmpArray, fmt.Sprintf("%s=%v", k, v))
 		}
 		vuln := vulns["unable-to-parse-tags"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector, tmpArray)
 	}
 	// END malformed record
 	if len(malfRecommendations) > 0 {
 		vuln := vulns["dkim-malformed"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 		vuln.Recommendations = append(vuln.Recommendations, malfRecommendations...)
 		dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
@@ -388,11 +419,13 @@ func (dkim *DKIM) parse(domain string) bool {
 func (dkim *DKIM) parseTxtRecords(records []string, txtRecord string) bool {
 	if len(records) < 1 {
 		vuln := vulns["dkim-not-found"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector, txtRecord)
 		dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 		return false
 	} else if len(records) > 1 {
 		vuln := vulns["multiple-dkim-found"]
+		vuln.AffectedResource = dkim.target
 		vuln.Details = fmt.Sprintf(vuln.Details, dkim.selector)
 		dkim.vulnerabilities = append(dkim.vulnerabilities, vuln)
 		return false
