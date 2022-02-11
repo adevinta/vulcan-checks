@@ -28,6 +28,7 @@ type certificateChecker struct {
 	ownerCertificate *x509.Certificate
 	certificateInfo  []report.Vulnerability
 	expired          bool
+	fingerprint      string
 	notes            string
 	data             []byte
 }
@@ -43,9 +44,9 @@ var (
 
 type options struct {
 	Timeout           int `json:"timeout"`          // Timeout parameter.
-	Port              int `json:"port"`             // Port to check for SSL certificate
-	ExpiritionWarning int `json:"expiricy_warning"` // Certificate expiration warning period
-	ExpiritionError   int `json:"expiricy_error"`   // Certificate expiration error period
+	Port              int `json:"port"`             // Port to check for SSL certificate.
+	ExpiritionWarning int `json:"expiricy_warning"` // Certificate expiration warning period.
+	ExpiritionError   int `json:"expiricy_error"`   // Certificate expiration error period.
 }
 
 func (checker *certificateChecker) getOwnerCertificate(target string, port int, timeout int, skipVerify bool) error {
@@ -60,15 +61,14 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 	}
 
 	conn, err := tls.DialWithDialer(dialer, "tcp", host, &cfg)
-
-	// HANDLE HERE CERTIFICATE WITH ERRORS
+	// Handle certificate errors.
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
 		if _, ok := err.(*net.OpError); ok {
 			return nil
 		}
 
-		if err.Error() == "x509: certificate has expired or is not yet valid" {
+		if strings.HasPrefix(err.Error(), "x509: certificate has expired or is not yet valid") {
 			checker.certificateInfo = append(checker.certificateInfo, expiredCertificate)
 			checker.expired = true
 			return nil
@@ -87,6 +87,7 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 
 		return err
 	}
+	defer conn.Close()
 
 	if len(conn.ConnectionState().PeerCertificates) == 0 {
 		return errors.New("No certificate obtained from host")
@@ -129,7 +130,7 @@ func (checker *certificateChecker) extractCertificateInfo() error {
 
 	buf.WriteString(fmt.Sprintf("DNSNames: %s\n", strings.Join(checker.ownerCertificate.DNSNames, " ")))
 
-	// The fingerprint is the hash (sha256) of the whole raw certificate
+	// The fingerprint is the hash (sha256) of the whole raw certificate.
 	s := sha256.New()
 	_, err := s.Write(checker.ownerCertificate.Raw)
 	if err != nil {
@@ -137,13 +138,14 @@ func (checker *certificateChecker) extractCertificateInfo() error {
 	}
 	sha256Fingerprint := strings.ToUpper(hex.EncodeToString(s.Sum(nil)))
 	buf.WriteString(fmt.Sprintf("SHA-256 Fingerprint: %s\n", sha256Fingerprint))
+	checker.fingerprint = sha256Fingerprint
 
 	checker.notes = buf.String()
 	checker.data = checker.ownerCertificate.Raw
 
 	daysUntilExpiration := int(time.Until(checker.ownerCertificate.NotAfter).Hours() / 24)
 
-	// Certificate expiration check
+	// Check certificate expiration.
 	if !checker.expired && daysUntilExpiration < defaultExpiricyError {
 		criticalCertificateExpiration.Details = fmt.Sprintf("The certificate will expire in %v days.", daysUntilExpiration)
 		checker.certificateInfo = append(checker.certificateInfo, criticalCertificateExpiration)
@@ -152,7 +154,7 @@ func (checker *certificateChecker) extractCertificateInfo() error {
 		checker.certificateInfo = append(checker.certificateInfo, warningCertificateExpiration)
 	}
 
-	// Can't check if certificate is revoked
+	// Can't check if certificate is revoked:
 	// https://github.com/golang/go/issues/18323
 	return nil
 }
@@ -202,7 +204,7 @@ func main() {
 			return err
 		}
 
-		// try again, with SkipVerify = true
+		// Try again with (SkipVerify == true).
 		if checker.ownerCertificate == nil {
 			err = checker.getOwnerCertificate(target, opt.Port, opt.Timeout, true)
 			if err != nil {
@@ -216,6 +218,9 @@ func main() {
 		}
 
 		for _, certInfo := range checker.certificateInfo {
+			certInfo.AffectedResource = fmt.Sprintf("%s:%d", checker.fingerprint, opt.Port)
+			certInfo.AffectedResourceString = fmt.Sprintf("%d/tcp", opt.Port)
+			certInfo.Fingerprint = helpers.ComputeFingerprint()
 			state.AddVulnerabilities(certInfo)
 		}
 
