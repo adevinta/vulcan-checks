@@ -5,7 +5,8 @@ Copyright 2019 Adevinta
 package main
 
 import (
-	"github.com/adevinta/vulcan-report"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	report "github.com/adevinta/vulcan-report"
 )
 
 var vulns = map[string]report.Vulnerability{
@@ -34,6 +35,8 @@ var vulns = map[string]report.Vulnerability{
 			"https://en.wikipedia.org/wiki/DMARC",
 			"https://tools.ietf.org/html/rfc7489#section-6.3",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"multiple-dmarc-found": report.Vulnerability{
 		CWEID:   358,
@@ -52,6 +55,8 @@ var vulns = map[string]report.Vulnerability{
 			"https://en.wikipedia.org/wiki/DMARC",
 			"https://tools.ietf.org/html/rfc7489",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"unable-to-parse-tags": report.Vulnerability{
 		CWEID:   358,
@@ -70,6 +75,8 @@ var vulns = map[string]report.Vulnerability{
 			"https://en.wikipedia.org/wiki/DMARC",
 			"https://tools.ietf.org/html/rfc7489#section-6.3",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"v-and-p-invalid-or-missing": report.Vulnerability{
 		CWEID:   358,
@@ -88,6 +95,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record sintax and ensure: That 'v' and 'p' are present, have valid values and that they appear in that exact order.",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-v-wrong-value": report.Vulnerability{
 		CWEID:   358,
@@ -109,6 +118,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'v' is set to 'DMARC1'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-p-wrong-value": report.Vulnerability{
 		CWEID:   358,
@@ -139,6 +150,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'p' is set to one of the following values : 'none', 'quarantine' or 'reject'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-p-is-none": report.Vulnerability{
 		CWEID:   358,
@@ -159,6 +172,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set tag 'p' to be 'reject'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-p-is-quarantine": report.Vulnerability{
 		CWEID:   358,
@@ -182,6 +197,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set tag 'p' to be 'reject'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-rua-not-configured": report.Vulnerability{
 		CWEID:   358,
@@ -198,6 +215,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explicitly define the value of tag 'rua'",
 		},
+		Labels:      []string{"informational", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-ruf-not-configured": report.Vulnerability{
 		CWEID:   358,
@@ -219,6 +238,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explicitly define the value of tag 'ruf'",
 		},
+		Labels:      []string{"informational", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-pct-not-100": report.Vulnerability{
 		CWEID:   358,
@@ -236,6 +257,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set tag 'pct' to be '100'",
 		},
+		Labels:      []string{"informational", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-rua-not-valid-mailto": report.Vulnerability{
 		CWEID:   358,
@@ -255,6 +278,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'rua' is a valid list of mail addresses",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-ruf-not-valid-mailto": report.Vulnerability{
 		CWEID:   358,
@@ -275,6 +300,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'ruf' is a valid list of mail addresses",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-adkim-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -295,6 +322,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'adkim' is set to one of the following values : 'r' or 's'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-aspf-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -315,6 +344,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'aspf' is set to one of the following values : 'r' or 's'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-sp-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -344,6 +375,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'sp' is set to one of the following values: 'none', 'quarantine' or 'reject'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-fo-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -371,6 +404,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'fo' is set to one of the following values: '0', '1', 'd' or 's'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-rf-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -395,6 +430,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'rf' is set to 'afrf'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-ri-not-valid": report.Vulnerability{
 		CWEID:   358,
@@ -416,5 +453,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the record syntax and ensure that tag 'ri' is set to an integer",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 }

@@ -38,7 +38,7 @@ func main() {
 			return nil
 		}
 
-		dmarc := DMARC{}
+		dmarc := DMARC{target: target}
 		if dmarc.parse(target) {
 			dmarc.evaluate()
 		}
