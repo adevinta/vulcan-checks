@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -242,18 +241,6 @@ func findingByProdVers(s, v, t string) (*vulnersFinding, error) {
 	return buildVulnersFinding(s, v, t)
 }
 
-func computeVulnerabilityID(elems []string) string {
-	h := sha256.New()
-
-	sort.Strings(elems)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, "%s - ", e)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerability, error) {
 	type vulnData struct {
 		Vuln     report.Vulnerability
@@ -287,10 +274,12 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 				v, ok := uniqueVulns[uniqueVulnId]
 				if !ok {
 					v.Vuln = report.Vulnerability{
-						ID:               computeVulnerabilityID(cves),
+						Fingerprint:      helpers.ComputeFingerprint(f.Score, cves),
 						Summary:          summary,
 						Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
+						Score:            f.Score,
 						Recommendations:  vulnersVuln.Recommendations,
+						Labels:           []string{"issue"},
 						AffectedResource: fmt.Sprintf("%s, %d/%s", string(cpe), port.PortId, port.Protocol),
 					}
 					v.CPEs = map[string]struct{}{}
@@ -339,11 +328,12 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			if !ok {
 				v.Vuln = report.Vulnerability{
 
-					ID:               computeVulnerabilityID(cves),
+					Fingerprint:      helpers.ComputeFingerprint(f.Score, cves),
 					Summary:          summary,
 					Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
 					Score:            f.Score,
 					Recommendations:  vulnersVuln.Recommendations,
+					Labels:           []string{"issue"},
 					AffectedResource: fmt.Sprintf("%s, %d/%s", productID, port.PortId, port.Protocol),
 				}
 				v.CPEs = map[string]struct{}{}
