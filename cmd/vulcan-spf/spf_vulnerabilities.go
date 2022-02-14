@@ -5,6 +5,7 @@ Copyright 2019 Adevinta
 package main
 
 import (
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	report "github.com/adevinta/vulcan-report"
 )
 
@@ -35,6 +36,8 @@ var vulns = map[string]report.Vulnerability{
 			"Create a single SPF TXT record beginning with 'v=spf1'",
 			"For easy SPF deployment in AWS Route53, check our CloudFormation template in References",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"mechanisms-after-first-all-are-ignored": report.Vulnerability{
 		CWEID:   358,
@@ -52,6 +55,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Remove any mechanisms and modifiers appearing after 'all'",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"no-all-or-redirect": report.Vulnerability{
 		CWEID:   358,
@@ -70,6 +75,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explictly define an 'all' or a 'redirect'",
 		},
+		Labels:      []string{"informational", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"all-configured-as-PASS": report.Vulnerability{
 		CWEID:   358,
@@ -90,6 +97,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"all-configured-as-NEUTRAL": report.Vulnerability{
 		CWEID:   358,
@@ -107,6 +116,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"all-configured-as-SOFTFAIL": report.Vulnerability{
 		CWEID:   358,
@@ -125,6 +136,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set 'all' to '-all' (FAIL)",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"dns-queries-exceeded-limit": report.Vulnerability{
 		CWEID:   358,
@@ -145,6 +158,8 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the SPF policy and reduce the number of DNS queries invoked to be equal or less than 10",
 		},
+		Labels:      []string{"informational", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"multiple-spf-found": report.Vulnerability{
 		CWEID:   358,
@@ -161,5 +176,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Create a single SPF TXT record",
 		},
+		Labels:      []string{"issue", "dns"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	},
 }

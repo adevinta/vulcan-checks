@@ -34,7 +34,7 @@ func main() {
 		}
 
 		// Perform the DNS query for SPF records.
-		spf := SPF{}
+		spf := SPF{target: target}
 		if spf.parse(target) {
 			spf.countDNSLookUps()
 			spf.evaluate()
