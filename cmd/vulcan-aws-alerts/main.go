@@ -70,8 +70,8 @@ func getCredentials(url string, accountID, role string) (*credentials.Credential
 	if role != "" {
 		m["role"] = role
 	}
-	jsonBody, err := json.Marshal(m)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	jsonBody, _ := json.Marshal(m)
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
