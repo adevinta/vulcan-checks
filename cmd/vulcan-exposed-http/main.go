@@ -80,56 +80,50 @@ var (
 		"18091", // memcached Internal REST HTTPS for SSL
 		"18092", // memcached Internal CAPI HTTPS for SSL
 	}
-
-	exposedVuln = report.Vulnerability{
-		Summary:     "Exposed HTTP Port",
-		Description: "An HTTP server is listening at least in one port ot the server.",
-		Score:       report.SeverityThresholdNone,
-	}
 )
 
-func exposedHTTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	vulns := []report.Vulnerability{}
+func exposedHTTP(target string, nmapReport *gonmap.NmapRun, state checkstate.State) {
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" || !strings.Contains(port.Service.Name, "http") {
 				continue
 			}
-
-			v := exposedVuln
-			gr := report.ResourcesGroup{
-				Name: "Network Resources",
-				Header: []string{
-					"Hostname",
-					"Port",
-					"Protocol",
-					"Service",
-					"Version",
-					"SSL",
+			v := report.Vulnerability{
+				AffectedResource: fmt.Sprintf("%s:%d", target, port.PortId),
+				Labels:           []string{port.Protocol, "issue"},
+				Fingerprint:      helpers.ComputeFingerprint(port),
+				Summary:          "Exposed HTTP Port",
+				Description:      "An HTTP server is listening at least in one port ot the server.",
+				Score:            report.SeverityThresholdNone,
+				Resources: []report.ResourcesGroup{{
+					Name: "Network Resources",
+					Header: []string{
+						"Hostname",
+						"Port",
+						"Protocol",
+						"Service",
+						"Version",
+						"SSL",
+					},
+					Rows: []map[string]string{{
+						"Hostname": target,
+						"Port":     strconv.Itoa(port.PortId),
+						"Protocol": port.Protocol,
+						"Service":  port.Service.Product,
+						"Version":  port.Service.Version,
+						"SSL": func() string {
+							if strings.EqualFold(port.Service.Tunnel, "ssl") {
+								return "yes"
+							}
+							return ""
+						}(),
+					}},
 				},
-			}
-			networkResource := map[string]string{
-				"Hostname": target,
-				"Port":     strconv.Itoa(port.PortId),
-				"Protocol": port.Protocol,
-				"Service":  port.Service.Product,
-				"Version":  port.Service.Version,
-			}
-			if port.Service.Tunnel == "ssl" {
-				networkResource["SSL"] = "yes"
-			}
-			gr.Rows = []map[string]string{networkResource}
-			v.Resources = append(v.Resources, gr)
+				}}
 
-			v.AffectedResource = fmt.Sprintf("%s:%d", target, port.PortId)
-			v.Labels = []string{port.Protocol, "issue"}
-			v.Fingerprint = helpers.ComputeFingerprint(port)
-
-			vulns = append(vulns, v)
+			state.AddVulnerabilities(v)
 		}
 	}
-
-	return vulns
 }
 
 func main() {
@@ -170,8 +164,7 @@ func main() {
 			return err
 		}
 
-		vulns := exposedHTTP(target, nmapReport)
-		state.AddVulnerabilities(vulns...)
+		exposedHTTP(target, nmapReport, state)
 
 		return nil
 	}
