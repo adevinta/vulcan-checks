@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -88,27 +89,25 @@ var (
 )
 
 func exposedHTTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-			"SSL",
-		},
-	}
-
-	add := false
+	vulns := []report.Vulnerability{}
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" || !strings.Contains(port.Service.Name, "http") {
 				continue
 			}
 
-			add = true
-
+			v := exposedVuln
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+					"SSL",
+				},
+			}
 			networkResource := map[string]string{
 				"Hostname": target,
 				"Port":     strconv.Itoa(port.PortId),
@@ -119,16 +118,18 @@ func exposedHTTP(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabili
 			if port.Service.Tunnel == "ssl" {
 				networkResource["SSL"] = "yes"
 			}
-			gr.Rows = append(gr.Rows, networkResource)
+			gr.Rows = []map[string]string{networkResource}
+			v.Resources = append(v.Resources, gr)
+
+			v.AffectedResource = fmt.Sprintf("%s:%d", target, port.PortId)
+			v.Labels = []string{port.Protocol, "issue"}
+			v.Fingerprint = helpers.ComputeFingerprint(port)
+
+			vulns = append(vulns, v)
 		}
 	}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		return []report.Vulnerability{exposedVuln}
-	}
-
-	return nil
+	return vulns
 }
 
 func main() {
