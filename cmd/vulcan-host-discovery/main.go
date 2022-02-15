@@ -148,7 +148,7 @@ nmapReportLoop:
 			exposedVuln.AffectedResource = networkResource["IP Address"]
 			exposedVuln.Resources = []report.ResourcesGroup{gr}
 			exposedVuln.Fingerprint = helpers.ComputeFingerprint(networkResource["IP Address"], networkResource["Hostname"])
-			exposedVuln.Labels = []string{"potential"}
+			exposedVuln.Labels = []string{"issue", "discovery"}
 			vs = append(vs, exposedVuln)
 		}
 	}
