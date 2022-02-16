@@ -77,16 +77,18 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 										{
 											Name:   `Instances`,
 											Header: []string{"Identifier", "Account", "Region", "DBName", "Engine", "ARN", "AutoAppliedAfterDate", "CurrentApplyDate"},
-											Rows: []map[string]string{{
-												"AutoAppliedAfterDate": aws.TimeValue(details.AutoAppliedAfterDate).String(),
-												"CurrentApplyDate":     aws.TimeValue(details.CurrentApplyDate).String(),
-												"Identifier":           aws.StringValue(instance.DBInstanceIdentifier),
-												"Account":              target,
-												"Region":               region,
-												"DBName":               aws.StringValue(instance.DBName),
-												"Engine":               aws.StringValue(instance.Engine),
-												"ARN":                  aws.StringValue(instance.DBInstanceArn),
-											}},
+											Rows: []map[string]string{
+												{
+													"AutoAppliedAfterDate": aws.TimeValue(details.AutoAppliedAfterDate).String(),
+													"CurrentApplyDate":     aws.TimeValue(details.CurrentApplyDate).String(),
+													"Identifier":           aws.StringValue(instance.DBInstanceIdentifier),
+													"Account":              target,
+													"Region":               region,
+													"DBName":               aws.StringValue(instance.DBName),
+													"Engine":               aws.StringValue(instance.Engine),
+													"ARN":                  aws.StringValue(instance.DBInstanceArn),
+												},
+											},
 										},
 									},
 								})
