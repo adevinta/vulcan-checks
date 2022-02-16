@@ -118,7 +118,8 @@ func exposedHTTP(target string, nmapReport *gonmap.NmapRun, state checkstate.Sta
 								}
 								return ""
 							}(),
-						}},
+						},
+					},
 				},
 				}}
 
