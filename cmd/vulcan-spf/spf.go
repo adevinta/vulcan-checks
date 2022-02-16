@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 type spfField struct {
@@ -32,6 +32,8 @@ type SPF struct {
 	UnknownOrInvalid []spfField
 	vulnerabilities  []report.Vulnerability
 	numFields        int
+
+	target string
 }
 
 const versionField = "v=spf1"
@@ -61,7 +63,9 @@ func (spf *SPF) countDNSLookUps() int {
 func (spf *SPF) evaluate() {
 	if len(spf.All) == 0 && len(spf.Redirect) == 0 {
 		//there is no `all`
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["no-all-or-redirect"])
+		vuln := vulns["no-all-or-redirect"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 	existsMechanismsAfterFirstAll := false
@@ -79,23 +83,33 @@ func (spf *SPF) evaluate() {
 	}
 
 	if existsMechanismsAfterFirstAll {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["mechanisms-after-first-all-are-ignored"])
+		vuln := vulns["mechanisms-after-first-all-are-ignored"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 	if firstAll != nil && firstAll.field[0] == '+' {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["all-configured-as-PASS"])
+		vuln := vulns["all-configured-as-PASS"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 	if firstAll != nil && firstAll.field[0] == '?' {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["all-configured-as-NEUTRAL"])
+		vuln := vulns["all-configured-as-NEUTRAL"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 	if firstAll != nil && firstAll.field[0] == '~' {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["all-configured-as-SOFTFAIL"])
+		vuln := vulns["all-configured-as-SOFTFAIL"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 	if spf.countDNSLookUps() > 10 {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["dns-queries-exceeded-limit"])
+		vuln := vulns["dns-queries-exceeded-limit"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
 
 }
@@ -113,7 +127,9 @@ func (spf *SPF) parseTxtRecords(records []string) bool {
 		if strings.HasPrefix(record, versionField) {
 			if foundSPF {
 				// we should not have another SPF field
-				spf.vulnerabilities = append(spf.vulnerabilities, vulns["multiple-spf-found"])
+				vuln := vulns["multiple-spf-found"]
+				vuln.AffectedResource = spf.target
+				spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 				return false
 			}
 			rawSPF = record
@@ -123,7 +139,9 @@ func (spf *SPF) parseTxtRecords(records []string) bool {
 
 	//no spf found
 	if !foundSPF {
-		spf.vulnerabilities = append(spf.vulnerabilities, vulns["spf-not-found"])
+		vuln := vulns["spf-not-found"]
+		vuln.AffectedResource = spf.target
+		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 		return false
 	}
 
