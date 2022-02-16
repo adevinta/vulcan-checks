@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 )
 
 //DMARC represents a DMARC dns record
@@ -32,6 +32,8 @@ type DMARC struct {
 	otherFields map[string]string
 
 	vulnerabilities []report.Vulnerability
+
+	target string
 }
 
 // Domain Owner DMARC preferences are stored as DNS TXT records in subdomains named "_dmarc".
@@ -41,59 +43,84 @@ const sep = ";"
 
 func (dmarc *DMARC) evaluate() {
 	if dmarc.request == "none" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-p-is-none"])
+		vuln := vulns["tag-p-is-none"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if dmarc.request == "quarantine" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-p-is-quarantine"])
+		vuln := vulns["tag-p-is-quarantine"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.rua) == 0 {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-rua-not-configured"])
+		vuln := vulns["tag-rua-not-configured"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.ruf) == 0 {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-ruf-not-configured"])
+		vuln := vulns["tag-ruf-not-configured"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.pct) > 0 && dmarc.pct != "100" {
-		vulnPCT := vulns["tag-pct-not-100"]
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulnPCT)
+		vuln := vulns["tag-pct-not-100"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.adkim) > 0 && dmarc.adkim != "r" && dmarc.adkim != "s" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-adkim-not-valid"])
+		vuln := vulns["tag-adkim-not-valid"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.aspf) > 0 && dmarc.aspf != "r" && dmarc.aspf != "s" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-aspf-not-valid"])
+		vuln := vulns["tag-aspf-not-valid"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.sp) > 0 && dmarc.sp != "none" && dmarc.sp != "reject" && dmarc.sp != "quarantine" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-sp-not-valid"])
+		vuln := vulns["tag-sp-not-valid"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.fo) > 0 && dmarc.fo != "0" && dmarc.fo != "1" && dmarc.fo != "d" && dmarc.fo != "s" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-fo-not-valid"])
+		vuln := vulns["tag-fo-not-valid"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.rf) > 0 && dmarc.rf != "afrf" {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-rf-not-valid"])
+		vuln := vulns["tag-rf-not-valid"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.ri) > 0 {
 		_, err := strconv.Atoi(dmarc.ri)
 		if err != nil {
-			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-ri-not-valid"])
+			vuln := vulns["tag-ri-not-valid"]
+			vuln.AffectedResource = dmarc.target
+			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		}
 	}
 
 	if len(dmarc.rua) > 0 {
-		dmarc.validateEmailList(dmarc.rua, "tag-rua-not-valid-mailto")
+		vuln := vulns["tag-rua-not-valid-mailto"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	if len(dmarc.ruf) > 0 {
-		dmarc.validateEmailList(dmarc.ruf, "tag-ruf-not-valid-mailto")
+		vuln := vulns["tag-ruf-not-valid-mailto"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 }
@@ -104,11 +131,15 @@ func (dmarc *DMARC) validateEmailList(list, vulnerabilityName string) {
 		if strings.HasPrefix(email, "mailto:") {
 			_, err := mail.ParseAddress(email[7:])
 			if err != nil {
-				dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns[vulnerabilityName])
+				vuln := vulns[vulnerabilityName]
+				vuln.AffectedResource = dmarc.target
+				dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 				break
 			}
 		} else {
-			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns[vulnerabilityName])
+			vuln := vulns[vulnerabilityName]
+			vuln.AffectedResource = dmarc.target
+			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 			break
 		}
 	}
@@ -124,7 +155,9 @@ func (dmarc *DMARC) parseTxtRecords(records []string) bool {
 	for _, record := range records {
 		if dmarc.parseFields(record) {
 			if foundDmarc {
-				dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["multiple-dmarc-found"])
+				vuln := vulns["multiple-dmarc-found"]
+				vuln.AffectedResource = dmarc.target
+				dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 				return false
 			}
 
@@ -133,7 +166,9 @@ func (dmarc *DMARC) parseTxtRecords(records []string) bool {
 	}
 
 	if !foundDmarc && len(dmarc.vulnerabilities) == 0 {
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["dmarc-not-found"])
+		vuln := vulns["dmarc-not-found"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
@@ -147,26 +182,34 @@ func (dmarc *DMARC) parseFields(record string) bool {
 	tagVersion, valueVersion, txtRecord, err := extractTagAndValue(record)
 	if err != nil {
 		// error trying to extract the first tag, score zero
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["unable-to-parse-tags"])
+		vuln := vulns["unable-to-parse-tags"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
 	if tagVersion != "v" {
 		// the first tag is diferent than 'v', the spec requires the first field to be 'v'
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["v-and-p-invalid-or-missing"])
+		vuln := vulns["v-and-p-invalid-or-missing"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
 	if valueVersion != "DMARC1" {
 		// the first tag is 'v' but the value is diferent than 'DMARC1' , the spec requires the version value to be set to 'DMARC1'
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-v-wrong-value"])
+		vuln := vulns["tag-v-wrong-value"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
 	tagRequest, valueRequest, txtRecord, err := extractTagAndValue(txtRecord)
 	if err != nil {
 		// error trying to extract the second tag, score zero
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["unable-to-parse-tags"])
+		vuln := vulns["unable-to-parse-tags"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
@@ -177,13 +220,17 @@ func (dmarc *DMARC) parseFields(record string) bool {
 
 	if tagRequest != "p" {
 		// the second tag is diferent than 'p' , the spec requires the second field to be 'v'
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["v-and-p-invalid-or-missing"])
+		vuln := vulns["v-and-p-invalid-or-missing"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 		return false
 	}
 
 	if !isValidRequest[valueRequest] {
 		// the second tag is 'p' but the value is not a valid one [none, quarantine, reject]
-		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["tag-p-wrong-value"])
+		vuln := vulns["tag-p-wrong-value"]
+		vuln.AffectedResource = dmarc.target
+		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
 
 	dmarc.version = valueVersion
@@ -197,7 +244,9 @@ func (dmarc *DMARC) parseFields(record string) bool {
 		tag, value, txtRecord, err = extractTagAndValue(txtRecord)
 		if err != nil {
 			// error trying to extract the tag, this means a malformed record, score zero
-			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vulns["unable-to-parse-tags"])
+			vuln := vulns["unable-to-parse-tags"]
+			vuln.AffectedResource = dmarc.target
+			dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 			return false
 		}
 
