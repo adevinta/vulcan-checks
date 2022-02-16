@@ -89,9 +89,9 @@ func exposedHTTP(target string, nmapReport *gonmap.NmapRun, state checkstate.Sta
 				continue
 			}
 			v := report.Vulnerability{
-				AffectedResource: fmt.Sprintf("%s:%d", target, port.PortId),
+				AffectedResource: fmt.Sprintf("%d/%s", port.PortId, port.Protocol),
 				Labels:           []string{port.Protocol, "issue"},
-				Fingerprint:      helpers.ComputeFingerprint(port),
+				Fingerprint:      helpers.ComputeFingerprint(port.Service.Product, port.Service.Version),
 				Summary:          "Exposed HTTP Port",
 				Description:      "An HTTP server is listening at least in one port ot the server.",
 				Score:            report.SeverityThresholdNone,
@@ -105,19 +105,20 @@ func exposedHTTP(target string, nmapReport *gonmap.NmapRun, state checkstate.Sta
 						"Version",
 						"SSL",
 					},
-					Rows: []map[string]string{{
-						"Hostname": target,
-						"Port":     strconv.Itoa(port.PortId),
-						"Protocol": port.Protocol,
-						"Service":  port.Service.Product,
-						"Version":  port.Service.Version,
-						"SSL": func() string {
-							if strings.EqualFold(port.Service.Tunnel, "ssl") {
-								return "yes"
-							}
-							return ""
-						}(),
-					}},
+					Rows: []map[string]string{
+						{
+							"Hostname": target,
+							"Port":     strconv.Itoa(port.PortId),
+							"Protocol": port.Protocol,
+							"Service":  port.Service.Product,
+							"Version":  port.Service.Version,
+							"SSL": func() string {
+								if strings.EqualFold(port.Service.Tunnel, "ssl") {
+									return "yes"
+								}
+								return ""
+							}(),
+						}},
 				},
 				}}
 
