@@ -8,8 +8,38 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const Cmd = `semgrep`
+
+// NOTE: keep this const block separated to not mess with the iota generated
+// values.
 const (
-	Cmd = `semgrep`
+	/*
+		Semgrep exit codes from https://semgrep.dev/docs/cli-usage/#exit-codes:
+			0: Semgrep ran successfully and found no errors (or did find errors, but the --error flag is not set)
+			1: Semgrep ran successfully and found issues in your code (and the --error flag is set)
+			2: Semgrep failed
+			3: Semgrep failed to parse a file in the specified language
+			4: Semgrep encountered an invalid pattern
+			5: Semgrep config is not valid yaml
+			6: Rule with pattern-where-python found but --dangerously-allow-arbitrary-code-execution-from-rules was not set. See --dangerously-allow-arbitrary-code-execution-from-rules.
+			7: All rules in config are invalid. If semgrep is run with --strict then this exit code is returned when any rule in the configs are invalid.
+			8: Semgrep does not understand specified language
+			9: Semgrep exceeded match timeout. See --timeout
+			10: Semgrep exceeded max memory while matching. See --max-memory.
+			11: Semgrep encountered a lexical error when running rule on a file.
+	*/
+	SemgrepStatusOK = iota // This should be always 0.
+	SemgrepStatusOKWithIssues
+	SemgrepStatusFailed
+	SemgrepStatusFailedParsingFile
+	SemgrepStatusFailedInvalidPattern
+	SemgrepStatusFailedConfig
+	SemgrepStatusFailedUnsafe
+	SemgrepStatusFailedInvalidRules
+	SemgrepStatusFailedUnknownLanguage
+	SemgrepStatusFailedTimeout
+	SemgrepStatusFailedMaxMemory
+	SemgrepStatusFailedLexical
 )
 
 var params = []string{"--json", "--timeout", "0", "-c"}
@@ -49,35 +79,17 @@ func runSemgrep(ctx context.Context, logger *logrus.Entry, ruleset, dir string) 
 		return nil, err
 	}
 
-	/*
-		Semgrep exit codes:
-			0: Semgrep ran successfully and found no errors
-			1: Semgrep ran successfully and found issues in your code
-			2: Semgrep failed
-			3: Semgrep failed to parse a file in the specified language
-			4: Semgrep encountered an invalid pattern
-			5: Semgrep config is not valid yaml
-			6: Rule with pattern-where-python found but --dangerously-allow-arbitrary-code-execution-from-rules was not set. See --dangerously-allow-arbitrary-code-execution-from-rules.
-			7: All rules in config are invalid. If semgrep is run with --strict then this exit code is returned when any rule in the configs are invalid.
-			8: Semgrep does not understand specified language
-			9: Semgrep exceeded match timeout. See --timeout
-			10: Semgrep exceeded max memory while matching. See --max-memory.
-			11: Semgrep encountered a lexical error when running rule on a file.
-	*/
-
 	logger.WithFields(logrus.Fields{"exit_code": exitCode, "report": report}).Debug("semgrep command finished")
 
 	switch exitCode {
+	case SemgrepStatusOK, SemgrepStatusOKWithIssues:
+		return &report, nil
 	// Don't fail the check for unsupported languages.
-	case 2, 3, 4, 5, 6, 7, 9, 10, 11:
-		err := fmt.Errorf("semgrep scan failed with exit code %d", exitCode)
-
-		logger.WithError(err).WithFields(logrus.Fields{"errors": report.Errors}).Error("")
-
-		return nil, err
-	case 8:
+	case SemgrepStatusFailedUnknownLanguage:
 		return nil, nil
+	default:
+		err := fmt.Errorf("semgrep scan failed with exit code %d", exitCode)
+		logger.WithError(err).WithFields(logrus.Fields{"errors": report.Errors}).Error("")
+		return nil, err
 	}
-
-	return &report, nil
 }

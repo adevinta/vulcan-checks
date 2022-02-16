@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,8 +24,17 @@ import (
 )
 
 const (
-	DefaultDepth   = 1
+	DefaultDepth = 1
+	// DefaultRuleset has been chosen for being one of the most popular
+	// rulesets semgrep has. There are less noisy alternatives like the
+	// 'r2c-ci' that we might use instead.
+	// https://semgrep.dev/explore
 	DefaultRuleset = `p/r2c-security-audit`
+	// CWERegexStr defines a regex matching a CWE definition from Semgrep
+	// rules.
+	// Example:
+	//	CWE-1236: Improper Neutralization of Formula Elements in a CSV File
+	CWERegexStr = `CWE-(\d+)\s*:\s*([[:print:]]+)`
 )
 
 var (
@@ -36,6 +46,8 @@ var (
 		"WARNING": report.SeverityLow,
 		"ERROR":   report.SeverityMedium,
 	}
+
+	CWERegex *regexp.Regexp
 )
 
 type options struct {
@@ -45,6 +57,12 @@ type options struct {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		var err error
+		CWERegex, err = regexp.Compile(CWERegexStr)
+		if err != nil {
+			return err
+		}
+
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -207,21 +225,15 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 
 	summary := issue
 
-	// CWE example:
-	//	CWE-1236: Improper Neutralization of Formula Elements in a CSV File
 	var cweID int
-	if result.Extra.Metadata.Cwe != "" {
-		aux := strings.TrimPrefix(result.Extra.Metadata.Cwe, "CWE-")
-		cweParts := strings.Split(aux, ":")
-		// Example:
-		//	Improper Neutralization of Formula Elements in a CSV File
-		cweText := strings.TrimSpace(cweParts[1])
+	if matches := CWERegex.FindStringSubmatch(result.Extra.Metadata.Cwe); len(matches) == 3 {
+		cweText := strings.TrimSpace(matches[2])
 
 		// Example:
 		//	Improper Neutralization of Formula Elements in a CSV File - Unquoted Csv Writer
 		summary = fmt.Sprintf("%s - %s", cweText, summary)
 
-		cweID, _ = strconv.Atoi(cweParts[0])
+		cweID, _ = strconv.Atoi(matches[1])
 	}
 
 	summary = strings.Title(summary)
@@ -242,7 +254,7 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 	v.AffectedResource = filepath
 	v.Labels = []string{"potential", "code", "semgrep"}
 	v.Resources = []report.ResourcesGroup{
-		report.ResourcesGroup{
+		{
 			Name: "Found in",
 			Header: []string{
 				"Path",
