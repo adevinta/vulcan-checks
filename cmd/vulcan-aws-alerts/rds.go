@@ -8,13 +8,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/adevinta/vulcan-report"
+	report "github.com/adevinta/vulcan-report"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -45,23 +46,6 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 		if result.Marker != nil {
 			logger.Warn("DescribePendingMaintenanceActionsWithContext returned more than 1 page")
 		}
-
-		rg := report.ResourcesGroup{
-			Name:   `Instances`,
-			Header: []string{"Identifier", "Account", "Region", "DBName", "Engine", "ARN", "AutoAppliedAfterDate", "CurrentApplyDate"},
-			Rows:   []map[string]string{},
-		}
-
-		v := report.Vulnerability{
-			Summary: `Managed AWS databases using CA about to expire`,
-			Score:   report.SeverityThresholdHigh,
-			Description: `Due to the expiration of the AWS RDS CA, and to prevent downtime ` +
-				`in your applications, you should add the new CA to your clients using a ` +
-				`managed (i.e. RDS or Aurora) database through SSL/TLS and perform maintenance ` +
-				`on the affected database instances before the certificate expiration date.`,
-			References: []string{"https://aws.amazon.com/blogs/database/amazon-rds-customers-update-your-ssl-tls-certificates-by-february-5-2020/"},
-		}
-
 		for _, action := range result.PendingMaintenanceActions {
 			for _, details := range action.PendingMaintenanceActionDetails {
 				if *details.Action == "ca-certificate-rotation" {
@@ -77,27 +61,43 @@ func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleN
 
 					for _, instance := range result.DBInstances {
 						if instance != nil {
-							m := make(map[string]string)
-							m["AutoAppliedAfterDate"] = fmt.Sprintf("%s", aws.TimeValue(details.AutoAppliedAfterDate))
-							m["CurrentApplyDate"] = fmt.Sprintf("%s", aws.TimeValue(details.CurrentApplyDate))
-							m["Identifier"] = aws.StringValue(instance.DBInstanceIdentifier)
-							m["Account"] = target
-							m["Region"] = region
-							m["DBName"] = aws.StringValue(instance.DBName)
-							m["Engine"] = aws.StringValue(instance.Engine)
-							m["ARN"] = aws.StringValue(instance.DBInstanceArn)
-							rg.Rows = append(rg.Rows, m)
+							state.AddVulnerabilities(
+								report.Vulnerability{
+									AffectedResource: aws.StringValue(instance.DBInstanceArn),
+									Labels:           []string{"issue"},
+									Fingerprint:      helpers.ComputeFingerprint(details.AutoAppliedAfterDate),
+									Summary:          `Managed AWS databases using CA about to expire`,
+									Score:            report.SeverityThresholdHigh,
+									Description: `Due to the expiration of the AWS RDS CA, and to prevent downtime ` +
+										`in your applications, you should add the new CA to your clients using a ` +
+										`managed (i.e. RDS or Aurora) database through SSL/TLS and perform maintenance ` +
+										`on the affected database instances before the certificate expiration date.`,
+									References: []string{"https://aws.amazon.com/blogs/database/amazon-rds-customers-update-your-ssl-tls-certificates-by-february-5-2020/"},
+									Resources: []report.ResourcesGroup{
+										{
+											Name:   `Instances`,
+											Header: []string{"Identifier", "Account", "Region", "DBName", "Engine", "ARN", "AutoAppliedAfterDate", "CurrentApplyDate"},
+											Rows: []map[string]string{
+												{
+													"AutoAppliedAfterDate": aws.TimeValue(details.AutoAppliedAfterDate).String(),
+													"CurrentApplyDate":     aws.TimeValue(details.CurrentApplyDate).String(),
+													"Identifier":           aws.StringValue(instance.DBInstanceIdentifier),
+													"Account":              target,
+													"Region":               region,
+													"DBName":               aws.StringValue(instance.DBName),
+													"Engine":               aws.StringValue(instance.Engine),
+													"ARN":                  aws.StringValue(instance.DBInstanceArn),
+												},
+											},
+										},
+									},
+								})
 						} else {
 							logger.Warn("Received nil instance from DescribeDBInstancesWithContext")
 						}
 					}
 				}
 			}
-		}
-
-		if len(rg.Rows) > 0 {
-			v.Resources = []report.ResourcesGroup{rg}
-			state.AddVulnerabilities(v)
 		}
 	}
 
