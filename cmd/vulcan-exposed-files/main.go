@@ -67,11 +67,8 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 			return http.ErrUseLastResponse
 		},
 	}
-	targets, err := resolveTargets(*httpClient, target)
-	if err != nil {
-		return err
-	}
-	if targets == nil {
+	targets := resolveTargets(*httpClient, target)
+	if len(targets) == 0 {
 		// Neither port 80 or 443 is open
 		return nil
 	}
@@ -171,33 +168,36 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 					continue
 				}
 
+				matches := []string{}
+				str := string(bodyBytes)
 				for _, grep := range check.Grep {
-					if strings.Contains(string(bodyBytes), grep) {
-						logger.Debugf("Vulnerability found! Url: %s Match: %s\n", checkUrl, grep)
-
-						vulnReport := report.Vulnerability{
-							Summary:         "Sensitive file exposed on web server",
-							Score:           check.Score,
-							References:      []string{checkUrl},
-							Recommendations: []string{"Remove file from webserver.", "Add sensitive files to .gitignore"},
-							Description:     "The server stores sensitive information in files or directories that are accessible to actors outside of the intended control sphere.",
-							Details:         checkUrl + " is publicly available which contains sensitive information.",
-							CWEID:           538, // File and Directory Information Exposure
-						}
-						state.AddVulnerabilities(vulnReport)
-						break
+					if strings.Contains(str, grep) {
+						matches = append(matches, grep)
 					}
 				}
+				if len(matches) > 0 {
+					logger.Debugf("Vulnerability found! Url: %s Matches: %v\n", checkUrl, matches)
+					state.AddVulnerabilities(report.Vulnerability{
+						AffectedResource: checkUrl,
+						Fingerprint:      helpers.ComputeFingerprint(matches),
+						Labels:           []string{"issue"},
+						Summary:          "Sensitive file exposed on web server",
+						Score:            check.Score,
+						References:       []string{checkUrl},
+						Recommendations:  []string{"Remove file from webserver.", "Add sensitive files to .gitignore"},
+						Description:      "The server stores sensitive information in files or directories that are accessible to actors outside of the intended control sphere.",
+						Details:          checkUrl + " is publicly available which contains sensitive information.",
+						CWEID:            538, // File and Directory Information Exposure
+					})
+				}
 			}
-
 		}
 	}
 	return nil
 }
 
-func resolveTargets(httpClient http.Client, target string) ([]string, error) {
+func resolveTargets(httpClient http.Client, target string) []string {
 	var possibleTarget string
-	var errs []error
 	var targets []string
 	schemas := []string{"https://", "http://"}
 
@@ -206,7 +206,6 @@ func resolveTargets(httpClient http.Client, target string) ([]string, error) {
 		logger.Debugf("Possible target URL: %s", possibleTarget)
 		_, err := httpClient.Get(possibleTarget)
 		if err != nil {
-			errs = append(errs, err)
 			logger.WithError(err).WithFields(logrus.Fields{
 				"failedPossibleTarget": possibleTarget,
 			}).Warn("not a valid target")
@@ -215,5 +214,5 @@ func resolveTargets(httpClient http.Client, target string) ([]string, error) {
 		logger.Debugf("Target URL identified: %s", possibleTarget)
 		targets = append(targets, possibleTarget)
 	}
-	return targets, nil
+	return targets
 }
