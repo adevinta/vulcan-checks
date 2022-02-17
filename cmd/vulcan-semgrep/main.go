@@ -171,17 +171,6 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 			"Message": result.Extra.Message,
 		}
 
-		// In almost all cases the message is the same for all the results of
-		// the same rule, but there are few cases where message differs. In
-		// those few cases we will be adding the alternative messages in the
-		// resources table.
-		if result.Extra.Message != v.Description && len(v.Resources[0].Header) == 3 {
-			logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
-
-			v.Resources[0].Header = append(v.Resources[0].Header, "Message")
-			v.Description = ""
-		}
-
 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
 
 		key := fmt.Sprintf("%s - %s", v.Summary, filepath)
@@ -194,16 +183,40 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 			return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
 		})
 
-		// Compute vulnerability fingerprint based on Match.
+		// Compute vulnerability fingerprint based on Match, and check if all
+		// Messages are the same.
+		// In almost all cases the Message is the same for all the results of
+		// the same rule, but there are few cases where message differs. In
+		// those few cases we will be adding the alternative messages in the
+		// resources table. In case is the Message is the same for all entries,
+		// we will add the Message just to the Details and delete it from the
+		// rows to avoid storing unnecesary messages when are all the same.
+		// NOTE: We are not adding the Message to the Description as there
+		// might be corner cases where we may end having duplicated issues in
+		// the Vulnerability DB.
 		var matches []string
-		for _, row := range v.Resources[0].Rows {
+		same := true
+		msg := ""
+		for i, row := range v.Resources[0].Rows {
 			matches = append(matches, row["Match"])
 
-			// Delete Message from the row to avoid storing unnecesary messages
-			// when are all the same.
-			if len(v.Resources[0].Header) == 3 {
+			if i == 0 {
+				msg = row["Message"]
+			}
+			if same && (row["Message"] != msg) {
+				same = false
+			}
+		}
+		if same {
+			if msg != "" {
+				v.Details = fmt.Sprintf("%s\n\n%s", msg, v.Details)
+			}
+			for _, row := range v.Resources[0].Rows {
 				delete(row, "Message")
 			}
+		} else {
+			v.Resources[0].Header = append(v.Resources[0].Header, "Message")
+			logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
 		}
 
 		v.Fingerprint = helpers.ComputeFingerprint(matches)
@@ -245,7 +258,7 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 	}
 
 	v.Summary = summary
-	v.Description = result.Extra.Message
+	v.Description = ""
 	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
 	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
 	v.References = append(v.References, "https://semgrep.dev/")
