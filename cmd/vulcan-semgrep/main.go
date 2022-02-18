@@ -7,20 +7,21 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"gopkg.in/src-d/go-git.v4"
-	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
-
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
+	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 const (
@@ -51,7 +52,8 @@ var (
 )
 
 type options struct {
-	Depth   int    `json:"string"`
+	Depth   int    `json:"depth"`
+	Branch  string `json:"branch"`
 	Ruleset string `json:"ruleset"`
 }
 
@@ -72,14 +74,18 @@ func main() {
 			"asset_type": assetType,
 		})
 
-		opt := options{
-			Depth:   DefaultDepth,
-			Ruleset: DefaultRuleset,
-		}
+		opt := options{}
 		if optJSON != "" {
 			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
 				return err
 			}
+		}
+		// Ensure not an empty ruleset is provided
+		if opt.Ruleset == "" {
+			opt.Ruleset = DefaultRuleset
+		}
+		if opt.Depth == 0 {
+			opt.Depth = DefaultDepth
 		}
 
 		logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
@@ -118,18 +124,22 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		repoPath := filepath.Join("/tmp", filepath.Base(targetURL.Path))
+		repoPath := filepath.Join(os.TempDir(), "repo")
 		if err := os.Mkdir(repoPath, 0755); err != nil {
 			return err
 		}
 
 		logger.WithFields(logrus.Fields{"repo_path": repoPath}).Debug("cloning repo")
 
-		_, err = git.PlainClone(repoPath, false, &git.CloneOptions{
+		co := git.CloneOptions{
 			URL:   target,
 			Auth:  auth,
 			Depth: opt.Depth,
-		})
+		}
+		if opt.Branch != "" {
+			co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
+		}
+		_, err = git.PlainClone(repoPath, false, &co)
 		if err != nil {
 			return err
 		}
