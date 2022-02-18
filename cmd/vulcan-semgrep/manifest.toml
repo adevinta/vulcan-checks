@@ -2,3 +2,4 @@ Description = "Finds potential issues in source code from a Git repository using
 Timeout = 7200 # 2 hours
 AssetTypes = ["GitRepository"]
 RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
+Options = '{"depth": 1, "branch":"", "ruleset":"p/r2c-security-audit"}'
