@@ -75,7 +75,7 @@ func isHostInKnownHosts(host string, knownHosts []string) bool {
 func discoveredHosts(targetSubnet string, knownHosts []string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
 	var vs []report.Vulnerability
 	gr := report.ResourcesGroup{
-		Name: "Network Resource",
+		Name: "Network Resources",
 		Header: []string{
 			"Subnet",
 			"IP Address",
@@ -89,16 +89,14 @@ func discoveredHosts(targetSubnet string, knownHosts []string, nmapReport *gonma
 	 * summary to "Discovered Hosts" instead of "Unknown Hosts".
 	 */
 	if len(knownHosts) == 0 {
-		exposedVuln.Summary = "Discovered Host"
-		exposedVuln.Description = "A host has been discovered in the network"
+		exposedVuln.Summary = "Discovered Hosts"
+		exposedVuln.Description = "At least one host has been discovered in the network"
 		exposedVuln.Recommendations = []string{
-			"Identify if the discovered host is a known host",
+			"Identify that all of the discovered hosts are known hosts",
 		}
 		exposedVuln.Score = report.SeverityThresholdNone
-		exposedVuln.ImpactDetails = "If the discovered host is not known, it may be an unauthorized malicious host."
+		exposedVuln.ImpactDetails = "If any of the discovered hosts is not known, it may be an unauthorized malicious host."
 	}
-
-	add := false
 
 nmapReportLoop:
 	for _, host := range nmapReport.Hosts {
@@ -134,8 +132,7 @@ nmapReportLoop:
 			hostHostnames = append(hostHostnames, hostname.Name)
 		}
 
-		// At this point the host is not in the list of known hosts, so add the host to the results.
-		add = true
+		vuln := exposedVuln
 
 		networkResource := map[string]string{
 			"Subnet":     targetSubnet,
@@ -144,17 +141,14 @@ nmapReportLoop:
 		}
 		gr.Rows = []map[string]string{networkResource}
 
-		if add {
-			exposedVuln.AffectedResource = networkResource["IP Address"]
-			exposedVuln.Resources = []report.ResourcesGroup{gr}
-			exposedVuln.Fingerprint = helpers.ComputeFingerprint(networkResource["IP Address"], networkResource["Hostname"])
-			exposedVuln.Labels = []string{"issue", "discovery"}
-			vs = append(vs, exposedVuln)
-		}
+		vuln.AffectedResource = networkResource["IP Address"]
+		vuln.Resources = []report.ResourcesGroup{gr}
+		vuln.Fingerprint = helpers.ComputeFingerprint(networkResource["Hostname"])
+		vuln.Labels = []string{"issue", "discovery"}
+		vs = append(vs, vuln)
+
 	}
 	return vs
-
-	return nil
 }
 
 func main() {
