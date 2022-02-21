@@ -8,6 +8,7 @@ import (
 	"context"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
@@ -17,7 +18,8 @@ var (
 	unclassifiedVuln = report.Vulnerability{
 		Summary:     "Unclassified Vulnerability",
 		Description: "Example vulnerability to test the monitoring of unclassified vulnerabilities.",
-		Score:       report.SeverityThresholdLow,
+		Score:       report.SeverityThresholdNone,
+		Labels:      []string{"informational"},
 	}
 )
 
@@ -27,6 +29,8 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	unclassifiedVuln.AffectedResource = target
+	unclassifiedVuln.Fingerprint = helpers.ComputeFingerprint()
 	state.AddVulnerabilities(unclassifiedVuln)
 	return nil
 }
