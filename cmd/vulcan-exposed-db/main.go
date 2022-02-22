@@ -6,9 +6,7 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,23 +94,12 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 			gr.Rows = append(gr.Rows, networkResource)
 			v := exposedVuln
 			v.Resources = []report.ResourcesGroup{gr}
-			v.ID = computeVulnerabilityID(target, v.AffectedResource, port.PortId, port.Protocol, port.Service.Product, port.Service.Version)
+			v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version)
 			v.Labels = []string{"issue", "db"}
 			vulns = append(vulns, v)
 		}
 	}
 	return vulns
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func main() {
