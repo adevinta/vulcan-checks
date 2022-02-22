@@ -36,7 +36,10 @@ var (
 			"http://heartbleed.com/",
 			"https://en.wikipedia.org/wiki/Heartbleed",
 		},
-		Recommendations: []string{"Upgrade OpenSSL to, at least, 1.0.2h or 1.0.1t"},
+		Recommendations:  []string{"Upgrade OpenSSL to, at least, 1.0.2h or 1.0.1t"},
+		Labels:           []string{"issue", "ssl"},
+		AffectedResource: "443/tcp",
+		Fingerprint:      helpers.ComputeFingerprint(),
 	}
 )
 
@@ -50,7 +53,6 @@ func testHeartbleed(host string) (string, error) {
 }
 
 func main() {
-
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if target == "" {
 			return errors.New("check target missing")
