@@ -14,6 +14,7 @@ import (
 	gonmap "github.com/lair-framework/go-nmap"
 
 	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
 	"github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
@@ -72,6 +73,7 @@ func isHostInKnownHosts(host string, knownHosts []string) bool {
 }
 
 func discoveredHosts(targetSubnet string, knownHosts []string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
+	var vs []report.Vulnerability
 	gr := report.ResourcesGroup{
 		Name: "Network Resources",
 		Header: []string{
@@ -95,8 +97,6 @@ func discoveredHosts(targetSubnet string, knownHosts []string, nmapReport *gonma
 		exposedVuln.Score = report.SeverityThresholdNone
 		exposedVuln.ImpactDetails = "If any of the discovered hosts is not known, it may be an unauthorized malicious host."
 	}
-
-	add := false
 
 nmapReportLoop:
 	for _, host := range nmapReport.Hosts {
@@ -132,23 +132,23 @@ nmapReportLoop:
 			hostHostnames = append(hostHostnames, hostname.Name)
 		}
 
-		// At this point the host is not in the list of known hosts, so add the host to the results.
-		add = true
+		vuln := exposedVuln
 
 		networkResource := map[string]string{
 			"Subnet":     targetSubnet,
 			"IP Address": strings.Join(hostIPAddresses, ","),
 			"Hostname":   strings.Join(hostHostnames, ","),
 		}
-		gr.Rows = append(gr.Rows, networkResource)
-	}
+		gr.Rows = []map[string]string{networkResource}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		return []report.Vulnerability{exposedVuln}
-	}
+		vuln.AffectedResource = networkResource["IP Address"]
+		vuln.Resources = []report.ResourcesGroup{gr}
+		vuln.Fingerprint = helpers.ComputeFingerprint(networkResource["Hostname"])
+		vuln.Labels = []string{"issue", "discovery"}
+		vs = append(vs, vuln)
 
-	return nil
+	}
+	return vs
 }
 
 func main() {
