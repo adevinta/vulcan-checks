@@ -110,7 +110,7 @@ func processExposedFTPVulns(target string, nmapReport *gonmap.NmapRun, state che
 			}
 			gr.Rows = append(gr.Rows, networkResource)
 			v.Resources = []report.ResourcesGroup{gr}
-			v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "exposed")
+			v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "exposed")
 			vulns = append(vulns, v)
 
 			// Check scripts
@@ -120,14 +120,14 @@ func processExposedFTPVulns(target string, nmapReport *gonmap.NmapRun, state che
 					v.Resources = []report.ResourcesGroup{gr}
 					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 					v.Labels = []string{"ftp", "issue"}
-					v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "anon")
+					v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "anon")
 					vulns = append(vulns, v)
 				} else if script.Id == bounceScriptID && strings.Contains(script.Output, bounceAllowedString) {
 					v := bounceAllowed
 					v.Resources = []report.ResourcesGroup{gr}
 					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 					v.Labels = []string{"ftp", "issue"}
-					v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "bounce")
+					v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "bounce")
 					vulns = append(vulns, v)
 				}
 			}
