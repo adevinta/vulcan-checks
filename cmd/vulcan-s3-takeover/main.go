@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,9 @@ import (
 )
 
 const (
+	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+	bucketNameRegexStr = `BucketName: ([a-z0-9.-]+)`
+
 	noSuchBucket = "NoSuchBucket"
 	timeout      = 3 * time.Second
 )
@@ -48,15 +52,24 @@ var (
 			"Create the S3 bucket with your domain name",
 			"Remove the DNS record pointing to S3",
 		},
+		Labels: []string{"issue", "aws", "dns"},
 	}
+
+	bucketNameRegex *regexp.Regexp
 )
 
 type s3Response struct {
-	Code string `xml:"Code"`
+	Code       string `xml:"Code"`
+	BucketName string `xml:"BucketName"`
 }
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		bucketNameRegex, err = regexp.Compile(bucketNameRegexStr)
+		if err != nil {
+			return err
+		}
+
 		logger := check.NewCheckLog(checkName)
 
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
@@ -67,68 +80,89 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		// TODO: Also consider case of HTTPS sites.
-		website := fmt.Sprintf("http://%v/", target)
-
-		logger.WithFields(logrus.Fields{
-			"target":  target,
-			"website": website,
-		}).Debug("requesting target website")
-
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		client := &http.Client{
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
 			Transport: tr,
 			Timeout:   timeout,
 		}
 
-		resp, err := client.Get(website)
-		if err != nil {
-			// Don't fail the check if the target can not be accessed.
-			return nil
-		}
-		defer resp.Body.Close()
+		for _, website := range resolveTargets(target, assetType) {
+			logger.WithFields(logrus.Fields{
+				"target":  target,
+				"website": website,
+			}).Debug("requesting target website")
 
-		logger.WithFields(logrus.Fields{
-			"status_code": resp.StatusCode,
-			"headers":     resp.Header,
-		}).Debug("response recieved")
+			resp, err := client.Get(website)
+			if err != nil {
+				// Don't fail the check if the target can not be accessed.
+				return nil
+			}
+			defer resp.Body.Close()
 
-		if resp.StatusCode == http.StatusNotFound {
-			if resp.Header.Get("Server") == "AmazonS3" {
-				contentType := resp.Header.Get("Content-Type")
-				if strings.HasPrefix(contentType, "application/xml") {
-					dec := xml.NewDecoder(resp.Body)
-					var s3Resp s3Response
-					err := dec.Decode(&s3Resp)
-					if err != nil {
-						return err
-					}
+			logger.WithFields(logrus.Fields{
+				"status_code": resp.StatusCode,
+				"headers":     resp.Header,
+			}).Debug("response recieved")
 
-					if s3Resp.Code == noSuchBucket {
-						s3Takeover.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%#v\n", website, s3Resp)
-						state.AddVulnerabilities(s3Takeover)
-					}
-				} else if strings.HasPrefix(contentType, "text/html") {
-					body, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						return err
-					}
+			if resp.StatusCode == http.StatusNotFound {
+				if resp.Header.Get("Server") == "AmazonS3" {
+					contentType := resp.Header.Get("Content-Type")
+					if strings.HasPrefix(contentType, "application/xml") {
+						dec := xml.NewDecoder(resp.Body)
+						var s3Resp s3Response
+						err := dec.Decode(&s3Resp)
+						if err != nil {
+							return err
+						}
 
-					if strings.Contains(string(body), noSuchBucket) {
-						s3Takeover.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%s\n", website, body)
-						state.AddVulnerabilities(s3Takeover)
+						if s3Resp.Code == noSuchBucket {
+							logger.WithFields(logrus.Fields{"bucket_name": s3Resp.BucketName}).Info("Bucket Name found")
+
+							vuln := s3Takeover
+							vuln.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%#v\n", website, s3Resp)
+							vuln.AffectedResource = website
+							vuln.Fingerprint = helpers.ComputeFingerprint(s3Resp.BucketName)
+							state.AddVulnerabilities(vuln)
+						}
+					} else if strings.HasPrefix(contentType, "text/html") {
+						body, err := ioutil.ReadAll(resp.Body)
+						if err != nil {
+							return err
+						}
+
+						if strings.Contains(string(body), noSuchBucket) {
+							var bucketName string
+							if matches := bucketNameRegex.FindSubmatch(body); len(matches) == 2 {
+								bucketName = string(matches[1])
+								logger.WithFields(logrus.Fields{"bucket_name": bucketName}).Info("Bucket Name found")
+							}
+
+							vuln := s3Takeover
+							vuln.Details += fmt.Sprintf("URL visited: %s\nContent:\n\n%s\n", website, body)
+							vuln.AffectedResource = website
+							vuln.Fingerprint = helpers.ComputeFingerprint(bucketName)
+							state.AddVulnerabilities(vuln)
+						}
 					}
 				}
 			}
 		}
+
 		return nil
 	}
-	c := check.NewCheckFromHandler(checkName, run)
 
+	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+func resolveTargets(target, assetType string) (resolved []string) {
+	switch assetType {
+	case "WebAddress":
+		resolved = append(resolved, target)
+	case "Hostname":
+		resolved = append(resolved, fmt.Sprintf("http://%v/", target), fmt.Sprintf("https://%v/", target))
+	}
+	return
 }
