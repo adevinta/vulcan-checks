@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -111,7 +110,7 @@ func processExposedFTPVulns(target string, nmapReport *gonmap.NmapRun, state che
 			}
 			gr.Rows = append(gr.Rows, networkResource)
 			v.Resources = []report.ResourcesGroup{gr}
-			v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "exposed")
+			v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "exposed")
 			vulns = append(vulns, v)
 
 			// Check scripts
@@ -121,31 +120,20 @@ func processExposedFTPVulns(target string, nmapReport *gonmap.NmapRun, state che
 					v.Resources = []report.ResourcesGroup{gr}
 					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 					v.Labels = []string{"ftp", "issue"}
-					v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "anon")
+					v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "anon")
 					vulns = append(vulns, v)
 				} else if script.Id == bounceScriptID && strings.Contains(script.Output, bounceAllowedString) {
 					v := bounceAllowed
 					v.Resources = []report.ResourcesGroup{gr}
 					v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 					v.Labels = []string{"ftp", "issue"}
-					v.ID = computeVulnerabilityID(target, v.AffectedResource, port.Service.Product, port.Service.Version, v.Score, "bounce")
+					v.ID = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version, "bounce")
 					vulns = append(vulns, v)
 				}
 			}
 		}
 	}
 	state.AddVulnerabilities(vulns...)
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func main() {
