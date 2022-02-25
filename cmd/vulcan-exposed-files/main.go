@@ -132,7 +132,7 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 			"PHP info",
 			report.SeverityThresholdLow,
 			[]string{"/phpinfo.php"},
-			[]string{"PHP Version =>"},
+			[]string{"PHP Version"},
 		},
 		{
 			"IntelliJ Configuration",

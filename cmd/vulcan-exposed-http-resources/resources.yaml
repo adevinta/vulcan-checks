@@ -95,7 +95,7 @@
 
 - paths:
   - "phpinfo.php"
-  regex: "PHP Version =>"
+  regex: "PHP Version (=> )?\\d+\\.\\d+"
   severity: 3.9
   description: Exposed PHP information page.
 
