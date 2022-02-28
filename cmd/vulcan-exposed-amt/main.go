@@ -39,6 +39,8 @@ var (
 			"https://www.ssh.com/vulnerability/intel-amt/",
 			"https://nvd.nist.gov/vuln/detail/CVE-2017-5689"},
 		Recommendations: []string{"Block access to Intel AMT ports from the internet.", "Disable Intel AMT if not in use."},
+		Labels:          []string{"issue"},
+		Fingerprint:     helpers.ComputeFingerprint(),
 	}
 )
 
@@ -107,24 +109,21 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		},
 	}
 
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-		},
-	}
-	add := false
 	for _, port := range amtTCPPorts {
 		open, err := isAmtServerExposed(client, target, port)
 		if err != nil {
 			return err
 		}
 		if open {
-			add = true
-
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+				},
+			}
 			networkResource := map[string]string{
 				"Hostname": target,
 				"Port":     port,
@@ -133,19 +132,19 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			}
 			gr.Rows = append(gr.Rows, networkResource)
 
+			vuln := exposedAMTPort
+			vuln.AffectedResource = fmt.Sprintf("%v/tcp", port)
+			vuln.Resources = append(vuln.Resources, gr)
+			state.AddVulnerabilities(vuln)
+
 			logger.WithFields(logrus.Fields{"port": port}).Debug("Found open port.")
 		}
-	}
-	if add {
-		exposedAMTPort.Resources = append(exposedAMTPort.Resources, gr)
-		state.AddVulnerabilities(exposedAMTPort)
 	}
 
 	return nil
 }
 
 func main() {
-
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
 }
