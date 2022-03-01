@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -94,6 +95,7 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 			gr.Rows = append(gr.Rows, networkResource)
 			v := exposedVuln
 			v.Resources = []report.ResourcesGroup{gr}
+			v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 			v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version)
 			v.Labels = []string{"issue", "db"}
 			vulns = append(vulns, v)
