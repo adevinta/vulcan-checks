@@ -11,7 +11,6 @@ Currently there's no vendoring provided for this project.
 * **vulcan-certinfo** - Extracts information about SSL/TLS certificates
 * **vulcan-dkim** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DKIM 
 * **vulcan-dmarc** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DMARC
-* **vulcan-docker-image** - Warns about outdated packages in docker Image
 * **vulcan-drupal** - Checks for vulnerabilities in Drupal CMS
 * **vulcan-exposed-amt** - Checks if an asset has the Intel AMT port exposed and whether is it vulnerable or not
 * **vulcan-exposed-bgp** - Checks for exposed BGP port on Internet routers

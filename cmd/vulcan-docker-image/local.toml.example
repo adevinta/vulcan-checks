@@ -1,7 +1,0 @@
-[Check]
-Target = "registry-1.docker.io/library/postgres:9.6"
-AssetType = "DockerImage"
-# example targets:
-# registry-1.docker.io/library/postgres:9.6
-# Port Authority : https://github.com/target/portauthority
-Options = '{"portauthority_url":"https://example.com/v1/images"}'
