@@ -121,6 +121,9 @@ func isExposedRDP(host, port string, timeout int) []report.Vulnerability {
 
 	if CCPDURegex.Match(b) && b[5] == byte('\xd0') {
 		exposedRDP.Details += fmt.Sprintf("RDP host detected in port: %s", port)
+		exposedRDP.AffectedResource = fmt.Sprintf("%s/tcp", port)
+		exposedRDP.Fingerprint = helpers.ComputeFingerprint()
+		exposedRDP.Labels = []string{"issue", "rdp"}
 		return []report.Vulnerability{exposedRDP}
 	}
 
