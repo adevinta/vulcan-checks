@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -61,18 +62,7 @@ var (
 )
 
 func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *regexp.Regexp, e *logrus.Entry) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-		},
-	}
-
-	add := false
+	vulns := []report.Vulnerability{}
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" {
@@ -85,8 +75,16 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 				continue
 			}
 
-			add = true
-
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+				},
+			}
 			networkResource := map[string]string{
 				"Hostname": target,
 				"Port":     strconv.Itoa(port.PortId),
@@ -95,18 +93,15 @@ func exposedDatabases(target string, nmapReport *gonmap.NmapRun, databaseRegex *
 				"Version":  port.Service.Version,
 			}
 			gr.Rows = append(gr.Rows, networkResource)
-
-			e.WithFields(logrus.Fields{"resource": networkResource}).Debug("Resource added")
+			v := exposedVuln
+			v.Resources = []report.ResourcesGroup{gr}
+			v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+			v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version)
+			v.Labels = []string{"issue", "db"}
+			vulns = append(vulns, v)
 		}
 	}
-
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		e.WithFields(logrus.Fields{"vulnerability": exposedVuln}).Debug("Vulnerability added")
-		return []report.Vulnerability{exposedVuln}
-	}
-
-	return nil
+	return vulns
 }
 
 func main() {
