@@ -33,7 +33,37 @@ var (
 	// According to the specs, a UDP request must contain an frame header:
 	// https://github.com/memcached/memcached/blob/master/doc/protocol.txt
 	udpHeader = "\x00\x00\x00\x00\x00\x01\x00\x00"
-	e         *logrus.Entry
+
+	// targets defines the payload to be sent depending on the protocol being
+	// tested.
+	targets = map[string]string{
+		"tcp": command,
+		"udp": udpHeader + command,
+	}
+
+	exposedMemcachedVuln = report.Vulnerability{
+		Summary: "Exposed Memcached Server",
+		Description: "Memcached is a server meant to be run in trusted networks." +
+			" Otherwise, a remote attacker can execute memcached commands (like adding" +
+			" or removing items from the cache, etc.) against the server.\n\n" +
+			"Apart from that, if the UDP port of the memcached is exposed" +
+			" the server is vulnerable to be used it in UDP Amplification Attacks (DDoS).",
+		Score: report.SeverityThresholdHigh,
+		CWEID: 284,
+		Recommendations: []string{
+			"Do not expose the memcached server to the Internet.",
+			"If running in an internal trusted network, implement authentication.",
+			"Disable the UDP port of the memcached server.",
+		},
+		References: []string{
+			"https://github.com/memcached/memcached/wiki/SASLHowto",
+			"https://github.com/memcached/memcached/blob/master/doc/protocol.txt",
+			"https://tools.cisco.com/security/center/viewAlert.x?alertId=57020&vs_f=Alert%20RSS&vs_cat=Security%20Intelligence&vs_type=RSS&vs_p=Memcached%20Network%20Message%20Volume%20Denial%20of%20Service%20Vulnerability&vs_k=1",
+		},
+		Labels: []string{"issue"},
+	}
+
+	e *logrus.Entry
 )
 
 type options struct {
@@ -69,52 +99,43 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return checkstate.ErrAssetUnreachable
 	}
 
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-		},
-	}
+	for protocol, data := range targets {
+		e.WithFields(logrus.Fields{"protocol": protocol}).Debug("checking if there is a memcached in the port")
 
-	e.Debug("checking if there is a memcached in the tcp port")
-	vulnerable, version, err := isMemcachedExposed("tcp", command, target, opt.Port)
-	if err != nil {
-		return err
-	}
-	if vulnerable {
+		vulnerable, version, err := isMemcachedExposed(protocol, data, target, opt.Port)
+		if err != nil {
+			return err
+		}
+		if !vulnerable {
+			continue
+		}
+
+		gr := report.ResourcesGroup{
+			Name: "Network Resources",
+			Header: []string{
+				"Hostname",
+				"Port",
+				"Protocol",
+				"Service",
+				"Version",
+			},
+		}
 		networkResource := map[string]string{
 			"Hostname": target,
 			"Port":     strconv.Itoa(opt.Port),
-			"Protocol": "tcp",
+			"Protocol": protocol,
 			"Service":  "Memcached",
 			"Version":  version,
 		}
 		gr.Rows = append(gr.Rows, networkResource)
-	}
 
-	e.Debug("checking if there is a memcached in the udp port")
-	udp, version, err := isMemcachedExposed("udp", udpHeader+command, target, opt.Port)
-	if err != nil {
-		return err
-	}
-	if udp {
-		networkResource := map[string]string{
-			"Hostname": target,
-			"Port":     strconv.Itoa(opt.Port),
-			"Protocol": "udp",
-			"Service":  "Memcached",
-			"Version":  version,
-		}
-		gr.Rows = append(gr.Rows, networkResource)
-	}
+		vuln := exposedMemcachedVuln
+		vuln.AffectedResource = fmt.Sprintf("%v/%v", opt.Port, protocol)
+		vuln.Fingerprint = helpers.ComputeFingerprint(version)
+		vuln.Resources = append(vuln.Resources, gr)
 
-	if udp || vulnerable {
-		exposedMemcachedVuln.Resources = append(exposedMemcachedVuln.Resources, gr)
-		state.AddVulnerabilities(exposedMemcachedVuln)
+		state.AddVulnerabilities(vuln)
+
 	}
 
 	return nil
