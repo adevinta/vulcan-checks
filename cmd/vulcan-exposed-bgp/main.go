@@ -24,25 +24,27 @@ var (
 	defaultTimeout = 30 * time.Second
 	defaultBGPPort = 179
 
-	// NOTE: should we DROP the severity level to LOW?
 	// https://www.acunetix.com/vulnerabilities/network/vulnerability/bgp-detection/
 	exposedBGP = report.Vulnerability{
-		Summary: fmt.Sprintf("Exposed BGP speaker on port %v", defaultBGPPort),
-		Description: "This check tests for exposed BGP port on the router. According to best practices, BGP port should not be open to the public internet and access to it" +
+		Summary: "Exposed BGP speaker",
+		Description: "A potentially exposed BGP port has been found open in the target. " +
+			"According to best practices, BGP port should not be open to the public internet and access to it" +
 			"should be restricted only to participating BGP neighbours.",
 		Score:         report.SeverityThresholdNone,
-		ImpactDetails: "BGP is exposed and attacks can be carried out.",
+		ImpactDetails: "If BGP is exposed. attacks could be carried out.",
 		Recommendations: []string{
-			"Having BGP exposed to non-partiticaping host is considered a bad security practice.",
+			"Do not expose BGP to non-partiticaping hosts.",
 		},
 		References: []string{
 			"https://tools.ietf.org/html/bcp194#section-4",
 		},
+		AffectedResource: fmt.Sprintf("%d/tcp", defaultBGPPort),
+		Labels:           []string{"informational", "bgp", "discovery"},
+		Fingerprint:      helpers.ComputeFingerprint(),
 	}
 )
 
 func tcpConnect(target string, port int) error {
-
 	targetAddr := target + ":" + strconv.Itoa(port)
 	if _, err := net.ResolveTCPAddr("tcp", targetAddr); err != nil {
 		return err
@@ -52,16 +54,12 @@ func tcpConnect(target string, port int) error {
 	if err != nil {
 		return err
 	}
-
-	if err := conn.Close(); err != nil {
-		return err
-	}
+	defer conn.Close()
 
 	return nil
 }
 
 func main() {
-
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger.Printf("Starting the %v check", checkName)
 
