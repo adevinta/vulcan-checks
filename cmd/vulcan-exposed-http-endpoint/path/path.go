@@ -25,14 +25,20 @@ type Paths []Path
 
 // LoadFrom reads a list of paths from a file and populates the
 // corresponding Path structure.
-func (p *Paths) LoadFrom(file string) error {
+func (p Paths) LoadFrom(file string) ([]Path, error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close() // nolint
 	d := json.NewDecoder(f)
-	return d.Decode(p)
+	paths := Paths{}
+	err = d.Decode(&paths)
+	if err != nil {
+		return nil, err
+	}
+	p = append(p, paths...)
+	return p, nil
 }
 
 // WriteTo writes the paths to the specified json file.
@@ -47,18 +53,18 @@ func (p *Paths) WriteTo(file string) error {
 }
 
 // ReadDefault reads all the paths specified in the default folder.
-func ReadDefault() (*Paths, error) {
+func ReadDefault() (Paths, error) {
 	files, err := ioutil.ReadDir("_paths/")
 	if err != nil {
 		return nil, err
 	}
-	paths := &Paths{}
+	paths := Paths{}
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".json" {
 			continue
 		}
 		currentPath := "_paths/" + f.Name()
-		err = paths.LoadFrom(currentPath)
+		paths, err = paths.LoadFrom(currentPath)
 		if err != nil {
 			wd, _ := os.Getwd()
 			err := fmt.Errorf("error opening file: %s, working directory %s", f.Name(), wd)

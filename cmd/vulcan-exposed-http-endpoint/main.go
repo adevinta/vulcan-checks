@@ -187,7 +187,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			paths = *defaultPaths
+			paths = defaultPaths
 		}
 		vuln, err := exposedURL(logger, addr, paths)
 		if err != nil {
