@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	gonmap "github.com/lair-framework/go-nmap"
@@ -78,19 +77,6 @@ func evalReport(target string, nmapReport *gonmap.NmapRun, state checkstate.Stat
 				vuln.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
 				vuln.Fingerprint = helpers.ComputeFingerprint()
 				vuln.Labels = []string{"issue", "smtp", "discovery"}
-				vuln.Resources = []report.ResourcesGroup{{
-					Name: "Network Resources",
-					Header: []string{
-						"Hostname",
-						"Port",
-						"Protocol",
-					},
-					Rows: []map[string]string{{
-						"Hostname": target,
-						"Port":     strconv.Itoa(port.PortId),
-						"Protocol": port.Protocol,
-					}},
-				}}
 				state.AddVulnerabilities(vuln)
 			}
 		}
