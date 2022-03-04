@@ -70,8 +70,8 @@ func exposedRouterPorts(target string, nmapReport *gonmap.NmapRun, state checkst
 			}
 			vuln := exposedVuln
 			vuln.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
-			vuln.Fingerprint = helpers.ComputeFingerprint(port.Protocol, port.Service)
-			vuln.Labels = []string{"issue", port.Protocol, "discovery"}
+			vuln.Fingerprint = helpers.ComputeFingerprint(port.Service.Product)
+			vuln.Labels = []string{"informational", "discovery"}
 			vuln.Resources = []report.ResourcesGroup{{
 				Name: "Network Resources",
 				Header: []string{
