@@ -5,6 +5,7 @@ Copyright 2019 Adevinta
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,7 +27,7 @@ func main() {
 		os.Exit(1)
 	}
 	lines := strings.Split(string(contents), "\n")
-	paths := exposedPath.Paths{}
+	paths := []exposedPath.Path{}
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -35,9 +36,20 @@ func main() {
 		paths = append(paths, p)
 	}
 	output := f + ".json"
-	err = paths.WriteTo(output)
+	err = writePaths(paths, f)
 	if err != nil {
 		fmt.Printf("error writing file %s: %v", output, err)
 		os.Exit(1)
 	}
+}
+
+// writePaths writes the paths to the specified json file.
+func writePaths(p []exposedPath.Path, file string) error {
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close() //nolint
+	encoder := json.NewEncoder(f)
+	return encoder.Encode(p)
 }

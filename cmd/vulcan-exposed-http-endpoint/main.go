@@ -8,11 +8,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -45,54 +45,73 @@ If no paths are specified the check will test all the paths present in _paths/*.
 
 // Options defines the options of the check.
 type Options struct {
-	Paths path.Paths `json:"paths"`
+	Paths []path.Path `json:"paths"`
 }
 
 var (
 	checkName = "vulcan-exposed-http-endpoint"
-	// exposedVuln defines the vulnerability that will be returned by the check
-	// when one or more paths are exposed.
+	// exposedVuln defines the vulnerability template that will be returned by
+	// the check when one path is exposed.
 	exposedVuln = report.Vulnerability{
-		Summary:         "Exposed URLs",
-		Description:     "Paths that should not be publicly accessible are exposed.",
+		Summary:         "Exposed URL",
+		Description:     "Path that should not be publicly accessible.",
 		ImpactDetails:   `An attacker may be able to interact with functionalities that could harm your system, like admin endpoints or access information that shouldn't be public.`,
 		Score:           report.SeverityThresholdHigh,
-		Recommendations: []string{"Forbid access to the reported paths."},
-		Resources: []report.ResourcesGroup{
-			report.ResourcesGroup{
-				Name:   "Exposed URLs",
-				Header: []string{"URL"},
-				Rows:   []map[string]string{},
-			},
-		},
+		Recommendations: []string{"Forbid access to the reported path."},
+		Labels:          []string{"issue", "http"},
 	}
 )
 
 func init() {
-	// We don't want to verify the certificates in this checks.
+	// We don't want to verify the certificates in this check.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 }
 
-func exposedURL(l *logrus.Entry, addr *url.URL, paths path.Paths) (*report.Vulnerability, error) {
-	resources := []map[string]string{}
-	var vuln *report.Vulnerability
-	for _, p := range paths {
-		r, err := checkPath(l, addr, p)
+func exposedURL(l *logrus.Entry, addr *url.URL, paths path.Paths) (*[]report.Vulnerability, error) {
+	var vulnerablePaths = map[string][]path.Path{}
+	for p := range paths {
+		url, err := checkPath(l, addr, p)
 		if err != nil {
 			return nil, err
 		}
-		if r != nil {
-			resources = append(resources, r)
+		if url == "" {
+			continue
 		}
+		matches, ok := vulnerablePaths[url]
+		if !ok {
+			matches = make([]path.Path, 1)
+		}
+		matches = append(matches, p)
+		vulnerablePaths[url] = matches
 	}
-	if len(resources) > 0 {
-		vuln = &exposedVuln
-		vuln.Resources[0].Rows = resources
+	if len(vulnerablePaths) == 0 {
+		return nil, nil
 	}
-	return vuln, nil
+	var vulns []report.Vulnerability = make([]report.Vulnerability, 0, len(vulnerablePaths))
+	for url, paths := range vulnerablePaths {
+		v := exposedVuln
+		v.AffectedResource = url
+		v.Fingerprint = fingerprint(paths)
+		vulns = append(vulns, v)
+	}
+	return &vulns, nil
 }
 
-func checkPath(l *logrus.Entry, addr *url.URL, p path.Path) (map[string]string, error) {
+func fingerprint(paths []path.Path) string {
+	sort.Slice(paths, func(i, j int) bool {
+		comp := strings.Compare(paths[i].Path, paths[j].Path)
+		if comp != 0 {
+			return comp < 0
+		}
+		if paths[i].Status != paths[j].Status {
+			return paths[i].Status < paths[j].Status
+		}
+		return strings.Compare(paths[i].Path, paths[j].Path) < 0
+	})
+	return helpers.ComputeFingerprint(paths)
+}
+
+func checkPath(l *logrus.Entry, addr *url.URL, p path.Path) (string, error) {
 	checkURL := addr.String()
 	if !strings.HasSuffix(checkURL, "/") {
 		checkURL = checkURL + "/"
@@ -106,7 +125,7 @@ func checkPath(l *logrus.Entry, addr *url.URL, p path.Path) (map[string]string, 
 	resp, err := client.Get(checkURL)
 	if err != nil {
 		l.Debugf("path not reachable: %s, reason %v", checkURL, err)
-		return nil, nil
+		return "", nil
 	}
 	defer resp.Body.Close() // nolint
 	// We need to decide what checks to apply for current path in the URL.
@@ -115,18 +134,14 @@ func checkPath(l *logrus.Entry, addr *url.URL, p path.Path) (map[string]string, 
 	// 2. Status but no regexp.
 	// 3. No status but regexp.
 	// 4. Status and regexp.
-	status := -1
+	status := p.Status
 	regExpr := ""
-	if p.Status != nil {
-		status = *p.Status
-	}
 	if p.RegExp != "" {
 		regExpr = p.RegExp
 	}
 
 	statusOK := true
-	// At this point status will be greater that 0 if a status was specified or
-	// no status nor a regexp was specified.
+	// At this point status will be greater that 0 if a status was specified.
 	if status >= 0 {
 		statusOK = resp.StatusCode == status
 	}
@@ -135,21 +150,20 @@ func checkPath(l *logrus.Entry, addr *url.URL, p path.Path) (map[string]string, 
 	if regExpr != "" {
 		regExpOK, err = checkBodyRegExp(resp, regExpr)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 	// The check will be positive if one or both conditions were specified and
 	// evaluated to true or no condition was specified.
 	positive := statusOK && regExpOK
 	if positive {
-		return map[string]string{"URL": checkURL}, nil
+		return checkURL, nil
 	}
-	return nil, nil
+	return "", nil
 }
 
 func checkBodyRegExp(resp *http.Response, exp string) (bool, error) {
 	contents, err := httputil.DumpResponse(resp, true)
-	fmt.Printf("contents %q", contents)
 	if err != nil {
 		return false, err
 	}
@@ -181,7 +195,8 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		paths := opt.Paths
+		paths := path.Paths{}
+		paths.Add(opt.Paths...)
 		if len(paths) == 0 {
 			defaultPaths, err := path.ReadDefault()
 			if err != nil {
@@ -189,12 +204,12 @@ func main() {
 			}
 			paths = defaultPaths
 		}
-		vuln, err := exposedURL(logger, addr, paths)
+		vulns, err := exposedURL(logger, addr, paths)
 		if err != nil {
 			return err
 		}
-		if vuln != nil {
-			state.AddVulnerabilities(*vuln)
+		if vulns != nil {
+			state.AddVulnerabilities(*vulns...)
 		}
 		return nil
 	}
