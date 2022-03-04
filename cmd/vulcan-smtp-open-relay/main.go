@@ -13,6 +13,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -62,46 +63,39 @@ var (
 	}
 )
 
-func evalReport(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-		},
-	}
-
-	add := false
+func evalReport(target string, nmapReport *gonmap.NmapRun, state checkstate.State) {
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" {
 				continue
 			}
-
 			for _, script := range port.Scripts {
 				if script.Id != scriptName {
 					continue
 				} else if !strings.Contains(script.Output, openRelayTrueSubString) {
 					continue
 				}
-
-				add = true
-
-				networkResource := map[string]string{
-					"Hostname": target,
-					"Port":     strconv.Itoa(port.PortId),
-				}
-				gr.Rows = append(gr.Rows, networkResource)
+				vuln := openRelay
+				vuln.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+				vuln.Fingerprint = helpers.ComputeFingerprint()
+				vuln.Labels = []string{"issue", "smtp", "discovery"}
+				vuln.Resources = []report.ResourcesGroup{{
+					Name: "Network Resources",
+					Header: []string{
+						"Hostname",
+						"Port",
+						"Protocol",
+					},
+					Rows: []map[string]string{{
+						"Hostname": target,
+						"Port":     strconv.Itoa(port.PortId),
+						"Protocol": port.Protocol,
+					}},
+				}}
+				state.AddVulnerabilities(vuln)
 			}
 		}
 	}
-
-	if add {
-		openRelay.Resources = append(openRelay.Resources, gr)
-		return []report.Vulnerability{openRelay}
-	}
-
-	return nil
 }
 
 func main() {
@@ -143,8 +137,7 @@ func main() {
 			return err
 		}
 
-		vulns := evalReport(target, nmapReport)
-		state.AddVulnerabilities(vulns...)
+		evalReport(target, nmapReport, state)
 
 		return nil
 	}
