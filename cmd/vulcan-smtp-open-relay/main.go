@@ -44,7 +44,6 @@ var (
 	openRelayTrueSubString = "Server is an open relay"
 	scriptName             = "smtp-open-relay"
 
-	// NOTE: should we increase the score to critical?
 	// https://www.rapid7.com/db/vulnerabilities/smtp-general-openrelay
 	openRelay = report.Vulnerability{
 		CWEID:   269,
@@ -52,7 +51,7 @@ var (
 		Description: "An SMTP server that works as an open relay, is a email server that does not verify if " +
 			"the user is authorised to send email from the specified email address. Therefore, users would be " +
 			"able to send email originating from any third-party email address that they want.",
-		Score:         report.SeverityThresholdMedium,
+		Score:         report.SeverityThresholdHigh,
 		ImpactDetails: "It is possible to initiate the attack remotely. No form of authentication is needed for exploitation.",
 		Recommendations: []string{
 			"You need to secure your mail system against third-party relay. Check references for details on fixing this problem.",
