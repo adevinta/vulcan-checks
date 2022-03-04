@@ -6,8 +6,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"fmt"
 	"net"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -28,35 +27,13 @@ var (
 		Recommendations: []string{
 			"It is recommended to run DMARC, DKIM and SPF checks for each domain that contain MX records.",
 		},
+		Labels:      []string{"informational", "discovery"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )
 
-// MXJson is used for storing MX Records (results of lookupMX)
-type MXJson struct {
-	MXRecords []MXRecord `json:"mx_records"`
-}
-
-// MXRecord is used for storing single result from []*net.MX
-type MXRecord struct {
-	Host string `json:"host"`
-	Pref uint16 `json:"pref"`
-}
-
-func lookupMX(host string) ([]*net.MX, error) {
-	records, err := net.LookupMX(host)
-	if err != nil {
-		return nil, err
-	}
-	return records, nil
-}
-
 func main() {
-
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		if net.ParseIP(target) != nil {
-			return errors.New("invalid hostname provided")
-		}
-
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
 			logger.Warnf("Can not check asset reachability: %v", err)
@@ -64,33 +41,28 @@ func main() {
 		if !isReachable {
 			return checkstate.ErrAssetUnreachable
 		}
-
-		records, err := lookupMX(target)
-		if err != nil {
-			return
-		}
-
+		records, _ := net.LookupMX(target)
 		if len(records) > 0 {
-			mxRecords := make([]MXRecord, len(records))
-			for i, v := range records {
-				mxRecords[i].Host = v.Host
-				mxRecords[i].Pref = v.Pref
+			gr := report.ResourcesGroup{
+				Name: "MX Records",
+				Header: []string{
+					"Host",
+					"Pref",
+				},
 			}
+			for _, v := range records {
+				row := map[string]string{
+					"Host": v.Host,
+					"Pref": fmt.Sprintf("%d", v.Pref),
+				}
+				gr.Rows = append(gr.Rows, row)
+			}
+			MXIsPresent.Resources = []report.ResourcesGroup{gr}
+			MXIsPresent.AffectedResource = target
 			state.AddVulnerabilities(MXIsPresent)
-
-			mxJSON := &MXJson{
-				MXRecords: mxRecords,
-			}
-			data, err := json.Marshal(mxJSON)
-			if err != nil {
-				return err
-			}
-			state.Notes = string(data)
 		}
-
 		return nil
 	}
 	c := check.NewCheckFromHandler(checkName, run)
-
 	c.RunAndServe()
 }
