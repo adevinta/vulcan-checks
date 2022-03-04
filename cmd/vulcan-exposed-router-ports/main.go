@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -61,44 +62,36 @@ var (
 	}
 )
 
-func exposedRouterPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"Service",
-			"Version",
-		},
-	}
-
-	add := false
+func exposedRouterPorts(target string, nmapReport *gonmap.NmapRun, state checkstate.State) {
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			if port.State.State != "open" {
 				continue
 			}
-
-			add = true
-
-			networkResource := map[string]string{
-				"Hostname": target,
-				"Port":     strconv.Itoa(port.PortId),
-				"Protocol": port.Protocol,
-				"Service":  port.Service.Product,
-				"Version":  port.Service.Version,
-			}
-			gr.Rows = append(gr.Rows, networkResource)
+			vuln := exposedVuln
+			vuln.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+			vuln.Fingerprint = helpers.ComputeFingerprint(port.Protocol, port.Service)
+			vuln.Labels = []string{"issue", port.Protocol, "discovery"}
+			vuln.Resources = []report.ResourcesGroup{{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"Service",
+					"Version",
+				},
+				Rows: []map[string]string{{
+					"Hostname": target,
+					"Port":     strconv.Itoa(port.PortId),
+					"Protocol": port.Protocol,
+					"Service":  port.Service.Product,
+					"Version":  port.Service.Version,
+				}},
+			}}
+			state.AddVulnerabilities(vuln)
 		}
 	}
-
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		return []report.Vulnerability{exposedVuln}
-	}
-
-	return nil
 }
 
 func main() {
@@ -141,8 +134,7 @@ func main() {
 			return err
 		}
 
-		vulns := exposedRouterPorts(target, nmapReport)
-		state.AddVulnerabilities(vulns...)
+		exposedRouterPorts(target, nmapReport, state)
 
 		return nil
 	}
