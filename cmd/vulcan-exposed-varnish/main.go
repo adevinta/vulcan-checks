@@ -158,14 +158,14 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			v.AffectedResource = website
 			v.Details += fmt.Sprintf("* Exposed cache in: %v\n", website)
 			v.Fingerprint = helpers.ComputeFingerprint()
-			state.AddVulnerabilities(exposedCache)
+			state.AddVulnerabilities(v)
 		}
 		if varnish {
 			v := exposedVarnish
 			v.AffectedResource = website
 			v.Details += fmt.Sprintf("* Exposed varnish in: %v\n", website)
 			v.Fingerprint = helpers.ComputeFingerprint()
-			state.AddVulnerabilities(exposedVarnish)
+			state.AddVulnerabilities(v)
 		}
 
 		state.SetProgress(float32((1 + i) / len(websites)))
