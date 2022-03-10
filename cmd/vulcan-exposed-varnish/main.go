@@ -28,12 +28,14 @@ var (
 		Summary:     "Web Cache Exposed",
 		Description: "The asset appears to be a Web Cache, as the X-Cache HTTP header is present in the HTTP response.",
 		Score:       report.SeverityThresholdNone,
+		Labels:      []string{"informational", "discovery"},
 	}
 
 	exposedVarnish = report.Vulnerability{
 		Summary:     "Varnish Cache Exposed",
 		Description: "The asset appears to be a Varnish Cache, as the X-Cache header is present and the varnish literal has been found in the response.",
 		Score:       report.SeverityThresholdNone,
+		Labels:      []string{"informational", "discovery"},
 	}
 )
 
@@ -139,7 +141,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	ch := newChecker(logger)
 
-	var addCache, addVarnish bool
 	for i, website := range websites {
 		cache, varnish, err := ch.checkWebsite(website)
 		if err != nil {
@@ -153,22 +154,21 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}).Debug("response recieved")
 
 		if cache {
-			addCache = true
-			exposedCache.Details += fmt.Sprintf("* Exposed cache in: %v\n", website)
+			v := exposedCache
+			v.AffectedResource = website
+			v.Details += fmt.Sprintf("* Exposed cache in: %v\n", website)
+			v.Fingerprint = helpers.ComputeFingerprint()
+			state.AddVulnerabilities(v)
 		}
 		if varnish {
-			addVarnish = true
-			exposedVarnish.Details += fmt.Sprintf("* Exposed varnish in: %v\n", website)
+			v := exposedVarnish
+			v.AffectedResource = website
+			v.Details += fmt.Sprintf("* Exposed varnish in: %v\n", website)
+			v.Fingerprint = helpers.ComputeFingerprint()
+			state.AddVulnerabilities(v)
 		}
 
 		state.SetProgress(float32((1 + i) / len(websites)))
-	}
-
-	if addCache {
-		state.AddVulnerabilities(exposedCache)
-	}
-	if addVarnish {
-		state.AddVulnerabilities(exposedVarnish)
 	}
 
 	return nil
