@@ -28,14 +28,14 @@ var (
 		Summary:     "Web Cache Exposed",
 		Description: "The asset appears to be a Web Cache, as the X-Cache HTTP header is present in the HTTP response.",
 		Score:       report.SeverityThresholdNone,
-		Labels:      []string{"issue", "http"},
+		Labels:      []string{"informational", "discovery"},
 	}
 
 	exposedVarnish = report.Vulnerability{
 		Summary:     "Varnish Cache Exposed",
 		Description: "The asset appears to be a Varnish Cache, as the X-Cache header is present and the varnish literal has been found in the response.",
 		Score:       report.SeverityThresholdNone,
-		Labels:      []string{"issue", "http"},
+		Labels:      []string{"informational", "discovery"},
 	}
 )
 
