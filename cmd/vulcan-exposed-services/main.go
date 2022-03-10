@@ -58,6 +58,7 @@ var (
 		References: []string{
 			"https://tools.ietf.org/html/rfc4778",
 		},
+		Labels: []string{"issue", "discovery"},
 	}
 )
 
@@ -66,19 +67,8 @@ func uint16ArrayToString(a []uint16, delim string) string {
 }
 
 func exposedPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"NmapState",
-			"Service",
-			"Version",
-		},
-	}
+	var vulns []report.Vulnerability
 
-	add := false
 	for _, host := range nmapReport.Hosts {
 		for _, port := range host.Ports {
 			/* If a UDP port is opened but not running a well-known service that can be
@@ -94,7 +84,17 @@ func exposedPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabil
 				continue
 			}
 
-			add = true
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"NmapState",
+					"Service",
+					"Version",
+				},
+			}
 
 			networkResource := map[string]string{
 				"Hostname":  target,
@@ -104,16 +104,18 @@ func exposedPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabil
 				"Service":   port.Service.Product,
 				"Version":   port.Service.Version,
 			}
+
 			gr.Rows = append(gr.Rows, networkResource)
+
+			v := exposedVuln
+			v.Resources = []report.ResourcesGroup{gr}
+			v.AffectedResource = fmt.Sprintf("%d/%s", port.PortId, port.Protocol)
+			v.Fingerprint = helpers.ComputeFingerprint(port.Service.Product, port.Service.Version)
+			vulns = append(vulns, v)
 		}
 	}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		return []report.Vulnerability{exposedVuln}
-	}
-
-	return nil
+	return vulns
 }
 
 func main() {
