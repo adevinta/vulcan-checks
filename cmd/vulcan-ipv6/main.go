@@ -6,8 +6,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -34,13 +34,10 @@ var (
 		References: []string{
 			"https://www.ietf.org/rfc/rfc2460.txt",
 		},
+		Labels:      []string{"informational", "discovery"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )
-
-// IPv6Json is used for storing results from lookupAAAA
-type IPv6Json struct {
-	IPv6Addresses []net.IP `json:"ipv6_addresses"`
-}
 
 func lookupAAAA(host string) ([]net.IP, error) {
 	resolvedIps, err := net.LookupIP(host)
@@ -68,7 +65,6 @@ func findIPv6Addresses(resolvedIps []net.IP) []net.IP {
 }
 
 func main() {
-
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		if net.ParseIP(target) != nil {
 			return errors.New("invalid hostname provided")
@@ -88,16 +84,22 @@ func main() {
 		}
 
 		if len(ips) > 0 {
-			state.AddVulnerabilities(IPv6IsPresent)
-
-			ipv6JSON := &IPv6Json{
-				IPv6Addresses: ips,
+			gr := report.ResourcesGroup{
+				Name: "IPv6 Addresses",
+				Header: []string{
+					"Address",
+				},
 			}
-			data, err := json.Marshal(ipv6JSON)
-			if err != nil {
-				return err
+			for _, ip := range ips {
+				row := map[string]string{
+					"Address": fmt.Sprintf("%s", ip),
+				}
+				gr.Rows = append(gr.Rows, row)
 			}
-			state.Notes = string(data)
+			vuln := IPv6IsPresent
+			vuln.AffectedResource = target
+			vuln.Resources = []report.ResourcesGroup{gr}
+			state.AddVulnerabilities(vuln)
 		}
 
 		return nil
