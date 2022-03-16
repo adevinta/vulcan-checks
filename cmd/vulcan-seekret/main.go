@@ -41,7 +41,7 @@ var (
 	leakedSecret = report.Vulnerability{
 		Summary:       "Secrets Leaked in Git Repository",
 		Description:   "Some secrets have been found stored in the Git repository. These secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as exceptions so that they are only reported informationally as documented in the references section.",
-		Labels:        []string{"issue", "potential"},
+		Labels:        []string{"issue"},
 		CWEID:         540,
 		Score:         report.SeverityThresholdNone,
 		ImpactDetails: "Anyone with access to the repository could retrieve the leaked secrets and use them the future with malicious intent.",
