@@ -1,0 +1,12 @@
+[Check]
+Target = "https://example.com"
+AssetType = "WebAddress"
+# Available options example:
+# Options = """\
+#     {\
+#         "skip_update_templates": false,\
+#         "template_inclusion_list": ["cves", "default-logins", "dns", "exposed-panels", "exposed-tokens", "exposures", "misconfiguration", "takeovers", "technologies", "vulnerabilities"],\
+#         "template_exclusion_list": ["fuzzing", "helpers", "miscellaneous", "workflows"],\
+#         "severities": ["critical", "high", "medium", "low", "info"]\
+#     }\
+# """
