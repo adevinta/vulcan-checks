@@ -79,7 +79,8 @@ func portExcluded(port uint16, exclude []uint16) bool {
 	return false
 }
 
-func exposedPorts(target string, res []Result, exclude []uint16) (vulns []report.Vulnerability) {
+func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulnerability {
+	var vulns []report.Vulnerability
 	useIP := target == ""
 	for _, r := range res {
 		if useIP {
@@ -110,11 +111,15 @@ func exposedPorts(target string, res []Result, exclude []uint16) (vulns []report
 			vuln := exposedVuln
 			vuln.Resources = append(vuln.Resources, gr)
 			vuln.AffectedResource = fmt.Sprintf("%d/%s", port.Port, port.Proto)
+			if useIP {
+				vuln.AffectedResource = fmt.Sprintf("%s - %s", target, vuln.AffectedResource)
+			}
 
 			vulns = append(vulns, vuln)
 		}
 	}
-	return
+
+	return vulns
 }
 
 func main() {
