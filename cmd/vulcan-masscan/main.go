@@ -38,6 +38,8 @@ var (
 		References: []string{
 			"https://tools.ietf.org/html/rfc4778",
 		},
+		Labels:      []string{"informational", "discovery"},
+		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )
 
@@ -78,17 +80,7 @@ func portExcluded(port uint16, exclude []uint16) bool {
 }
 
 func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulnerability {
-	gr := report.ResourcesGroup{
-		Name: "Network Resources",
-		Header: []string{
-			"Hostname",
-			"Port",
-			"Protocol",
-			"State",
-		},
-	}
-
-	add := false
+	var vulns []report.Vulnerability
 	useIP := target == ""
 	for _, r := range res {
 		if useIP {
@@ -99,8 +91,15 @@ func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulner
 				continue
 			}
 
-			add = true
-
+			gr := report.ResourcesGroup{
+				Name: "Network Resources",
+				Header: []string{
+					"Hostname",
+					"Port",
+					"Protocol",
+					"State",
+				},
+			}
 			networkResource := map[string]string{
 				"Hostname": target,
 				"Port":     strconv.Itoa(int(port.Port)),
@@ -108,15 +107,19 @@ func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulner
 				"State":    port.Status,
 			}
 			gr.Rows = append(gr.Rows, networkResource)
+
+			vuln := exposedVuln
+			vuln.Resources = append(vuln.Resources, gr)
+			vuln.AffectedResource = fmt.Sprintf("%d/%s", port.Port, port.Proto)
+			if useIP {
+				vuln.AffectedResource = fmt.Sprintf("%s - %s", target, vuln.AffectedResource)
+			}
+
+			vulns = append(vulns, vuln)
 		}
 	}
 
-	if add {
-		exposedVuln.Resources = append(exposedVuln.Resources, gr)
-		return []report.Vulnerability{exposedVuln}
-	}
-
-	return nil
+	return vulns
 }
 
 func main() {
