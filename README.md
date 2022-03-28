@@ -9,7 +9,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-aws-trusted-advisor** - Checks AWS Trusted Advisor for security findings
 * **vulcan-burp** - Runs a PortSwigger [Burp Enterprise](https://portswigger.net/burp/enterprise) scan
 * **vulcan-certinfo** - Extracts information about SSL/TLS certificates
-* **vulcan-dkim** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DKIM 
+* **vulcan-dkim** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DKIM
 * **vulcan-dmarc** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DMARC
 * **vulcan-drupal** - Checks for vulnerabilities in Drupal CMS
 * **vulcan-exposed-amt** - Checks if an asset has the Intel AMT port exposed and whether is it vulnerable or not
@@ -19,7 +19,6 @@ Currently there's no vendoring provided for this project.
 * **vulcan-exposed-ftp** - Checks if an asset has open FTP well known ports and if they allow anonymous logins or vulnerable to bounce attack
 * **vulcan-exposed-hdfs** - Checks if an EMR cluster is exposed to the Internet
 * **vulcan-exposed-http** - Checks if an asset has open HTTP well known ports
-* **vulcan-exposed-http-endpoint** - Warns about private resources that are exposed over http/https 
 * **vulcan-exposed-http-resources** - Checks if a web address exposes sensitive resources
 * **vulcan-exposed-memcached** - Checks if an asset has exposed a memcached server
 * **vulcan-exposed-rdp** - Checks if a Microsoft Remote Desktop service is exposed to the Internet
@@ -44,7 +43,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-seekret** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
 * **vulcan-sleep** - Internal testing check, not for production
 * **vulcan-smtp-open-relay** - Checks for exposed SMTP, and if they are open relay
-* **vulcan-spf** - Checks if a domain (asset with a SOA record) have valid DNS configuration for SPF 
+* **vulcan-spf** - Checks if a domain (asset with a SOA record) have valid DNS configuration for SPF
 * **vulcan-tls** - Analyzes TLS health of an asset
 * **vulcan-trivy** - Checks if a Docker image uses vulnerable packages or dependencies using Trivy
 * **vulcan-unclassified** - Example vulnerability to test the monitoring of unclassified vulnerabilities - not for production

@@ -1,2 +1,0 @@
-Description = "This checks looks for well known or custom list of exposed path in a HTTP URL"
-AssetTypes = ["WebAddress"]
