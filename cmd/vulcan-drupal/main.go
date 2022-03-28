@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Adevinta
+Copyright 2022 Adevinta
 */
 
 package main
