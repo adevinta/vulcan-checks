@@ -33,7 +33,6 @@ const (
 var (
 	checkName        = "vulcan-trivy"
 	logger           = check.NewCheckLog(checkName)
-	trivyCachePath   = "trivy_cache"
 	reportOutputFile = "report.json"
 )
 
@@ -122,7 +121,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	// Build trivy command with arguments.
 	triviCmd := "./trivy"
 	triviArgs := []string{
-		"--cache-dir", trivyCachePath,
 		"image",
 		"-f", "json",
 		"-o", reportOutputFile,
@@ -306,7 +304,7 @@ func generateDetails(registry, target string) string {
 		"Run the following command to obtain the full report in your computer.",
 		"If using a public docker registry:",
 		fmt.Sprintf(`
-	docker run -it --rm aquasec/trivy %s`, target,
+	docker run -it --rm aquasec/trivy image %s`, target,
 		),
 		"\n",
 		"If using a private docker registry:",
@@ -315,7 +313,7 @@ func generateDetails(registry, target string) string {
 		-e TRIVY_AUTH_URL=https://%s \
 		-e TRIVY_USERNAME=$REGISTRY_USERNAME \
 		-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
-		aquasec/trivy %s`, registry, target,
+		aquasec/trivy image %s`, registry, target,
 		),
 	}
 	return strings.Join(details, "\n")
