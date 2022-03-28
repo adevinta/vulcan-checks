@@ -1,0 +1,8 @@
+[Check]
+Target = "https://github.com/adevinta/vulcan-checks.git"
+AssetType = "GitRepository"
+# example targets:
+# https://github.com/example/xxx.git
+
+# example Options
+# Options = '{"force_update_db": false, "ignore_unfixed": false, "severities":"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"}'
