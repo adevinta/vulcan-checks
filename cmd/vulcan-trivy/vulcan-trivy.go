@@ -24,10 +24,7 @@ import (
 	"github.com/avast/retry-go"
 )
 
-const (
-	vulnTruncateLimit   = 30
-	vulnCVETrucateLimit = 10
-)
+const vulnCVETrucateLimit = 10
 
 var (
 	checkName        = "vulcan-trivy"
@@ -216,18 +213,6 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			})
 		}
 
-		for key, l := range outdatedPackageVulns {
-			// Sort outdated packages by severity
-			sort.Slice(l, func(i, j int) bool {
-				return getScore(l[i].severity) > getScore(l[j].severity)
-			})
-			// Keep only top vulnTruncateLimit
-			if len(l) > vulnTruncateLimit {
-				logger.Warnf("truncate to top %d vulnerabilities\n", vulnTruncateLimit)
-				outdatedPackageVulns[key] = l[0:vulnTruncateLimit]
-			}
-		}
-
 		vp := report.ResourcesGroup{
 			Name: "Package Vulnerabilities",
 			Header: []string{
@@ -239,6 +224,12 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			},
 		}
 		for key, l := range outdatedPackageVulns {
+
+			// Sort CVEs by severity
+			sort.Slice(l, func(i, j int) bool {
+				return getScore(l[i].severity) > getScore(l[j].severity)
+			})
+
 			vp.Rows = []map[string]string{}
 			maxScore := getScore("NONE")
 			for i, l := range l {
@@ -271,7 +262,7 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				Recommendations: []string{
 					"Update affected packages to the versions specified in the resources table or newer.",
 				},
-				CWEID:  937, // TODO: Should we keep this or compute from the from CWES? What if more than one?
+				CWEID:  937,
 				Labels: []string{"potential", "docker"},
 				// Finding attributes.
 				Score:     maxScore,
