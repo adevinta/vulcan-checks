@@ -95,17 +95,13 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
-	// TODO: If target is "malformed" perhaps we should not return error
-	// but only log and error and return.
 	slashSplit := strings.SplitAfterN(target, "/", 2)
 	if len(slashSplit) <= 1 {
-		return errors.New(target + " is not a valid target")
+		logger.Warnf("%s does not have a path", target)
 	}
-	// TODO: If target is "malformed" perhaps we should not return error
-	// but only log and error and return.
-	targetSplit := strings.Split(slashSplit[1], ":")
+	targetSplit := strings.Split(slashSplit[len(slashSplit)-1], ":")
 	if len(targetSplit) != 2 {
-		return errors.New(target + "is not a valid target")
+		logger.Warnf("%s does not have a tag", target)
 	}
 
 	registryDomain := strings.Trim(slashSplit[0], "/")
