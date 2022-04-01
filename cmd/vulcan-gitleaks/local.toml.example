@@ -1,0 +1,4 @@
+[Check]
+Target = "http://www.example.com"
+AssetType = "GitRepository"
+Options = "{\"depth\":2}"
