@@ -18,6 +18,10 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 )
 
+const (
+	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
+)
+
 var (
 	pathToRuby = "ruby"
 	rubyArgs   = "-W0"
@@ -30,6 +34,11 @@ var (
 	wpscanScopeParams = []string{"--scope"}
 	wpscanTokenParams = []string{"--api-token"}
 	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
+
+	// --ignore-main-redirect string matching list.
+	ignoreMainRedirect = []string{
+		"okta.com",
+	}
 )
 
 // WpScanReport holds the report produced by a wpscan run.
@@ -197,8 +206,17 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 		return &WpScanReport{}, errors.New(report.Aborted)
 	case 4:
 		if strings.HasPrefix(report.Aborted, "The URL supplied redirects to") {
-			params = append(params, "--ignore-main-redirect")
-			return runWpScanCmd(ctx, logger, pathToRuby, params)
+			addIgnoreMainRedirectParam := false
+			for _, s := range ignoreMainRedirect {
+				if strings.Contains(report.Aborted, s) {
+					addIgnoreMainRedirectParam = true
+					break
+				}
+			}
+			if addIgnoreMainRedirectParam {
+				params = append(params, "--ignore-main-redirect")
+				return runWpScanCmd(ctx, logger, pathToRuby, params)
+			}
 		}
 		if strings.HasSuffix(report.Aborted, "Please re-try with --random-user-agent") {
 			params = append(params, "--random-user-agent")
@@ -206,6 +224,6 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 		}
 		return &WpScanReport{}, errors.New(report.Aborted)
 	default:
-		return &WpScanReport{}, errors.New("unexpected wpscan commad exit code")
+		return &WpScanReport{}, errors.New("unexpected wpscan command exit code")
 	}
 }

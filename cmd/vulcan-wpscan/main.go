@@ -55,6 +55,10 @@ func main() {
 		}
 
 		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
+		if err != nil && err.Error() == NotAWordPressMessage {
+			logger.Warnf("%s", err)
+			return checkstate.ErrAssetUnreachable
+		}
 		if err != nil {
 			return err
 		}
