@@ -7,7 +7,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -89,6 +88,7 @@ var (
 		ImpactDetails:   "An attacker may be able to use the exposed port to exploit a vulnerability in the service.",
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Block access to SSH ports from the internet."},
+		Labels:          []string{"issue", "ssh"},
 	}
 	libsshVuln = report.Vulnerability{
 		CWEID:           288,
@@ -97,6 +97,7 @@ var (
 		Score:           report.SeverityThresholdHigh,
 		Recommendations: []string{"Update to the latest version of the libssh library."},
 		References:      []string{"https://www.libssh.org/2018/10/16/libssh-0-8-4-and-0-7-6-security-and-bugfix-release/", "https://www.libssh.org/security/advisories/CVE-2018-10933.txt"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	passAuthVuln = report.Vulnerability{
 		CWEID:           309,
@@ -105,6 +106,7 @@ var (
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	allowSSHv1Vuln = report.Vulnerability{
 		CWEID:           937,
@@ -113,6 +115,7 @@ var (
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Disable SSH version 1."},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakKexConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -121,6 +124,7 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakCiphersConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -129,6 +133,7 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	weakMACsConfigVuln = report.Vulnerability{
 		CWEID:           326,
@@ -137,12 +142,14 @@ var (
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 	comprAlgoConfigVuln = report.Vulnerability{
 		Summary:         strings.Title("Compression Algorithms Misconfiguration"),
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
+		Labels:          []string{"issue", "ssh"},
 	}
 )
 
@@ -177,12 +184,12 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 			// NOTE: this doesn't cover different types of errors that ssh_scan can produce
 			continue
 		}
-		vulnDb := map[string]report.Vulnerability{}
 		// Exposed SSH
-		exposedSSHVuln.Details += fmt.Sprintf("* Exposed SSH Port in %v\n", i.Port)
-		exposedSSHVuln.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-		exposedSSHVuln.ID = computeVulnerabilityID(target, exposedSSHVuln.AffectedResource, exposedSSHVuln.Summary, exposedSSHVuln.Score)
-		vulnDb["exposedSSHVuln"] = exposedSSHVuln
+		v := exposedSSHVuln
+		v.Details += fmt.Sprintf("* Exposed SSH Port in %v\n", i.Port)
+		v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+		v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+		vulnArray = append(vulnArray, v)
 
 		if strings.Contains(strings.ToLower(i.ServerBanner), "libssh") {
 			r.notes += fmt.Sprintf("* libssh possibly detected in port %v: %v\n", i.Port, i.ServerBanner)
@@ -192,14 +199,15 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 		if i.SSHLib == "libssh" {
 			matches := bannerRE.FindStringSubmatch(i.ServerBanner)
 			if len(matches) > 0 {
-				v, err := version.NewVersion(matches[1])
+				ver, err := version.NewVersion(matches[1])
 				// Don't stop parsing the results if a version hasn't been found.
 				if err == nil {
-					if c6.Check(v) || c7.Check(v) || c8.Check(v) {
-						libsshVuln.Details += fmt.Sprintf("* libssh version %v in port %v may be vulnerable\n", v.String(), i.Port)
-						libsshVuln.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-						libsshVuln.ID = computeVulnerabilityID(target, libsshVuln.AffectedResource, libsshVuln.Summary, libsshVuln.Score)
-						vulnDb["libsshVuln"] = libsshVuln
+					if c6.Check(ver) || c7.Check(ver) || c8.Check(ver) {
+						v := libsshVuln
+						v.Details += fmt.Sprintf("* libssh version %v in port %v may be vulnerable\n", ver.String(), i.Port)
+						v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+						v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+						vulnArray = append(vulnArray, v)
 					}
 				}
 			}
@@ -216,72 +224,50 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 		// Evaluate recommendations and map them to vulnerabilities
 		for _, j := range i.Compliance.Recommendations {
 			if strings.Contains(j, kexRecommendationPattern) {
-				tmp, ok := vulnDb["weakKexConfigVuln"]
-				if !ok {
-					tmp = weakKexConfigVuln
-				}
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
-				vulnDb["weakKexConfigVuln"] = tmp
+				v := weakKexConfigVuln
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, ciphersRecommendationPattern) {
-				tmp, ok := vulnDb["weakCiphersConfigVuln"]
-				if !ok {
-					tmp = weakCiphersConfigVuln
-				}
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
-				vulnDb["weakCiphersConfigVuln"] = tmp
+				v := weakCiphersConfigVuln
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, macsRecommendationPattern) {
-				tmp, ok := vulnDb["weakMACsConfigVuln"]
-				if !ok {
-					tmp = weakMACsConfigVuln
-				}
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
-				vulnDb["weakMACsConfigVuln"] = tmp
+				v := weakMACsConfigVuln
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, authRecommendationPattern) {
-				tmp, ok := vulnDb["passAuthVuln"]
-				if !ok {
-					tmp = passAuthVuln
-				}
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				tmp.ID = computeVulnerabilityID(target, tmp.AffectedResource, tmp.Summary, tmp.Score)
-				vulnDb["passAuthVuln"] = tmp
+				v := passAuthVuln
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, sshv1RecommendationPattern) {
-				tmp, ok := vulnDb["allowSSHv1Vuln"]
-				if !ok {
-					tmp = allowSSHv1Vuln
-				}
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				vulnDb["allowSSHv1Vuln"] = tmp
+				v := allowSSHv1Vuln
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, comprRecommendationPattern) {
-				tmp, ok := vulnDb["comprAlgoConfigVuln"]
-				if !ok {
-					tmp = comprAlgoConfigVuln
-				}
-				tmp.Recommendations = append(tmp.Recommendations, j)
-				tmp.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				tmp.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
-				vulnDb["comprAlgoConfigVuln"] = tmp
+				v := comprAlgoConfigVuln
+				v.Recommendations = append(v.Recommendations, j)
+				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				vulnArray = append(vulnArray, v)
 			}
-
-		}
-		// Add vulnerabilities to an array
-		for _, v := range vulnDb {
-			vulnArray = append(vulnArray, v)
 		}
 	}
-
 	return vulnArray, nil
 }
 
@@ -289,17 +275,6 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 func (r *runner) ProcessOutputChunk(chunk []byte) bool {
 	r.output = append(r.output, chunk...)
 	return true
-}
-
-func computeVulnerabilityID(target, affectedResource string, elems ...interface{}) string {
-	h := sha256.New()
-
-	fmt.Fprintf(h, "%s - %s", target, affectedResource)
-
-	for _, e := range elems {
-		fmt.Fprintf(h, " - %v", e)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) error {
