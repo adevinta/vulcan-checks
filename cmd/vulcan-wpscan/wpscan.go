@@ -185,7 +185,7 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	// CLI_OPTION_ERROR = 1 # Exceptions raised by OptParseValidator and OptionParser
 	// INTERRUPTED      = 2 # Interrupt received
 	// EXCEPTION        = 3 # Unhandled/unexpected Exception occured
-	// ERROR			= 4 # Error, scan did not finish
+	// ERROR            = 4 # Error, scan did not finish
 	// VULNERABLE       = 5 # The target has at least one vulnerability
 
 	report := &WpScanReport{}
