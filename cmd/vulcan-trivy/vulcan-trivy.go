@@ -24,7 +24,7 @@ import (
 	"github.com/avast/retry-go"
 )
 
-const vulnCVETrucateLimit = 10
+const vulnCVETrucateLimit = 30
 
 var (
 	checkName        = "vulcan-trivy"
@@ -72,7 +72,7 @@ type outdatedPackage struct {
 	fixedBy  string
 	cve      string
 	link     string
-	cves     []string
+	cwes     []string
 }
 
 func main() {
@@ -205,7 +205,7 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				fixedBy:  tv.FixedVersion,
 				cve:      tv.VulnerabilityID,
 				link:     tv.PrimaryURL,
-				cves:     tv.CweIDs,
+				cwes:     tv.CweIDs,
 			})
 		}
 
@@ -213,10 +213,9 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			Name: "Package Vulnerabilities",
 			Header: []string{
 				"FixedBy",
-				"CVE",
+				"Vulnerabilities",
 				"Severity",
 				"CWEs",
-				"Link",
 			},
 		}
 		for key, l := range outdatedPackageVulns {
@@ -228,9 +227,13 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 
 			vp.Rows = []map[string]string{}
 			maxScore := getScore("NONE")
+			fingerprint := make([]string, len(l))
 			for i, l := range l {
+
+				fingerprint = append(fingerprint, l.cve+l.severity)
+				// Compute the fingerprint for all the cves but add only vulnCVETrucateLimit to the table
 				if i > vulnCVETrucateLimit {
-					break
+					continue
 				}
 				newScore := getScore(l.severity)
 				if newScore > maxScore {
@@ -238,14 +241,13 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				}
 				row := make(map[string]string, len(vp.Header))
 				row["FixedBy"] = l.fixedBy
-				if l.cves != nil {
-					row["CWEs"] = strings.Join(l.cves, ",")
+				if l.cwes != nil {
+					row["CWEs"] = strings.Join(l.cwes, ",")
 				}
-				row["CVE"] = l.cve
 				if l.link == "" {
 					l.link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", l.cve)
 				}
-				row["Link"] = l.link
+				row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", l.cve, l.link)
 				row["Severity"] = l.severity
 				vp.Rows = append(vp.Rows, row)
 			}
@@ -266,20 +268,17 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				Resources: []report.ResourcesGroup{vp},
 			}
 
-			vuln.Fingerprint = helpers.ComputeFingerprint()
-			if tt.Class == "os-pkgs" {
-				// Type is the os family (alpine, centos, ...)
-				// Target includes the image uri (i.e. adevinta/vulcan-local:latest (alpine 3.15.1)) -> Removed
-				// Path is empty -> removed
-				// Example "os-pkgs alpine libretls:3.3.4-r2"
-				vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s %s %s:%s", tt.Class, tt.Type, key.name, key.version))
-			} else if key.path != "" {
-				// Example: "lang-pkgs jar Java-flyway/lib/aad/jackson-databind-2.10.5.1.jar com.fasterxml.jackson.core:jackson-databind:2.10.5.1"
-				vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s %s %s-%s %s:%s", tt.Class, tt.Type, tt.Target, key.path, key.name, key.version))
-			} else {
-				// Example: "lang-pkgs gobinary app/vulcan-api github.com/docker/distribution:v2.7.1+incompatible"
-				vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s %s %s %s:%s", tt.Class, tt.Type, tt.Target, key.name, key.version))
+			vuln.Fingerprint = helpers.ComputeFingerprint(fingerprint)
+			path := ""
+			switch {
+			case tt.Class == "os-pkgs":
+				path = tt.Type // alpine, centos, ...
+			case key.path != "":
+				path = key.path
+			default:
+				path = tt.Target
 			}
+			vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s %s:%s", path, key.name, key.version))
 
 			state.AddVulnerabilities(vuln)
 		}
