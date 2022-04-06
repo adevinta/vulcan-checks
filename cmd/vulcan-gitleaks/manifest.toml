@@ -1,5 +1,5 @@
 Description = "Finds potential secrets in source code from a Git repository using gitleaks"
-Timeout = 7200 # 2 hours
+Timeout = 900 # 15 minutes
 AssetTypes = ["GitRepository"]
 RequiredVars = []
-Options = '{"depth": 1, "branch":"", "ruleset":"p/r2c-security-audit"}'
+Options = '{"depth": 1, "branch":""}'

@@ -7,7 +7,6 @@ ENTRYPOINT ["/usr/bin/env"]
 
 
 # Install check
-COPY vulcan-gitleaks /vulcan-gitleaks
-USER root
+COPY --chown=gitleaks vulcan-gitleaks /vulcan-gitleaks
 
 CMD ["/vulcan-gitleaks"]

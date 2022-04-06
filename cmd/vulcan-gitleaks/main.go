@@ -21,6 +21,7 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
@@ -33,10 +34,10 @@ const (
 var (
 	checkName        = "vulcan-gitleaks"
 	logger           = check.NewCheckLog(checkName)
-	reportOutputFile = "report.json"
+	reportOutputFile = filepath.Join(os.TempDir(), "report.json")
 	leakedSecret     = report.Vulnerability{
-		Summary:       "Secrets Leaked in Git Repository",
-		Description:   "Some secrets have been found stored in the Git repository. These secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
+		Summary:       "Secret Leaked in Git Repository",
+		Description:   "A secret has been found stored in the Git repository. This secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 		CWEID:         540,
 		Score:         report.SeverityThresholdNone, // TODO Decide what criticity a leaked secret should have.
 		ImpactDetails: "Anyone with access to the repository could retrieve the leaked secrets and use them the future with malicious intent.",
@@ -49,17 +50,18 @@ var (
 		References: []string{
 			"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 		},
-		Resources: []report.ResourcesGroup{{
-			Name: "Secrets found",
-			Header: []string{
-				"RuleID",
-				"Description",
-				"StartLine",
-				"StartColumn",
-				"EndLine",
-				"EndColumn",
-			},
-		}},
+	}
+	details  = "This secret was found by the gitleaks rule '%s', with ID '%s'."
+	resource = report.ResourcesGroup{
+		Name: "Secrets found",
+		Header: []string{
+			"RuleID",
+			"Description",
+			"StartLine",
+			"StartColumn",
+			"EndLine",
+			"EndColumn",
+		},
 	}
 )
 
@@ -68,7 +70,6 @@ type options struct {
 	Branch        string   `json:"branch"`
 	GitHistory    bool     `json:"history"`
 	ExcludedRules []string `json:"excludedRules"`
-	// ExcludedFindings: It would be interesting to allow the users to exclude known FP from the scans, this could be integrated with vulcan-local pretty easily
 }
 
 func main() {
@@ -177,35 +178,34 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 }
 
 func processVulns(results []Finding, opt options, repoPath string, target string, state checkstate.State) error {
-	// Return if there are no secrets.
+	// Return if there are no findings.
 	if len(results) < 1 {
 		return nil
 	}
 
 	// Group secrets by file.
-	resources := map[string][]map[string]string{}
 	for _, f := range results {
 		if stringInSlice(f.RuleID, &opt.ExcludedRules) {
 			continue
 		}
 		file := strings.TrimPrefix(f.File, repoPath)
-		resources[file] = append(resources[file], map[string]string{
-			"RuleID":      f.RuleID,
-			"Description": f.Description,
-			"StartLine":   fmt.Sprint(f.StartLine),
-			"StartColumn": fmt.Sprint(f.StartColumn),
-			"EndLine":     fmt.Sprint(f.EndLine),
-			"EndColumn":   fmt.Sprint(f.EndColumn),
-			// "Fingerprint": We could add a Fingerprint here to allow users to except concrete findings.
-		})
-	}
-
-	// Create a vulnerability for each file.
-	for file := range resources {
 		v := leakedSecret
-		v.AffectedResource = strings.Join([]string{target, file}, "")
-		v.Fingerprint = helpers.ComputeFingerprint(resources[file]) // TODO: think a proper way to compute the fingerprint
-		v.Resources[0].Rows = resources[file]
+		s, _ := bcrypt.GenerateFromPassword([]byte(f.Secret), 0)
+		v.AffectedResource = string(s)
+		v.AffectedResourceString = strings.Join([]string{target, file, "#", fmt.Sprint(f.StartLine)}, "")
+		v.Fingerprint = helpers.ComputeFingerprint("")
+		v.Details = fmt.Sprintf(details, f.Description, f.RuleID)
+		resource.Rows = []map[string]string{
+			{
+				"RuleID":      f.RuleID,
+				"Description": f.Description,
+				"StartLine":   fmt.Sprint(f.StartLine),
+				"StartColumn": fmt.Sprint(f.StartColumn),
+				"EndLine":     fmt.Sprint(f.EndLine),
+				"EndColumn":   fmt.Sprint(f.EndColumn),
+			},
+		}
+		v.Resources = []report.ResourcesGroup{resource}
 		state.AddVulnerabilities(v)
 	}
 
