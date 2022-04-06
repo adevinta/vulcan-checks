@@ -18,11 +18,11 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.42.9
 	github.com/cenkalti/backoff/v4 v4.1.2
+	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
-	github.com/knqyf263/go-rpm-version v0.0.0-20170716094938-74609b86c936
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
@@ -30,14 +30,16 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.5.1 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
-	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
-	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
+	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
+	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461 // indirect
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
-	gopkg.in/resty.v1 v1.12.0
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
