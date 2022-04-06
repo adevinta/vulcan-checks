@@ -17,6 +17,7 @@ import (
 	"time"
 
 	report "github.com/adevinta/vulcan-report"
+	"github.com/mcuadros/go-version"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -24,7 +25,7 @@ import (
 	"github.com/avast/retry-go"
 )
 
-const vulnCVETrucateLimit = 30
+const vulnCVETrucateLimit = 10
 
 var (
 	checkName        = "vulcan-trivy"
@@ -63,10 +64,14 @@ type ScanResponse []struct {
 
 type outdatedKey struct {
 	name    string
-	path    string
 	version string
 }
 
+type vulnData struct {
+	packages []outdatedPackage
+	paths    map[string]interface{}
+	fixedBy  string
+}
 type outdatedPackage struct {
 	severity string
 	fixedBy  string
@@ -187,101 +192,131 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 }
 
 func processVulns(results ScanResponse, registryEnvDomain, target string, state checkstate.State) error {
+	outdatedPackageVulns := make(map[outdatedKey]*vulnData)
 	for _, tt := range results {
-
-		outdatedPackageVulns := make(map[outdatedKey][]outdatedPackage)
 		for _, tv := range tt.Vulnerabilities {
 			key := outdatedKey{
 				name:    tv.PkgName,
 				version: tv.InstalledVersion,
-				path:    tv.PkgPath,
 			}
-			l, ok := outdatedPackageVulns[key]
-			if !ok {
-				l = []outdatedPackage{}
+
+			path := ""
+			switch {
+			case tt.Class == "os-pkgs":
+				path = tt.Type // alpine, centos, ...
+			case tv.PkgPath != "":
+				path = tv.PkgPath
+			default:
+				path = tt.Target
 			}
-			outdatedPackageVulns[key] = append(l, outdatedPackage{
+
+			pkg := outdatedPackage{
 				severity: tv.Severity,
 				fixedBy:  tv.FixedVersion,
 				cve:      tv.VulnerabilityID,
 				link:     tv.PrimaryURL,
 				cwes:     tv.CweIDs,
-			})
-		}
-
-		vp := report.ResourcesGroup{
-			Name: "Package Vulnerabilities",
-			Header: []string{
-				"FixedBy",
-				"Vulnerabilities",
-				"Severity",
-				"CWEs",
-			},
-		}
-		for key, l := range outdatedPackageVulns {
-
-			// Sort CVEs by severity
-			sort.Slice(l, func(i, j int) bool {
-				return getScore(l[i].severity) > getScore(l[j].severity)
-			})
-
-			vp.Rows = []map[string]string{}
-			maxScore := getScore("NONE")
-			fingerprint := make([]string, len(l))
-			for i, l := range l {
-
-				fingerprint = append(fingerprint, l.cve+l.severity)
-				// Compute the fingerprint for all the cves but add only vulnCVETrucateLimit to the table
-				if i > vulnCVETrucateLimit {
-					continue
-				}
-				newScore := getScore(l.severity)
-				if newScore > maxScore {
-					maxScore = newScore
-				}
-				row := make(map[string]string, len(vp.Header))
-				row["FixedBy"] = l.fixedBy
-				if l.cwes != nil {
-					row["CWEs"] = strings.Join(l.cwes, ",")
-				}
-				if l.link == "" {
-					l.link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", l.cve)
-				}
-				row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", l.cve, l.link)
-				row["Severity"] = l.severity
-				vp.Rows = append(vp.Rows, row)
 			}
 
-			// Build the vulnerability.
-			vuln := report.Vulnerability{
-				// Issue attributes.
-				Summary:     "Outdated Packages in Docker Image",
-				Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
-				Recommendations: []string{
-					"Update affected packages to the versions specified in the resources table or newer.",
-				},
-				CWEID:  937,
-				Labels: []string{"potential", "docker"},
-				// Finding attributes.
-				Score:     maxScore,
-				Details:   generateDetails(registryEnvDomain, target),
-				Resources: []report.ResourcesGroup{vp},
+			det, ok := outdatedPackageVulns[key]
+			if ok {
+				det.packages = append(det.packages, pkg)
+				if _, ok := det.paths[path]; !ok {
+					det.paths[path] = path
+				}
+				if version.Compare(version.Normalize(tv.FixedVersion), version.Normalize(det.fixedBy), ">") {
+					det.fixedBy = tv.FixedVersion
+				}
+			} else {
+				det = &vulnData{
+					packages: []outdatedPackage{pkg},
+					paths:    map[string]interface{}{path: nil},
+					fixedBy:  tv.FixedVersion,
+				}
+				outdatedPackageVulns[key] = det
 			}
-
-			vuln.Fingerprint = helpers.ComputeFingerprint(fingerprint)
-			path := ""
-			switch {
-			case tt.Class == "os-pkgs":
-				path = tt.Type // alpine, centos, ...
-			case key.path != "":
-				path = key.path
-			default:
-				path = tt.Target
-			}
-			vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s %s:%s", path, key.name, key.version))
-
-			state.AddVulnerabilities(vuln)
 		}
+	}
+	vp := report.ResourcesGroup{
+		Name: "Package Vulnerabilities",
+		Header: []string{
+			"FixedBy",
+			"Vulnerabilities",
+			"Severity",
+			"CWEs",
+		},
+	}
+
+	for key, det := range outdatedPackageVulns {
+		l := det.packages
+
+		// Sort CVEs by severity
+		sort.Slice(l, func(i, j int) bool {
+			return getScore(l[i].severity) > getScore(l[j].severity)
+		})
+
+		vp.Rows = []map[string]string{}
+		maxScore := getScore("NONE")
+		fingerprint := make([]string, len(l))
+		for i, p := range l {
+
+			fingerprint = append(fingerprint, p.cve+p.severity)
+			// Compute the fingerprint for all the cves but add only vulnCVETrucateLimit to the table
+			if i > vulnCVETrucateLimit {
+				continue
+			}
+			newScore := getScore(p.severity)
+			if newScore > maxScore {
+				maxScore = newScore
+			}
+			row := make(map[string]string, len(vp.Header))
+			row["FixedBy"] = p.fixedBy
+			if p.cwes != nil {
+				urls := []string{}
+				for _, cwe := range p.cwes {
+					urls = append(urls, fmt.Sprintf("[%s](https://cwe.mitre.org/data/definitions/%s.html)", cwe, strings.TrimPrefix(cwe, "CWE-")))
+				}
+				row["CWEs"] = strings.Join(urls, ",")
+			}
+			if p.link == "" {
+				p.link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", p.cve)
+			}
+			row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", p.cve, p.link)
+			row["Severity"] = p.severity
+			vp.Rows = append(vp.Rows, row)
+		}
+		af := strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version))
+
+		ids := []string{}
+		for path := range det.paths {
+			ids = append(ids, fmt.Sprintf("Path: %s", path))
+		}
+
+		var rec string
+		if det.fixedBy != "" {
+			rec = fmt.Sprintf("Upgrade %s to %s or newer.", af, det.fixedBy)
+		} else {
+			// this should't happen
+			rec = fmt.Sprintf("Upgrade %s to newer versions.", af)
+		}
+
+		// Build the vulnerability.
+		vuln := report.Vulnerability{
+			// Issue attributes.
+			AffectedResource: af,
+			Fingerprint:      helpers.ComputeFingerprint(det.paths, fingerprint),
+			Summary:          "Outdated Packages in Docker Image",
+			Description:      "Vulnerabilities have been found in outdated packages installed in the Docker image.",
+			Recommendations:  []string{rec},
+			CWEID:            937,
+			Labels:           []string{"potential", "docker"},
+			// Finding attributes.
+			Score:         maxScore,
+			Details:       generateDetails(registryEnvDomain, target),
+			Resources:     []report.ResourcesGroup{vp},
+			ImpactDetails: strings.Join(ids, "\n"),
+		}
+		state.AddVulnerabilities(vuln)
 	}
 
 	return nil
