@@ -285,31 +285,27 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			row["Severity"] = p.severity
 			vp.Rows = append(vp.Rows, row)
 		}
-		af := strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version))
 
 		ids := []string{}
 		for path := range det.paths {
-			ids = append(ids, fmt.Sprintf("Path: %s", path))
+			ids = append(ids, fmt.Sprintf("Location: %s", path))
 		}
-
-		var rec string
 		if det.fixedBy != "" {
-			rec = fmt.Sprintf("Upgrade %s to %s or newer.", af, det.fixedBy)
-		} else {
-			// this should't happen
-			rec = fmt.Sprintf("Upgrade %s to newer versions.", af)
+			ids = append(ids, fmt.Sprintf("Fixed by: %s", det.fixedBy))
 		}
 
 		// Build the vulnerability.
 		vuln := report.Vulnerability{
 			// Issue attributes.
-			AffectedResource: af,
+			AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version)),
 			Fingerprint:      helpers.ComputeFingerprint(det.paths, fingerprint),
 			Summary:          "Outdated Packages in Docker Image",
 			Description:      "Vulnerabilities have been found in outdated packages installed in the Docker image.",
-			Recommendations:  []string{rec},
-			CWEID:            937,
-			Labels:           []string{"potential", "docker"},
+			Recommendations: []string{
+				"Update affected packages to the versions specified in the resources table or newer.",
+			},
+			CWEID:  937,
+			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 			Score:         maxScore,
 			Details:       generateDetails(registryEnvDomain, target),
