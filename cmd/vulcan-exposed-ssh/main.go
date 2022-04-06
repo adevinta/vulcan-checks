@@ -187,7 +187,7 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 		// Exposed SSH
 		v := exposedSSHVuln
 		v.Details += fmt.Sprintf("* Exposed SSH Port in %v\n", i.Port)
-		v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+		v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 		v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 		vulnArray = append(vulnArray, v)
 
@@ -205,7 +205,7 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 					if c6.Check(ver) || c7.Check(ver) || c8.Check(ver) {
 						v := libsshVuln
 						v.Details += fmt.Sprintf("* libssh version %v in port %v may be vulnerable\n", ver.String(), i.Port)
-						v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+						v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 						v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 						vulnArray = append(vulnArray, v)
 					}
@@ -225,7 +225,7 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 		for _, j := range i.Compliance.Recommendations {
 			if strings.Contains(j, kexRecommendationPattern) {
 				v := weakKexConfigVuln
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
@@ -234,35 +234,35 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 				v := weakCiphersConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, macsRecommendationPattern) {
 				v := weakMACsConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, authRecommendationPattern) {
 				v := passAuthVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, sshv1RecommendationPattern) {
 				v := allowSSHv1Vuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, comprRecommendationPattern) {
 				v := comprAlgoConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "ssh")
+				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
 				vulnArray = append(vulnArray, v)
 			}
