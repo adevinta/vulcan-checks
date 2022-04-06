@@ -36,6 +36,18 @@ var (
 	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
 
 	// --ignore-main-redirect string matching list.
+	// If the target redirects to a different (sub)domain, WPScan tool aborts
+	// the execution unless '--ignore-main-redirect' parameter is specified.
+	// This is the expected behaviour in most of the cases to avoid having
+	// duplicate findings when scanning. For example, if example.com redirects
+	// to www.example.com we want vulcan-wpscan to scan only www.example.com.
+	// However, there are some subtile cases where we want WPScan tool to try
+	// scanning the target even if there is a redirection in place. For example,
+	// a site with the Okta Login Plugin may redirect some endpoints to Okta,
+	// however WPScan can still scan some content which is not redirected.
+	// ignoreMainRedirect will add '--ignore-main-redirect' parameter in the
+	// WPScan execution for the redirections containing any of the patterns in
+	// the list.
 	ignoreMainRedirect = []string{
 		"okta.com",
 	}
