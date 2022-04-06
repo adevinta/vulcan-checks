@@ -188,7 +188,7 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 		v := exposedSSHVuln
 		v.Details += fmt.Sprintf("* Exposed SSH Port in %v\n", i.Port)
 		v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-		v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+		v.Fingerprint = helpers.ComputeFingerprint()
 		vulnArray = append(vulnArray, v)
 
 		if strings.Contains(strings.ToLower(i.ServerBanner), "libssh") {
@@ -206,7 +206,7 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 						v := libsshVuln
 						v.Details += fmt.Sprintf("* libssh version %v in port %v may be vulnerable\n", ver.String(), i.Port)
 						v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-						v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+						v.Fingerprint = helpers.ComputeFingerprint()
 						vulnArray = append(vulnArray, v)
 					}
 				}
@@ -228,42 +228,42 @@ func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, ciphersRecommendationPattern) {
 				v := weakCiphersConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, macsRecommendationPattern) {
 				v := weakMACsConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, authRecommendationPattern) {
 				v := passAuthVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, sshv1RecommendationPattern) {
 				v := allowSSHv1Vuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			} else if strings.Contains(j, comprRecommendationPattern) {
 				v := comprAlgoConfigVuln
 				v.Recommendations = append(v.Recommendations, j)
 				v.Details += fmt.Sprintf("* Affected port: %v\n", i.Port)
 				v.AffectedResource = fmt.Sprintf("%d/%s", i.Port, "tcp")
-				v.Fingerprint = helpers.ComputeFingerprint(v.Summary, v.Score)
+				v.Fingerprint = helpers.ComputeFingerprint()
 				vulnArray = append(vulnArray, v)
 			}
 		}
