@@ -1,3 +1,7 @@
+/*
+Copyright 2022 Adevinta
+*/
+
 package main
 
 import (

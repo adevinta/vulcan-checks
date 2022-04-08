@@ -1,3 +1,5 @@
+# Copyright 2022 Adevinta
+
 Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
 # skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates

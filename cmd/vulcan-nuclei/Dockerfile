@@ -1,3 +1,5 @@
+# Copyright 2022 Adevinta
+
 FROM golang:1.17-alpine as base
 WORKDIR /
 RUN go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest && \
