@@ -1,7 +1,7 @@
 Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
-# skip_update_templates: You can specify wether or not to skip update vulcan-nuclei templates
-#                        from source repository.
+# skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates
+#                        or not from source repository. Default is false.
 # template_inclusion_list: You can specify which nuclei templates will run against the target.
 #                          If you leave the array empty ALL available templates will run.
 # template_exclusion_list: You can explicitly exclude nuclei templates.
