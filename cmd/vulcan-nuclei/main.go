@@ -182,13 +182,9 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 			Score:            getScore(v.Info.Severity),
 			References:       v.Info.Reference,
 			Recommendations:  recommendations,
-			Labels:           []string{"nuclei", v.Type},
+			Labels:           []string{"nuclei", "issue", v.Type},
 		}
-		if strings.EqualFold(v.Info.Severity, "info") {
-			vuln.Labels = append(vuln.Labels, "informational")
-		} else {
-			vuln.Labels = append(vuln.Labels, "issue")
-		}
+
 		findingResources := report.ResourcesGroup{
 			Name: "Finding",
 			Header: []string{
