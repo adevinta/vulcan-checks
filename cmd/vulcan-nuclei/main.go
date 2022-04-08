@@ -100,7 +100,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
-	isReachable := helpers.IsWebAddrsReachable(target)
+	isReachable, err := helpers.IsReachable(target, assetType, nil)
+	if err != nil {
+		logger.Warnf("Can not check asset reachability: %v", err)
+	}
 	if !isReachable {
 		return checkstate.ErrAssetUnreachable
 	}
