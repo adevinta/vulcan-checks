@@ -118,7 +118,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 	nucleiArgs := buildNucleiScanCmdArgs(target, opt.Severities)
 
-	nucleiFindings := gatherNucleiFindings(nucleiArgs, selectedTemplates)
+	nucleiFindings, err := gatherNucleiFindings(nucleiArgs, selectedTemplates)
+	if err != nil {
+		return err
+	}
 	// No vulnerabilities found. Return.
 	if len(nucleiFindings) < 1 {
 		logger.Info("no vulnerabilities found")
@@ -243,17 +246,20 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 	return vulnerabilities
 }
 
-func gatherNucleiFindings(nucleiArgs, selectedTemplates []string) []ResultEvent {
+func gatherNucleiFindings(nucleiArgs, selectedTemplates []string) ([]ResultEvent, error) {
+	cmdSucceed := []bool{}
 	nucleiFindings := []ResultEvent{}
 	for _, t := range selectedTemplates {
 		nucleiArgsWithTemplate := append(nucleiArgs, "-t", t)
 		output, err := runNucleiCmd(nucleiArgsWithTemplate)
 		if err != nil {
 			logger.Errorf("nuclei execution failed with template [%s]: %s", t, err)
+			cmdSucceed = append(cmdSucceed, false)
 			continue
 		}
 		if len(output) == 0 {
 			logger.Infof("no vulnerabilities found with template [%s]", t)
+			cmdSucceed = append(cmdSucceed, true)
 			continue
 		}
 		scanner := bufio.NewScanner(bytes.NewReader(output))
@@ -262,13 +268,22 @@ func gatherNucleiFindings(nucleiArgs, selectedTemplates []string) []ResultEvent 
 			err := json.Unmarshal(scanner.Bytes(), &v)
 			if err != nil {
 				logger.Errorf("unable to unmarshal vulnerability [%s]: %s", scanner.Text(), err)
+				cmdSucceed = append(cmdSucceed, false)
 				continue
 			}
 			nucleiFindings = append(nucleiFindings, v)
 		}
+		cmdSucceed = append(cmdSucceed, true)
 	}
 
-	return nucleiFindings
+	// Verify that at least one of the nuclei executions finished successfully.
+	for _, succeed := range cmdSucceed {
+		if succeed {
+			return nucleiFindings, nil
+		}
+	}
+
+	return []ResultEvent{}, errors.New("something went wrong, all nuclei executions failed")
 }
 
 func buildNucleiScanCmdArgs(target string, severities []string) []string {
