@@ -112,109 +112,32 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return checkstate.ErrAssetUnreachable
 	}
 
-	if !opt.SkipUpdateTemplates {
-		_, err := runNucleiCmd([]string{"-update-templates"})
-		if err != nil {
-			return errors.New("nuclei update-templates command execution failed")
-		}
-	}
-
-	logger.Debugf("templates path: %s%s", nucleiTemplatePath, nucleiTemplateListJSON)
-	tl, err := templateList()
+	selectedTemplates, err := generateTemplateSelectionList(opt.SkipUpdateTemplates, opt.TemplateInclusionList, opt.TemplateExclusionList)
 	if err != nil {
-		return errors.New("unable to obtain nuclei template list")
+		return err
 	}
-	availableTemplates := make(map[string]void)
-	for _, t := range tl.Directory {
-		availableTemplates[t.Name] = void{}
-	}
-	logger.Infof("available templates: %+v", availableTemplates)
+	nucleiArgs := buildNucleiScanCmdArgs(target, opt.Severities)
 
-	selectedTemplates := make(map[string]void)
-	logger.Infof("included templates: %+v", opt.TemplateInclusionList)
-	if len(opt.TemplateInclusionList) > 0 {
-		for _, v := range opt.TemplateInclusionList {
-			if _, ok := availableTemplates[v]; ok {
-				selectedTemplates[v] = void{}
-			}
-		}
-	} else {
-		for k := range availableTemplates {
-			selectedTemplates[k] = void{}
-		}
-	}
-
-	// Remove exclued templates from selectedTemplates.
-	if len(opt.TemplateExclusionList) == 0 {
-		logger.Info("no template exclusion list provided, applying default template exclusion list")
-		opt.TemplateExclusionList = defaultTemplateExclusionList
-	}
-	logger.Infof("exclued templates: %+v", opt.TemplateExclusionList)
-
-	for _, v := range opt.TemplateExclusionList {
-		if _, ok := selectedTemplates[v]; ok {
-			delete(selectedTemplates, v)
-		}
-	}
-
-	logger.Infof("selected templates: %+v", selectedTemplates)
-	// No templates selected. Return.
-	if len(selectedTemplates) < 1 {
-		return nil
-	}
-
-	// Build arguments.
-	nucleiArgs := []string{
-		"-target", target,
-		"-c", "20",
-		"-json",
-		"-silent",
-		"-no-meta",
-		"-no-timestamp",
-		"-H", userAgent,
-	}
-
-	// Include only selected severities.
-	selectedSeverities := strings.Join(opt.Severities, ",")
-	if len(opt.Severities) > 0 {
-		logger.Infof("selected severities: %s", selectedSeverities)
-		severities := []string{"-severity", selectedSeverities}
-		nucleiArgs = append(nucleiArgs, severities...)
-	}
-
-	logger.Debugf("nuclei command args: [%s]", nucleiArgs)
-	var nucleiVulns []ResultEvent
-	for t := range selectedTemplates {
-		nucleiArgsWithTemplate := append(nucleiArgs, "-t", t)
-		output, err := runNucleiCmd(nucleiArgsWithTemplate)
-		if err != nil {
-			logger.Errorf("nuclei execution failed with template [%s]: %s", t, err)
-			continue
-		}
-		if len(output) == 0 {
-			logger.Infof("no vulnerabilities found with template [%s]", t)
-			continue
-		}
-		scanner := bufio.NewScanner(bytes.NewReader(output))
-		for scanner.Scan() {
-			var v ResultEvent
-			err := json.Unmarshal(scanner.Bytes(), &v)
-			if err != nil {
-				logger.Errorf("unable to unmarshal vulnerability [%s]: %s", scanner.Text(), err)
-				continue
-			}
-			nucleiVulns = append(nucleiVulns, v)
-		}
-	}
+	nucleiFindings := gatherNucleiFindings(nucleiArgs, selectedTemplates)
 	// No vulnerabilities found. Return.
-	if len(nucleiVulns) < 1 {
+	if len(nucleiFindings) < 1 {
 		logger.Info("no vulnerabilities found")
 		return nil
 	}
-	logger.Infof("nuclei found [%d] vulnerabilities", len(nucleiVulns))
+	logger.Infof("nuclei found [%d] vulnerabilities", len(nucleiFindings))
 
+	vulnerabilities := processNucleiFindings(target, nucleiFindings)
+	for _, v := range vulnerabilities {
+		state.AddVulnerabilities(*v)
+	}
+
+	return nil
+}
+
+func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*report.Vulnerability {
+	vulnerabilities := []*report.Vulnerability{}
 	rv := make(map[string]*report.Vulnerability)
-	for _, v := range nucleiVulns {
+	for _, v := range nucleiFindings {
 		// Create resources table row.
 		// Avoid store redundant information in the resources table.
 		matched := v.Matched
@@ -314,10 +237,118 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 		sort.Strings(fpValueSlice)
 		v.Fingerprint = helpers.ComputeFingerprint(fmt.Sprintf("%s", fpValueSlice))
-		state.AddVulnerabilities(*v)
+		vulnerabilities = append(vulnerabilities, v)
 	}
 
-	return nil
+	return vulnerabilities
+}
+
+func gatherNucleiFindings(nucleiArgs, selectedTemplates []string) []ResultEvent {
+	nucleiFindings := []ResultEvent{}
+	for _, t := range selectedTemplates {
+		nucleiArgsWithTemplate := append(nucleiArgs, "-t", t)
+		output, err := runNucleiCmd(nucleiArgsWithTemplate)
+		if err != nil {
+			logger.Errorf("nuclei execution failed with template [%s]: %s", t, err)
+			continue
+		}
+		if len(output) == 0 {
+			logger.Infof("no vulnerabilities found with template [%s]", t)
+			continue
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(output))
+		for scanner.Scan() {
+			var v ResultEvent
+			err := json.Unmarshal(scanner.Bytes(), &v)
+			if err != nil {
+				logger.Errorf("unable to unmarshal vulnerability [%s]: %s", scanner.Text(), err)
+				continue
+			}
+			nucleiFindings = append(nucleiFindings, v)
+		}
+	}
+
+	return nucleiFindings
+}
+
+func buildNucleiScanCmdArgs(target string, severities []string) []string {
+	// Build arguments.
+	nucleiArgs := []string{
+		"-target", target,
+		"-c", "20",
+		"-json",
+		"-silent",
+		"-no-meta",
+		"-no-timestamp",
+		"-H", userAgent,
+	}
+
+	// Include only selected severities.
+	selectedSeverities := strings.Join(severities, ",")
+	if len(severities) > 0 {
+		logger.Infof("selected severities: %s", selectedSeverities)
+		severities := []string{"-severity", selectedSeverities}
+		nucleiArgs = append(nucleiArgs, severities...)
+	}
+
+	logger.Debugf("nuclei scan command args: [%s]", nucleiArgs)
+
+	return nucleiArgs
+}
+
+func generateTemplateSelectionList(skipUpdateTemplates bool, inclusionList, exclusionList []string) ([]string, error) {
+	if !skipUpdateTemplates {
+		_, err := runNucleiCmd([]string{"-update-templates"})
+		if err != nil {
+			return []string{}, errors.New("nuclei update-templates command execution failed")
+		}
+	}
+
+	logger.Debugf("templates path: %s%s", nucleiTemplatePath, nucleiTemplateListJSON)
+	tl, err := templateList()
+	if err != nil {
+		return []string{}, errors.New("unable to obtain nuclei template list")
+	}
+	availableTemplates := make(map[string]void)
+	for _, t := range tl.Directory {
+		availableTemplates[t.Name] = void{}
+	}
+	logger.Infof("available templates: %+v", availableTemplates)
+
+	selectedTemplates := make(map[string]void)
+	logger.Infof("included templates: %+v", inclusionList)
+	if len(inclusionList) > 0 {
+		for _, v := range inclusionList {
+			if _, ok := availableTemplates[v]; ok {
+				selectedTemplates[v] = void{}
+			}
+		}
+	} else {
+		for k := range availableTemplates {
+			selectedTemplates[k] = void{}
+		}
+	}
+
+	// Remove exclued templates from selectedTemplates.
+	if len(exclusionList) == 0 {
+		logger.Info("no template exclusion list provided, applying default template exclusion list")
+		exclusionList = defaultTemplateExclusionList
+	}
+	logger.Infof("exclued templates: %+v", exclusionList)
+
+	for _, v := range exclusionList {
+		if _, ok := selectedTemplates[v]; ok {
+			delete(selectedTemplates, v)
+		}
+	}
+
+	selectedTemplateList := []string{}
+	for k := range selectedTemplates {
+		selectedTemplateList = append(selectedTemplateList, k)
+	}
+	logger.Infof("selected templates: %+v", selectedTemplateList)
+
+	return selectedTemplateList, nil
 }
 
 func templateList() (TemplateList, error) {
