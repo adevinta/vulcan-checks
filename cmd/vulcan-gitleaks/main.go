@@ -35,23 +35,23 @@ var (
 	checkName        = "vulcan-gitleaks"
 	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = filepath.Join(os.TempDir(), "report.json")
+	localTargets     = []string{"localhost", "host.docker.internal", "172.17.0.1"}
 	leakedSecret     = report.Vulnerability{
 		Summary:       "Secret Leaked in Git Repository",
-		Description:   "A secret has been found stored in the Git repository. This secrets may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
+		Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 		CWEID:         540,
-		Score:         report.SeverityThresholdNone, // TODO Decide what criticity a leaked secret should have.
-		ImpactDetails: "Anyone with access to the repository could retrieve the leaked secrets and use them the future with malicious intent.",
+		Score:         float32(report.SeverityHigh),
+		ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
 		Labels:        []string{"issue"},
 		Recommendations: []string{
 			"Completely remove the secrets from the repository as explained in the references.",
 			"Encrypt the secrets using a tool like AWS Secrets Manager or Vault.",
-			"Use a \"vulcan-exceptions.yaml\" file as described in the references.",
 		},
 		References: []string{
 			"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 		},
 	}
-	details  = "This secret was found by the gitleaks rule '%s', with ID '%s'."
+	details  = "This secret was found by the gitleaks rule '%s', with ID '%s'. If this doesn't correspond to a secret, it can be excluded from future scans marking it as false positive, or adding the following line to vulcan.yaml file for vulcan-local executions:\n \t- affectedResource: %s"
 	resource = report.ResourcesGroup{
 		Name: "Secrets found",
 		Header: []string{
@@ -149,8 +149,14 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	if opt.Branch != "" {
 		co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
 	}
-	_, err = git.PlainClone(repoPath, false, &co)
+	r, err := git.PlainClone(repoPath, false, &co)
 	if err != nil {
+		return err
+	}
+
+	b, err := r.Head()
+	if err != nil {
+		logger.Errorf("vulcan-gitleaks was not able to retrieve the working branch")
 		return err
 	}
 
@@ -174,10 +180,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// Process the secrets found by gitleaks.
-	return processVulns(results, opt, repoPath, target, state)
+	return processVulns(results, opt, repoPath, string(b.Name()), target, state)
 }
 
-func processVulns(results []Finding, opt options, repoPath string, target string, state checkstate.State) error {
+func processVulns(results []Finding, opt options, repoPath string, branch string, target string, state checkstate.State) error {
 	// Return if there are no findings.
 	if len(results) < 1 {
 		return nil
@@ -192,9 +198,9 @@ func processVulns(results []Finding, opt options, repoPath string, target string
 		v := leakedSecret
 		s, _ := bcrypt.GenerateFromPassword([]byte(f.Secret), 0)
 		v.AffectedResource = string(s)
-		v.AffectedResourceString = strings.Join([]string{target, file, "#", fmt.Sprint(f.StartLine)}, "")
+		v.AffectedResourceString = computeAffectedResource(target, branch, file, f.StartLine)
 		v.Fingerprint = helpers.ComputeFingerprint("")
-		v.Details = fmt.Sprintf(details, f.Description, f.RuleID)
+		v.Details = fmt.Sprintf(details, f.Description, f.RuleID, v.AffectedResource)
 		resource.Rows = []map[string]string{
 			{
 				"RuleID":      f.RuleID,
@@ -210,6 +216,15 @@ func processVulns(results []Finding, opt options, repoPath string, target string
 	}
 
 	return nil
+}
+
+func computeAffectedResource(target, branch string, file string, l int) string {
+	u, _ := url.Parse(target)
+	if stringInSlice(u.Hostname(), &localTargets) {
+		return strings.Join([]string{file, "#", fmt.Sprint(l)}, "")
+	}
+	branch = strings.Replace(branch, "refs/heads", "/blob", 1)
+	return strings.Join([]string{target, branch, file, "#", fmt.Sprint(l)}, "")
 }
 
 func stringInSlice(a string, list *[]string) bool {
