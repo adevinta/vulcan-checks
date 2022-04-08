@@ -29,10 +29,13 @@ var (
 		Summary: "LuckyMinus20",
 		Description: "AES-NI implementation in OpenSSL before 1.0.1t and 1.0.2 before 1.0.2h allows remote attackers to obtain sensitive" +
 			"cleartext information",
-		Score:           report.SeverityThresholdMedium,
-		ImpactDetails:   "Allows remote attackers to obtain sensitive cleartext information via a padding-oracle attack against an AES CBC session",
-		References:      []string{"https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/"},
-		Recommendations: []string{"Upgrade OpenSSL to, at least, 1.0.2h or 1.0.1t"},
+		AffectedResource: "443/tcp",
+		Score:            report.SeverityThresholdMedium,
+		Fingerprint:      helpers.ComputeFingerprint(),
+		Labels:           []string{"issue", "ssl"},
+		ImpactDetails:    "Allows remote attackers to obtain sensitive cleartext information via a padding-oracle attack against an AES CBC session",
+		References:       []string{"https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/"},
+		Recommendations:  []string{"Upgrade OpenSSL to, at least, 1.0.2h or 1.0.1t"},
 	}
 )
 
