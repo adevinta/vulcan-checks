@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Adevinta
+Copyright 2019 Adevinta
 */
 
 package main
@@ -32,7 +32,7 @@ var (
 		AffectedResource: "443/tcp",
 		Score:            report.SeverityThresholdMedium,
 		Fingerprint:      helpers.ComputeFingerprint(),
-		Labels:           []string{"issue"},
+		Labels:           []string{"issue", "ssl"},
 		ImpactDetails:    "Allows remote attackers to obtain sensitive cleartext information via a padding-oracle attack against an AES CBC session",
 		References:       []string{"https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/"},
 		Recommendations:  []string{"Upgrade OpenSSL to, at least, 1.0.2h or 1.0.1t"},
