@@ -221,7 +221,7 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 func computeAffectedResource(target, branch string, file string, l int) string {
 	u, _ := url.Parse(target)
 	if stringInSlice(u.Hostname(), &localTargets) {
-		return strings.Join([]string{file, "#", fmt.Sprint(l)}, "")
+		return strings.Join([]string{strings.TrimPrefix(file, "/"), "#", fmt.Sprint(l)}, "")
 	}
 	branch = strings.Replace(branch, "refs/heads", "/blob", 1)
 	return strings.Join([]string{target, branch, file, "#", fmt.Sprint(l)}, "")
