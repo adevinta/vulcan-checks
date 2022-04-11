@@ -146,7 +146,7 @@ func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {
 			Details:          details,
 			Score:            report.SeverityThresholdNone,
 			AffectedResource: r.EffectiveURL,
-			Labels:           []string{"informational", "wordpress", "http"},
+			Labels:           []string{"issue", "wordpress", "http"},
 		}
 
 		if len(r.InterestingFindings) > 0 {

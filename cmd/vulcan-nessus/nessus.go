@@ -341,7 +341,7 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 
 	vulcanVulnerability := report.Vulnerability{
 		Summary: p.Name,
-		Labels:  []string{"nessus"},
+		Labels:  []string{"issue", "nessus"},
 	}
 
 	// There might be more than one attribute with the same name. For example
@@ -411,11 +411,6 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 		// As there are no ports specified in the Output, we can't be more
 		// specific for the affected resource than the whole target.
 		vulcanVulnerability.AffectedResource = target
-		if vulcanVulnerability.Score == 0 {
-			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "informational")
-		} else {
-			vulcanVulnerability.Labels = append(vulcanVulnerability.Labels, "issue")
-		}
 		// As we don't have context information from the Output, at least we
 		// use the score as a fingerprint.
 		vulcanVulnerability.Fingerprint = helpers.ComputeFingerprint(vulcanVulnerability.Score)
@@ -440,11 +435,6 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 			// Again, if there are no ports specified we can't be more precise
 			// than using the target as the affected resource.
 			v.AffectedResource = target
-			if v.Score == 0 {
-				v.Labels = append(v.Labels, "informational")
-			} else {
-				v.Labels = append(v.Labels, "issue")
-			}
 			// Apart from the score, we can use the Details as a fingerprint,
 			// that is supposed to give the context of the vulnerability in the
 			// scanned target.
@@ -485,11 +475,6 @@ func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessus
 			}
 
 			v.AffectedResource = portInformation
-			if v.Score == 0 {
-				v.Labels = append(v.Labels, "informational")
-			} else {
-				v.Labels = append(v.Labels, "issue")
-			}
 			v.Fingerprint = helpers.ComputeFingerprint(v.Score, v.Details, v.Resources)
 
 			vulnerabilities = append(vulnerabilities, v)

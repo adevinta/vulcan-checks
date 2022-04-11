@@ -39,7 +39,7 @@ var (
 			"https://tools.ietf.org/html/bcp194#section-4",
 		},
 		AffectedResource: fmt.Sprintf("%d/tcp", defaultBGPPort),
-		Labels:           []string{"informational", "bgp", "discovery"},
+		Labels:           []string{"issue", "bgp", "discovery"},
 		Fingerprint:      helpers.ComputeFingerprint(),
 	}
 )

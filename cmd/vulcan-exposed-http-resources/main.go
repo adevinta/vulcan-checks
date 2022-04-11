@@ -72,7 +72,7 @@ var (
 	falseOKVuln = report.Vulnerability{
 		Summary:         "Incorrect Successful HTTP Response",
 		Description:     "The HTTP server is responding \"200 OK\" to requests for unexistent resources.",
-		Labels:          []string{"informational", "http"},
+		Labels:          []string{"issue", "http"},
 		ImpactDetails:   "Unreliable response statuses prevent the check from identifying accidentally exposed resources.",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Ensure that the server only returns \"200 OK\" when a request is successful."},

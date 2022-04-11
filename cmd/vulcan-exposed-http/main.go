@@ -90,7 +90,7 @@ func exposedHTTP(target string, nmapReport *gonmap.NmapRun, state checkstate.Sta
 			}
 			v := report.Vulnerability{
 				AffectedResource: fmt.Sprintf("%d/%s", port.PortId, port.Protocol),
-				Labels:           []string{port.Protocol, "issue"},
+				Labels:           []string{"issue", "discovery"},
 				Fingerprint:      helpers.ComputeFingerprint(port.Service.Product, port.Service.Version),
 				Summary:          "Exposed HTTP Port",
 				Description:      "An HTTP server is listening at least in one port ot the server.",

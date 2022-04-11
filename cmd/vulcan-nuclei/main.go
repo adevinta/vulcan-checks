@@ -182,7 +182,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 			Score:            getScore(v.Info.Severity),
 			References:       v.Info.Reference,
 			Recommendations:  recommendations,
-			Labels:           []string{"nuclei", "issue", v.Type},
+			Labels:           []string{"nuclei", "issue"},
 		}
 
 		findingResources := report.ResourcesGroup{

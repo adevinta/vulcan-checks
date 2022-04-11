@@ -34,7 +34,7 @@ var (
 		References: []string{
 			"https://www.ietf.org/rfc/rfc2460.txt",
 		},
-		Labels:      []string{"informational", "discovery"},
+		Labels:      []string{"issue", "discovery"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )
