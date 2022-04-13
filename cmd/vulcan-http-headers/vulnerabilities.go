@@ -140,11 +140,11 @@ func processCookies(vuln report.Vulnerability, target string, r observatoryResul
 	case `cookies-without-secure-flag-but-protected-by-hsts`:
 		vuln.Details = "Cookies set without using the 'Secure' flag, but transmission over HTTP prevented by HSTS."
 		vuln.Score = report.SeverityThresholdNone
-		vuln.Labels = []string{"informational", "http"}
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-session-without-secure-flag-but-protected-by-hsts`:
 		vuln.Details = "Session cookie set without the 'Secure' flag, but transmission over HTTP prevented by HSTS."
 		vuln.Score = report.SeverityThresholdNone
-		vuln.Labels = []string{"informational", "http"}
+		vuln.Labels = []string{"issue", "http"}
 	case `cookies-without-secure-flag`:
 		vuln.Details = "Cookies set without using the 'Secure' flag or set over HTTP."
 		vuln.Score = 2.0 // Low.
@@ -343,7 +343,7 @@ func processHSTS(vuln report.Vulnerability, target string, r observatoryResult, 
 			"max-age must be set to a minimum of six months (15768000), but longer periods such as two years (63072000) are recommended. "+
 				"Note that once this value is set, the site must continue to support HTTPS until the expiry time has been reached.",
 		)
-		vuln.Labels = []string{"informational", "http"}
+		vuln.Labels = []string{"issue", "http"}
 	case `hsts-not-implemented`:
 		vuln.Summary = "HTTP Strict Transport Security Not Implemented"
 		vuln.Recommendations = append(vuln.Recommendations, "Implement HSTS in the site.")
@@ -555,7 +555,7 @@ var observatoryGrading = report.Vulnerability{
 	Description: "The Mozilla HTTP Observatory is a set of tools to analyze your website and inform you if you are utilizing the many available methods to secure it. " +
 		"Some of the HTTP check results shown in this report come from using this tool. As the tool is giving a global score, we are showing it to you too. ",
 	Score:  report.SeverityThresholdNone,
-	Labels: []string{"informational", "http"},
+	Labels: []string{"issue", "http"},
 	Recommendations: []string{
 		"Fix all the vulnerabilities reported for the HTTP headers of your website to improve the score.",
 	},

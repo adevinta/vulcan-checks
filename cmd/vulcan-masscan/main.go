@@ -38,7 +38,7 @@ var (
 		References: []string{
 			"https://tools.ietf.org/html/rfc4778",
 		},
-		Labels:      []string{"informational", "discovery"},
+		Labels:      []string{"issue", "discovery"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )

@@ -61,7 +61,7 @@ var (
 		Description:     "The ports are commonly used by Hadoop Distributed File System, and exposing them may allow to execute jobs by external attackers.",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{"Block access to Hadoop related ports from the internet."},
-		Labels:          []string{"hdfs"},
+		Labels:          []string{"issue", "hdfs"},
 	}
 
 	logger *logrus.Entry
@@ -86,10 +86,7 @@ func processExposedHDFSVulns(target string, nmapReport *gonmap.NmapRun, r *regex
 			c := false
 			if confirmed(target, strconv.Itoa(port.PortId), port.Service.Product) {
 				vuln.Score = report.SeverityThresholdCritical
-				vuln.Labels = append(vuln.Labels, "issue")
 				c = true
-			} else {
-				vuln.Labels = append(vuln.Labels, "informational")
 			}
 
 			networkResource := map[string]string{

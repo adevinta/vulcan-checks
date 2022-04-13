@@ -39,7 +39,7 @@ var behindOktaVuln = report.Vulnerability{
 	Summary:     "Okta Authentication",
 	Description: "The asset is not reachable because it is behind Okta.",
 	Score:       report.SeverityThresholdNone,
-	Labels:      []string{"informational", "http"},
+	Labels:      []string{"issue", "http"},
 }
 
 func main() {

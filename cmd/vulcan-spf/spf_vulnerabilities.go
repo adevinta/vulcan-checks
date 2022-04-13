@@ -75,7 +75,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explictly define an 'all' or a 'redirect'",
 		},
-		Labels:      []string{"informational", "dns"},
+		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"all-configured-as-PASS": report.Vulnerability{
@@ -158,7 +158,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Review the SPF policy and reduce the number of DNS queries invoked to be equal or less than 10",
 		},
-		Labels:      []string{"informational", "dns"},
+		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"multiple-spf-found": report.Vulnerability{
