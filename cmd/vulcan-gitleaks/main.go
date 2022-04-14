@@ -51,8 +51,9 @@ var (
 			"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 		},
 	}
-	details  = "This secret was found by the gitleaks rule '%s', with ID '%s'. If this doesn't correspond to a secret, it can be excluded from future scans marking it as false positive, or adding the following line to vulcan.yaml file for vulcan-local executions:\n \t- affectedResource: %s"
-	resource = report.ResourcesGroup{
+	remoteDetails = "This secret was found by the gitleaks rule '%s', with ID '%s'. If this doesn't correspond to a secret, it can be excluded from future scans marking it as false positive."
+	localDetails  = "This secret was found by the gitleaks rule '%s', with ID '%s'. If this doesn't correspond to a secret, it can be excluded by adding the following line to vulcan.yaml file for vulcan-local executions:\n \t- affectedResource: %s"
+	resource      = report.ResourcesGroup{
 		Name: "Secrets found",
 		Header: []string{
 			"RuleID",
@@ -189,7 +190,6 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 		return nil
 	}
 
-	// Group secrets by file.
 	for _, f := range results {
 		if stringInSlice(f.RuleID, &opt.ExcludedRules) {
 			continue
@@ -199,8 +199,8 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 		s, _ := bcrypt.GenerateFromPassword([]byte(f.Secret), 0)
 		v.AffectedResource = string(s)
 		v.AffectedResourceString = computeAffectedResource(target, branch, file, f.StartLine)
-		v.Fingerprint = helpers.ComputeFingerprint("")
-		v.Details = fmt.Sprintf(details, f.Description, f.RuleID, v.AffectedResource)
+		v.Fingerprint = helpers.ComputeFingerprint()
+		v.Details = setDetails(target, f, s)
 		resource.Rows = []map[string]string{
 			{
 				"RuleID":      f.RuleID,
@@ -214,7 +214,6 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 		v.Resources = []report.ResourcesGroup{resource}
 		state.AddVulnerabilities(v)
 	}
-
 	return nil
 }
 
@@ -225,6 +224,14 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	}
 	branch = strings.Replace(branch, "refs/heads", "/blob", 1)
 	return strings.Join([]string{target, branch, file, "#", fmt.Sprint(l)}, "")
+}
+
+func setDetails(target string, f Finding, s []byte) string {
+	u, _ := url.Parse(target)
+	if stringInSlice(u.Hostname(), &localTargets) {
+		return fmt.Sprintf(localDetails, f.Description, f.RuleID, string(s))
+	}
+	return fmt.Sprintf(remoteDetails, f.Description, f.RuleID)
 }
 
 func stringInSlice(a string, list *[]string) bool {
