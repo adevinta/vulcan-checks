@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Adevinta
+Copyright 2019 Adevinta
 */
 
 package main
@@ -29,7 +29,7 @@ var (
 	drupalVersion = regexp.MustCompile("Drupal (.+?),")
 )
 
-func detectVulnerabilities(versionString string) ([]report.Vulnerability, error) {
+func detectVulnerabilities(versionString string, u url.URL) ([]report.Vulnerability, error) {
 	var vulnerabilities []report.Vulnerability
 
 	ver, err := version.NewVersion(versionString)
@@ -45,6 +45,8 @@ func detectVulnerabilities(versionString string) ([]report.Vulnerability, error)
 			}
 
 			if constraint.Check(ver) {
+				v.Vulnerability.AffectedResource = u.String()
+				v.Vulnerability.Fingerprint = helpers.ComputeFingerprint(ver)
 				vulnerabilities = append(vulnerabilities, v.Vulnerability)
 			}
 		}
@@ -154,9 +156,11 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	if drupal {
 		infoDrupal.Details = fmt.Sprintf("Drupal %v\nDetected in: %v", version, u.String())
+		infoDrupal.AffectedResource = u.String()
+		infoDrupal.Fingerprint = helpers.ComputeFingerprint(version)
 		state.AddVulnerabilities(infoDrupal)
 
-		vulnerabilities, err := detectVulnerabilities(version)
+		vulnerabilities, err := detectVulnerabilities(version, u)
 		if err != nil {
 			return err
 		}
