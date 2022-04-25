@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Adevinta
+Copyright 2019 Adevinta
 */
 
 package main
@@ -112,7 +112,7 @@ var (
 				References:       []string{"https://www.drupal.org/sa-core-2021-007"},
 				Recommendations: []string{
 					"Install the latest version:" +
-						"If you are using Drupal 9.2, update to Drupal 9.2.6.",
+					"If you are using Drupal 9.2, update to Drupal 9.2.6.",
 					"If you are using Drupal 9.1, update to Drupal 9.1.13.",
 					"If you are using Drupal 8.9, update to Drupal 8.9.19.",
 					"Versions of Drupal 8 prior to 8.9.x and versions of Drupal 9 prior to 9.1.x are end-of-life and do not receive security coverage.",
