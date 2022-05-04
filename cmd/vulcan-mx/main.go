@@ -27,7 +27,7 @@ var (
 		Recommendations: []string{
 			"It is recommended to run DMARC, DKIM and SPF checks for each domain that contain MX records.",
 		},
-		Labels:      []string{"informational", "discovery"},
+		Labels:      []string{"issue", "discovery"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	}
 )

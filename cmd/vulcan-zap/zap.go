@@ -68,12 +68,7 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 	}
 	v.Score = riskToScore(risk)
 
-	v.Labels = []string{"web", "zap"}
-	if strings.ToLower(risk) == "informational" {
-		v.Labels = append(v.Labels, "informational")
-	} else {
-		v.Labels = append(v.Labels, "issue")
-	}
+	v.Labels = []string{"issue", "web", "zap"}
 
 	cweID, ok := a["cweid"].(string)
 	if !ok {

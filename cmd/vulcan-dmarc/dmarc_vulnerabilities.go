@@ -215,7 +215,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explicitly define the value of tag 'rua'",
 		},
-		Labels:      []string{"informational", "dns"},
+		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-ruf-not-configured": report.Vulnerability{
@@ -238,7 +238,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Explicitly define the value of tag 'ruf'",
 		},
-		Labels:      []string{"informational", "dns"},
+		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-pct-not-100": report.Vulnerability{
@@ -257,7 +257,7 @@ var vulns = map[string]report.Vulnerability{
 		Recommendations: []string{
 			"Set tag 'pct' to be '100'",
 		},
-		Labels:      []string{"informational", "dns"},
+		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
 	"tag-rua-not-valid-mailto": report.Vulnerability{

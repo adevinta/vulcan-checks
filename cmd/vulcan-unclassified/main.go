@@ -19,7 +19,7 @@ var (
 		Summary:     "Unclassified Vulnerability",
 		Description: "Example vulnerability to test the monitoring of unclassified vulnerabilities.",
 		Score:       report.SeverityThresholdNone,
-		Labels:      []string{"informational"},
+		Labels:      []string{"issue"},
 	}
 )
 

@@ -237,7 +237,7 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 			Description:     issueDefinition.Description,
 			Recommendations: []string{issueDefinition.Remediation},
 			Score:           severityToScore(i.Issue.Severity),
-			Labels:          []string{"web", "burp"},
+			Labels:          []string{"issue", "web", "burp"},
 			Details:         i.Issue.Description,
 			Resources: []report.ResourcesGroup{
 				{
@@ -265,11 +265,6 @@ func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []r
 					vuln.References = append(vuln.References, string(r[1]))
 				}
 			}
-		}
-		if vuln.Score == 0 {
-			vuln.Labels = append(vuln.Labels, "informational")
-		} else {
-			vuln.Labels = append(vuln.Labels, confidenceToLabel(i.Issue.Confidence))
 		}
 		vulnsMap[issueDefinition.Name] = vuln
 	}
@@ -307,12 +302,4 @@ func severityToScore(risk string) float32 {
 	default:
 		return report.SeverityThresholdNone
 	}
-}
-
-func confidenceToLabel(confidence string) string {
-	switch confidence {
-	case "certain":
-		return "issue"
-	}
-	return "potential"
 }

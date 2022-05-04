@@ -159,7 +159,7 @@ var (
 			     Information gathered by executing the CIS benchmark on the account.
 		</p>
 			`,
-		Labels: []string{"informational", "compliance", "cis", "aws"},
+		Labels: []string{"compliance", "cis", "aws"},
 		References: []string{
 			"https://d0.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf",
 			"https://github.com/toniblyx/prowler",

@@ -6,13 +6,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
+)
+
+const (
+	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
 )
 
 var (
@@ -26,11 +33,30 @@ var (
 	wpscanForceParams = []string{"--force", "--wp-content-dir", "wp-content"}
 	wpscanScopeParams = []string{"--scope"}
 	wpscanTokenParams = []string{"--api-token"}
+	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
+
+	// --ignore-main-redirect string matching list.
+	// If the target redirects to a different (sub)domain, WPScan tool aborts
+	// the execution unless '--ignore-main-redirect' parameter is specified.
+	// This is the expected behaviour in most of the cases to avoid having
+	// duplicate findings when scanning. For example, if example.com redirects
+	// to www.example.com we want vulcan-wpscan to scan only www.example.com.
+	// However, there are some subtile cases where we want WPScan tool to try
+	// scanning the target even if there is a redirection in place. For example,
+	// a site with the Okta Login Plugin may redirect some endpoints to Okta,
+	// however WPScan can still scan some content which is not redirected.
+	// ignoreMainRedirect will add '--ignore-main-redirect' parameter in the
+	// WPScan execution for the redirections containing any of the patterns in
+	// the list.
+	ignoreMainRedirect = []string{
+		"okta.com",
+	}
 )
 
 // WpScanReport holds the report produced by a wpscan run.
 type WpScanReport struct {
-	Banner struct {
+	Aborted string `json:"scan_aborted"`
+	Banner  struct {
 		Description string   `json:"description"`
 		Version     string   `json:"version"`
 		Authors     []string `json:"authors"`
@@ -137,7 +163,7 @@ type Vulnerability struct {
 }
 
 // RunWpScan runs wpscan an returns a report with the result of the scan.
-func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (report *WpScanReport, err error) {
+func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (*WpScanReport, error) {
 	params := []string{rubyArgs, wpscanFile}
 
 	resp, err := http.Get(url + "wp-content")
@@ -154,22 +180,62 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 	wpscanBaseParams = append(wpscanBaseParams, url)
 	params = append(params, wpscanBaseParams...)
 
-	report = &WpScanReport{}
+	params = append(params, wpscanUserAgent...)
 
 	// Print the wpscan version used.
 	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
 	logger.Infof("wpscan version: %s", output)
 
-	// Wpscan can return following errors:
+	return runWpScanCmd(ctx, logger, pathToRuby, params)
+}
+
+func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, params []string) (*WpScanReport, error) {
+	// Wpscan returns following exit codes:
+	// Source: https://github.com/wpscanteam/CMSScanner/blob/master/lib/cms_scanner/exit_code.rb
 
 	// OK               = 0 # No error, scan finished w/o any vulnerabilities found
 	// CLI_OPTION_ERROR = 1 # Exceptions raised by OptParseValidator and OptionParser
 	// INTERRUPTED      = 2 # Interrupt received
-	// ERROR            = 3 # Exceptions raised
-	// VULNERABLE       = 4 # The target has at least one vulnerability.
-	// Currently, the interesting findings do not count as vulnerabilities.
-	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, report, pathToRuby, params...)
-	logger.Infof("exit code from wpscan: %d", exitCode)
+	// EXCEPTION        = 3 # Unhandled/unexpected Exception occured
+	// ERROR            = 4 # Error, scan did not finish
+	// VULNERABLE       = 5 # The target has at least one vulnerability
 
-	return report, err
+	report := &WpScanReport{}
+	stdOut, exitCode, err := command.Execute(ctx, logger, pathToRuby, params...)
+	if err != nil {
+		logger.Errorf("unable to run the commad with the provided params: %s", err)
+		return &WpScanReport{}, err
+	}
+	err = json.Unmarshal(stdOut, &report)
+	if err != nil {
+		logger.Errorf("unable to unmarshall the commad output: %s", err)
+		return &WpScanReport{}, err
+	}
+	switch exitCode {
+	case 0, 5:
+		return report, nil
+	case 1, 2, 3:
+		return &WpScanReport{}, errors.New(report.Aborted)
+	case 4:
+		if strings.HasPrefix(report.Aborted, "The URL supplied redirects to") {
+			addIgnoreMainRedirectParam := false
+			for _, s := range ignoreMainRedirect {
+				if strings.Contains(report.Aborted, s) {
+					addIgnoreMainRedirectParam = true
+					break
+				}
+			}
+			if addIgnoreMainRedirectParam {
+				params = append(params, "--ignore-main-redirect")
+				return runWpScanCmd(ctx, logger, pathToRuby, params)
+			}
+		}
+		if strings.HasSuffix(report.Aborted, "Please re-try with --random-user-agent") {
+			params = append(params, "--random-user-agent")
+			return runWpScanCmd(ctx, logger, pathToRuby, params)
+		}
+		return &WpScanReport{}, errors.New(report.Aborted)
+	default:
+		return &WpScanReport{}, errors.New("unexpected wpscan command exit code")
+	}
 }

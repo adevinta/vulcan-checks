@@ -55,6 +55,11 @@ func main() {
 		}
 
 		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
+		// If the target is not a WordPress site finish the check gracefully.
+		if err != nil && err.Error() == NotAWordPressMessage {
+			logger.Infof("%s", err)
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -141,7 +146,7 @@ func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {
 			Details:          details,
 			Score:            report.SeverityThresholdNone,
 			AffectedResource: r.EffectiveURL,
-			Labels:           []string{"informational", "wordpress", "http"},
+			Labels:           []string{"issue", "wordpress", "http"},
 		}
 
 		if len(r.InterestingFindings) > 0 {
