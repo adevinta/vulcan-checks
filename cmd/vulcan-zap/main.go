@@ -45,12 +45,13 @@ type options struct {
 	MinScore float32 `json:"min_score"`
 	// List of active/passive scanners to disable by their identifiers:
 	// https://www.zaproxy.org/docs/alerts/
-	DisabledScanners  []string `json:"disabled_scanners"`
-	MaxSpiderDuration int      `json:"max_spider_duration"`
-	MaxScanDuration   int      `json:"max_scan_duration"`
-	MaxRuleDuration   int      `json:"max_rule_duration"`
-	OpenapiUrl        string   `json:"openapi_url"`
-	OpenapiHost       string   `json:"openapi_host"`
+	DisabledScanners           []string `json:"disabled_scanners"`
+	IgnoredFingerprintScanners []string `json:"ignored_fingerprint_scanners"`
+	MaxSpiderDuration          int      `json:"max_spider_duration"`
+	MaxScanDuration            int      `json:"max_scan_duration"`
+	MaxRuleDuration            int      `json:"max_rule_duration"`
+	OpenapiUrl                 string   `json:"openapi_url"`
+	OpenapiHost                string   `json:"openapi_host"`
 }
 
 func main() {
@@ -324,6 +325,7 @@ func main() {
 		}
 
 		vulnerabilities := make(map[string]*report.Vulnerability)
+		vulnSummary2PluginID := make(map[string]string)
 		for _, alert := range alertsSlice {
 			a, ok := alert.(map[string]interface{})
 			if !ok {
@@ -335,6 +337,12 @@ func main() {
 				logger.WithError(err).Warn("can not process alert")
 				continue
 			}
+			pluginID, err := parsePluginID(a)
+			if err != nil {
+				logger.WithError(err).Warn("can not parse plugin ID")
+				continue
+			}
+			vulnSummary2PluginID[v.Summary] = pluginID
 
 			if _, ok := vulnerabilities[v.Summary]; ok {
 				vulnerabilities[v.Summary].Resources[0].Rows = append(
@@ -357,7 +365,8 @@ func main() {
 			}
 
 			resourcesFingerprint := ""
-			if len(v.Resources) > 0 {
+			pluginID := vulnSummary2PluginID[v.Summary]
+			if len(v.Resources) > 0 && !isPluginIgnoredForFingerprint(opt, pluginID) {
 				resourcesFingerprint = fingerprintFromResources(v.Resources[0].Rows)
 			}
 			v.Fingerprint = helpers.ComputeFingerprint(v.Score, resourcesFingerprint)
@@ -471,4 +480,13 @@ func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State,
 			}
 		}
 	}
+}
+
+func isPluginIgnoredForFingerprint(opt options, pluginID string) bool {
+	for _, ignoredID := range opt.IgnoredFingerprintScanners {
+		if pluginID == ignoredID {
+			return true
+		}
+	}
+	return false
 }
