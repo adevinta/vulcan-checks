@@ -134,3 +134,11 @@ func processAlert(a map[string]interface{}) (report.Vulnerability, error) {
 
 	return v, nil
 }
+
+func parsePluginID(a map[string]interface{}) (string, error) {
+	pluginID, ok := a["pluginId"].(string)
+	if !ok {
+		return "", errors.New("error parsing alert plugin ID")
+	}
+	return pluginID, nil
+}
