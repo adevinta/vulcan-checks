@@ -276,7 +276,7 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				for _, cwe := range p.cwes {
 					urls = append(urls, fmt.Sprintf("[%s](https://cwe.mitre.org/data/definitions/%s.html)", cwe, strings.TrimPrefix(cwe, "CWE-")))
 				}
-				row["CWEs"] = strings.Join(urls, ",")
+				row["CWEs"] = strings.Join(urls, ", ")
 			}
 			if p.link == "" {
 				p.link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", p.cve)
@@ -286,12 +286,20 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			vp.Rows = append(vp.Rows, row)
 		}
 
-		ids := []string{}
-		for path := range det.paths {
-			ids = append(ids, fmt.Sprintf("Location: %s", path))
+		prg := report.ResourcesGroup{
+			Name: "Packages",
+			Header: []string{
+				"Location",
+				"FixedBy",
+			},
+			Rows: []map[string]string{},
 		}
-		if det.fixedBy != "" {
-			ids = append(ids, fmt.Sprintf("Fixed by: %s", det.fixedBy))
+		for path := range det.paths {
+			prg.Rows = append(prg.Rows,
+				map[string]string{
+					"Location": path,
+					"FixedBy":  det.fixedBy,
+				})
 		}
 
 		// Build the vulnerability.
@@ -307,10 +315,9 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			CWEID:  937,
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
-			Score:         maxScore,
-			Details:       generateDetails(registryEnvDomain, target),
-			Resources:     []report.ResourcesGroup{vp},
-			ImpactDetails: strings.Join(ids, "\n"),
+			Score:     maxScore,
+			Details:   generateDetails(registryEnvDomain, target),
+			Resources: []report.ResourcesGroup{prg, vp},
 		}
 		state.AddVulnerabilities(vuln)
 	}
