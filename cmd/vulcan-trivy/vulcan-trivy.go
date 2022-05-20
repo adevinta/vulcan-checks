@@ -242,7 +242,7 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 	vp := report.ResourcesGroup{
 		Name: "Package Vulnerabilities",
 		Header: []string{
-			"FixedBy",
+			"Fixed Version",
 			"Vulnerabilities",
 			"Severity",
 			"CWEs",
@@ -272,7 +272,7 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				maxScore = newScore
 			}
 			row := make(map[string]string, len(vp.Header))
-			row["FixedBy"] = p.fixedBy
+			row["Fixed Version"] = p.fixedBy
 			if p.cwes != nil {
 				urls := []string{}
 				for _, cwe := range p.cwes {
@@ -292,15 +292,15 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			Name: "Packages",
 			Header: []string{
 				"Location",
-				"FixedBy",
+				"Min. Recommended Version",
 			},
 			Rows: []map[string]string{},
 		}
 		for path := range det.paths {
 			prg.Rows = append(prg.Rows,
 				map[string]string{
-					"Location": path,
-					"FixedBy":  det.fixedBy,
+					prg.Header[0]: path,
+					prg.Header[1]: det.fixedBy,
 				})
 		}
 
