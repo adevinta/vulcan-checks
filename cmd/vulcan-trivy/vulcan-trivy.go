@@ -151,6 +151,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		severitiesFlag := []string{"--severity", opt.Severities}
 		triviArgs = append(triviArgs, severitiesFlag...)
 	}
+	// Restrict to vulnerabilities (no config/secrets yet)
+	triviArgs = append(triviArgs, "--security-checks", "vuln")
 	// Append the target (docker image including registry hostname).
 	triviArgs = append(triviArgs, target)
 
