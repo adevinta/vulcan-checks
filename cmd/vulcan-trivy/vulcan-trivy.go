@@ -25,7 +25,7 @@ import (
 	"github.com/avast/retry-go"
 )
 
-const vulnCVETrucateLimit = 10
+const vulnCVETruncateLimit = 10
 
 var (
 	checkName        = "vulcan-trivy"
@@ -39,11 +39,11 @@ type options struct {
 	Severities    string `json:"severities"`
 }
 
-type Results struct {
-	Results ScanResponse `json:"Results"`
+type results struct {
+	Results scanResponse `json:"Results"`
 }
 
-type ScanResponse []struct {
+type scanResponse []struct {
 	Target          string `json:"Target"`
 	Class           string `json:"Class"`
 	Type            string `json:"Type"`
@@ -62,16 +62,17 @@ type ScanResponse []struct {
 	} `json:"Vulnerabilities"`
 }
 
-type outdatedKey struct {
+type vulnKey struct {
 	name    string
 	version string
+	path    string
 }
 
 type vulnData struct {
 	packages []outdatedPackage
-	paths    map[string]interface{}
 	fixedBy  string
 }
+
 type outdatedPackage struct {
 	severity string
 	fixedBy  string
@@ -127,15 +128,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// Build trivy command with arguments.
-	triviCmd := "./trivy"
-	triviArgs := []string{
+	trivyCmd := "./trivy"
+	trivyArgs := []string{
 		"image",
 		"-f", "json",
 		"-o", reportOutputFile,
 	}
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
-		triviArgs = append(triviArgs, "--skip-update")
+		trivyArgs = append(trivyArgs, "--skip-update")
 		// Log warn if skip vulnerability db update and image tag is latest.
 		if strings.HasSuffix(target, "latest") {
 			logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
@@ -144,23 +145,23 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
-		triviArgs = append(triviArgs, "--ignore-unfixed")
+		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
-		triviArgs = append(triviArgs, severitiesFlag...)
+		trivyArgs = append(trivyArgs, severitiesFlag...)
 	}
 	// Restrict to vulnerabilities (no config/secrets yet)
-	triviArgs = append(triviArgs, "--security-checks", "vuln")
+	trivyArgs = append(trivyArgs, "--security-checks", "vuln")
 	// Append the target (docker image including registry hostname).
-	triviArgs = append(triviArgs, target)
+	trivyArgs = append(trivyArgs, target)
 
-	logger.Infof("running command: %s %s\n", triviCmd, triviArgs)
+	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
 	err = retry.Do(
 		func() error {
-			cmd := exec.Command(triviCmd, triviArgs...)
+			cmd := exec.Command(trivyCmd, trivyArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
 			if err != nil {
 				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
@@ -184,7 +185,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return errors.New("trivy report output file read failed")
 	}
 
-	var results Results
+	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
 		return errors.New("unmarshal trivy output failed")
@@ -193,15 +194,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	return processVulns(results.Results, registryEnvDomain, target, state)
 }
 
-func processVulns(results ScanResponse, registryEnvDomain, target string, state checkstate.State) error {
-	outdatedPackageVulns := make(map[outdatedKey]*vulnData)
+func processVulns(results scanResponse, registryEnvDomain, target string, state checkstate.State) error {
+	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
-			key := outdatedKey{
-				name:    tv.PkgName,
-				version: tv.InstalledVersion,
-			}
-
 			path := ""
 			switch {
 			case tt.Class == "os-pkgs":
@@ -212,6 +208,12 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				path = tt.Target
 			}
 
+			key := vulnKey{
+				name:    tv.PkgName,
+				version: tv.InstalledVersion,
+				path:    path,
+			}
+
 			pkg := outdatedPackage{
 				severity: tv.Severity,
 				fixedBy:  tv.FixedVersion,
@@ -220,19 +222,14 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 				cwes:     tv.CweIDs,
 			}
 
-			det, ok := outdatedPackageVulns[key]
-			if ok {
+			if det, ok := outdatedPackageVulns[key]; ok {
 				det.packages = append(det.packages, pkg)
-				if _, ok := det.paths[path]; !ok {
-					det.paths[path] = path
-				}
 				if version.Compare(version.Normalize(tv.FixedVersion), version.Normalize(det.fixedBy), ">") {
 					det.fixedBy = tv.FixedVersion
 				}
 			} else {
 				det = &vulnData{
 					packages: []outdatedPackage{pkg},
-					paths:    map[string]interface{}{path: nil},
 					fixedBy:  tv.FixedVersion,
 				}
 				outdatedPackageVulns[key] = det
@@ -261,10 +258,9 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 		maxScore := getScore("NONE")
 		fingerprint := make([]string, len(l))
 		for i, p := range l {
-
 			fingerprint = append(fingerprint, p.cve+p.severity)
-			// Compute the fingerprint for all the cves but add only vulnCVETrucateLimit to the table
-			if i > vulnCVETrucateLimit {
+			// Compute the fingerprint for all the CVEs but add only vulnCVETruncateLimit to the table
+			if i > vulnCVETruncateLimit {
 				continue
 			}
 			newScore := getScore(p.severity)
@@ -288,27 +284,11 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			vp.Rows = append(vp.Rows, row)
 		}
 
-		prg := report.ResourcesGroup{
-			Name: "Packages",
-			Header: []string{
-				"Location",
-				"Min. Recommended Version",
-			},
-			Rows: []map[string]string{},
-		}
-		for path := range det.paths {
-			prg.Rows = append(prg.Rows,
-				map[string]string{
-					prg.Header[0]: path,
-					prg.Header[1]: det.fixedBy,
-				})
-		}
-
 		// Build the vulnerability.
-		vuln := report.Vulnerability{
+		state.AddVulnerabilities(report.Vulnerability{
 			// Issue attributes.
 			AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version)),
-			Fingerprint:      helpers.ComputeFingerprint(det.paths, fingerprint),
+			Fingerprint:      helpers.ComputeFingerprint(key.path, fingerprint),
 			Summary:          "Outdated Packages in Docker Image",
 			Description:      "Vulnerabilities have been found in outdated packages installed in the Docker image.",
 			Recommendations: []string{
@@ -317,11 +297,23 @@ func processVulns(results ScanResponse, registryEnvDomain, target string, state 
 			CWEID:  937,
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
-			Score:     maxScore,
-			Details:   generateDetails(registryEnvDomain, target),
-			Resources: []report.ResourcesGroup{prg, vp},
-		}
-		state.AddVulnerabilities(vuln)
+			Score:   maxScore,
+			Details: generateDetails(registryEnvDomain, target),
+			Resources: []report.ResourcesGroup{
+				{
+					Name: "Packages",
+					Header: []string{
+						"Location",
+						"Min. Recommended Version",
+					},
+					Rows: []map[string]string{{
+						"Location":                 key.path,
+						"Min. Recommended Version": det.fixedBy,
+					}},
+				},
+				vp,
+			},
+		})
 	}
 
 	return nil
