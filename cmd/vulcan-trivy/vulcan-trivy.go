@@ -12,7 +12,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -252,6 +254,9 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 
 		// Sort CVEs by severity
 		sort.Slice(l, func(i, j int) bool {
+			if l[i].severity == l[j].severity {
+				return cve2num(l[i].cve) > cve2num(l[j].cve)
+			}
 			return getScore(l[i].severity) > getScore(l[j].severity)
 		})
 
@@ -354,4 +359,16 @@ func getScore(severity string) float32 {
 		return report.SeverityThresholdLow
 	}
 	return report.SeverityThresholdNone
+}
+
+var CVERegex = regexp.MustCompile(`^CVE-(\d{4})-(\d+)$`)
+
+func cve2num(cve string) int {
+	m := CVERegex.FindStringSubmatch(cve)
+	if len(m) == 3 {
+		year, _ := strconv.Atoi(m[1])
+		id, _ := strconv.Atoi(m[2])
+		return year*1000000 + id
+	}
+	return 0
 }
