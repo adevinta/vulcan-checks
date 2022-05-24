@@ -252,7 +252,7 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 	for key, det := range outdatedPackageVulns {
 		l := det.packages
 
-		// Sort CVEs by severity
+		// Sort CVEs by severity desc, cve desc
 		sort.Slice(l, func(i, j int) bool {
 			if l[i].severity == l[j].severity {
 				return cve2num(l[i].cve) > cve2num(l[j].cve)
@@ -361,10 +361,10 @@ func getScore(severity string) float32 {
 	return report.SeverityThresholdNone
 }
 
-var CVERegex = regexp.MustCompile(`^CVE-(\d{4})-(\d+)$`)
+var cveRegex = regexp.MustCompile(`^CVE-(\d{4})-(\d+)$`)
 
 func cve2num(cve string) int {
-	m := CVERegex.FindStringSubmatch(cve)
+	m := cveRegex.FindStringSubmatch(cve)
 	if len(m) == 3 {
 		year, _ := strconv.Atoi(m[1])
 		id, _ := strconv.Atoi(m[2])
