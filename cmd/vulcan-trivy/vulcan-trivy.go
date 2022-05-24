@@ -201,7 +201,8 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 			path := ""
 			switch {
 			case tt.Class == "os-pkgs":
-				path = tt.Type // alpine, centos, ...
+				// Type contains the os distro name (i.e. alpine, centos, amazon, ...)
+				path = fmt.Sprintf("%s:%s", tt.Type, tv.PkgName)
 			case tv.PkgPath != "":
 				path = tv.PkgPath
 			default:
@@ -301,13 +302,13 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 			Details: generateDetails(registryEnvDomain, target),
 			Resources: []report.ResourcesGroup{
 				{
-					Name: "Packages",
+					Name: "Package",
 					Header: []string{
-						"Location",
+						"Package",
 						"Min. Recommended Version",
 					},
 					Rows: []map[string]string{{
-						"Location":                 key.path,
+						"Package":                  key.path,
 						"Min. Recommended Version": det.fixedBy,
 					}},
 				},
