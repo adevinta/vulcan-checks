@@ -380,6 +380,7 @@
   - ".env_hosted"
   - ".env_baremetal"
   regex: "(APP_ENV|DB_DATABASE|DB_USERNAME|DB_PASSWORD)"
+  status: 200
   severity: 8.9
   description: Exposed Laravel environment file.
 
