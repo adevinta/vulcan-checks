@@ -9,7 +9,6 @@ Currently there's no vendoring provided for this project.
 * **vulcan-aws-trusted-advisor** - Checks AWS Trusted Advisor for security findings
 * **vulcan-burp** - Runs a PortSwigger [Burp Enterprise](https://portswigger.net/burp/enterprise) scan
 * **vulcan-certinfo** - Extracts information about SSL/TLS certificates
-* **vulcan-dkim** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DKIM
 * **vulcan-dmarc** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DMARC
 * **vulcan-drupal** - Checks for vulnerabilities in Drupal CMS
 * **vulcan-exposed-amt** - Checks if an asset has the Intel AMT port exposed and whether is it vulnerable or not

@@ -1,2 +1,0 @@
-Description = "Checks if a domain have valid DNS configuration for DKIM"
-AssetTypes = ["DomainName"]
