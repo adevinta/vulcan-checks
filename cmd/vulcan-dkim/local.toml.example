@@ -1,6 +1,0 @@
-[Log]
-LogLevel = "debug"
-[Check]
-Target = "example.com"
-AssetType = "DomainName"
-Options = "{\"selectors\":[\"default\"]}"
