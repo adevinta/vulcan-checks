@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,9 +21,6 @@ import (
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 const (
@@ -101,63 +97,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-	// We check if the target is not the public Github.
-	targetURL, err := url.Parse(target)
+	repoPath, branch, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 	if err != nil {
-		return err
-	}
-
-	// TODO: Support multiple authenticated Github Enterprise instances.
-	githubURL, err := url.Parse(os.Getenv("GITHUB_ENTERPRISE_ENDPOINT"))
-	if err != nil {
-		return err
-	}
-
-	var auth *http.BasicAuth
-	if githubURL.Host != "" && targetURL.Host == githubURL.Host {
-		auth = &http.BasicAuth{
-			Username: "username", // Can be anything except blank.
-			Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
-		}
-		logger.Debug("using credentials for GitHub")
-	}
-
-	gitCreds := &helpers.GitCreds{}
-	if auth != nil {
-		gitCreds.User = auth.Username
-		gitCreds.Pass = auth.Password
-	}
-	isReachable, err := helpers.IsReachable(target, assetType, gitCreds)
-	if err != nil {
-		logger.WithError(err).Warn("can not check asset reachability")
-	}
-	if !isReachable {
-		return checkstate.ErrAssetUnreachable
-	}
-
-	repoPath := filepath.Join(os.TempDir(), "repo")
-	if err := os.Mkdir(repoPath, 0755); err != nil {
-		return err
-	}
-
-	logger.WithFields(logrus.Fields{"repo_path": repoPath}).Debug("cloning repo")
-
-	co := git.CloneOptions{
-		URL:   target,
-		Auth:  auth,
-		Depth: opt.Depth,
-	}
-	if opt.Branch != "" {
-		co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
-	}
-	r, err := git.PlainClone(repoPath, false, &co)
-	if err != nil {
-		return err
-	}
-
-	b, err := r.Head()
-	if err != nil {
-		logger.Errorf("vulcan-gitleaks was not able to retrieve the working branch")
 		return err
 	}
 
@@ -181,7 +122,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// Process the secrets found by gitleaks.
-	return processVulns(results, opt, repoPath, string(b.Name()), target, state)
+	return processVulns(results, opt, repoPath, branch, target, state)
 }
 
 func processVulns(results []Finding, opt options, repoPath string, branch string, target string, state checkstate.State) error {
@@ -222,8 +163,8 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	if stringInSlice(u.Hostname(), &localTargets) {
 		return strings.Join([]string{strings.TrimPrefix(file, "/"), "#", fmt.Sprint(l)}, "")
 	}
-	branch = strings.Replace(branch, "refs/heads", "/blob", 1)
-	return strings.Join([]string{target, branch, file, "#", fmt.Sprint(l)}, "")
+
+	return helpers.GenerateGithubURL(target, branch, file, l)
 }
 
 func setDetails(target string, f Finding, s []byte) string {
