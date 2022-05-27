@@ -10,7 +10,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
 	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
-	github.com/adevinta/vulcan-check-sdk v0.0.0-20220310134835-cdc1f862f2e6
+	github.com/adevinta/vulcan-check-sdk v0.0.0-20220527111445-177f904442ae
 	github.com/adevinta/vulcan-report v0.0.0-20211117082128-cadc974cc14c
 	github.com/adevinta/vulcan-types v0.0.0-20220310133120-53f000e5196f
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
