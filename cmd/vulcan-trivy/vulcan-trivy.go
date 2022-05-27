@@ -283,9 +283,10 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 				row["CWEs"] = strings.Join(urls, ", ")
 			}
 			if p.link == "" {
-				p.link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", p.cve)
+				row["Vulnerabilities"] = p.cve
+			} else {
+				row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", p.cve, p.link)
 			}
-			row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", p.cve, p.link)
 			row["Severity"] = p.severity
 			vp.Rows = append(vp.Rows, row)
 		}
