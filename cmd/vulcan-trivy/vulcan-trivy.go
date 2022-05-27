@@ -291,6 +291,9 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 			vp.Rows = append(vp.Rows, row)
 		}
 
+		// Ensure the order is not relevant.
+		sort.Strings(fingerprint)
+
 		// Build the vulnerability.
 		state.AddVulnerabilities(report.Vulnerability{
 			// Issue attributes.
