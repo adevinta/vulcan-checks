@@ -262,18 +262,20 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 
 		vp.Rows = []map[string]string{}
 		maxScore := getScore("NONE")
-		fingerprint := make([]string, len(l))
+		fingerprint := []string{}
 		for i, p := range l {
 			fingerprint = append(fingerprint, p.cve+p.severity)
+
 			// Compute the fingerprint for all the CVEs but add only vulnCVETruncateLimit to the table
-			if i > vulnCVETruncateLimit {
+			if i >= vulnCVETruncateLimit {
 				continue
 			}
+
 			newScore := getScore(p.severity)
 			if newScore > maxScore {
 				maxScore = newScore
 			}
-			row := make(map[string]string, len(vp.Header))
+			row := map[string]string{}
 			row["Fixed Version"] = p.fixedBy
 			if p.cwes != nil {
 				urls := []string{}
@@ -367,6 +369,7 @@ func getScore(severity string) float32 {
 
 var cveRegex = regexp.MustCompile(`^CVE-(\d{4})-(\d+)$`)
 
+// cve2num returns a numeric representation with year and id in case of CVE or a 0 otherwise
 func cve2num(cve string) int {
 	m := cveRegex.FindStringSubmatch(cve)
 	if len(m) == 3 {
