@@ -12,28 +12,26 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	report "github.com/adevinta/vulcan-report"
+	"github.com/mcuadros/go-version"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/avast/retry-go"
-	"github.com/mcuadros/go-version"
 )
 
-const (
-	vulnTruncateLimit   = 30
-	vulnCVETrucateLimit = 10
-)
+const vulnCVETruncateLimit = 10
 
 var (
 	checkName        = "vulcan-trivy"
 	logger           = check.NewCheckLog(checkName)
-	trivyCachePath   = "trivy_cache"
 	reportOutputFile = "report.json"
 )
 
@@ -43,30 +41,46 @@ type options struct {
 	Severities    string `json:"severities"`
 }
 
-type Results struct {
-	Results ScanResponse `json:"Results"`
+type results struct {
+	Results scanResponse `json:"Results"`
 }
 
-type ScanResponse []struct {
+type scanResponse []struct {
 	Target          string `json:"Target"`
+	Class           string `json:"Class"`
+	Type            string `json:"Type"`
 	Vulnerabilities []struct {
 		VulnerabilityID  string   `json:"VulnerabilityID"`
 		PkgName          string   `json:"PkgName"`
+		PkgPath          string   `json:"PkgPath"`
 		InstalledVersion string   `json:"InstalledVersion"`
 		FixedVersion     string   `json:"FixedVersion"`
 		Title            string   `json:"Title,omitempty"`
 		Description      string   `json:"Description,omitempty"`
 		Severity         string   `json:"Severity"`
 		References       []string `json:"References,omitempty"`
+		PrimaryURL       string   `json:"PrimaryURL,omitempty"`
+		CweIDs           []string `json:"CweIDs,omitempty"`
 	} `json:"Vulnerabilities"`
 }
 
+type vulnKey struct {
+	name    string
+	version string
+	path    string
+}
+
+type vulnData struct {
+	packages []outdatedPackage
+	fixedBy  string
+}
+
 type outdatedPackage struct {
-	name     string
-	version  string
 	severity string
 	fixedBy  string
-	cves     []string
+	cve      string
+	link     string
+	cwes     []string
 }
 
 func main() {
@@ -89,17 +103,13 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
-	// TODO: If target is "malformed" perhaps we should not return error
-	// but only log and error and return.
 	slashSplit := strings.SplitAfterN(target, "/", 2)
 	if len(slashSplit) <= 1 {
-		return errors.New(target + " is not a valid target")
+		logger.Warnf("%s does not have a path", target)
 	}
-	// TODO: If target is "malformed" perhaps we should not return error
-	// but only log and error and return.
-	targetSplit := strings.Split(slashSplit[1], ":")
+	targetSplit := strings.Split(slashSplit[len(slashSplit)-1], ":")
 	if len(targetSplit) != 2 {
-		return errors.New(target + "is not a valid target")
+		logger.Warnf("%s does not have a tag", target)
 	}
 
 	registryDomain := strings.Trim(slashSplit[0], "/")
@@ -120,16 +130,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// Build trivy command with arguments.
-	triviCmd := "./trivy"
-	triviArgs := []string{
-		"--cache-dir", trivyCachePath,
+	trivyCmd := "./trivy"
+	trivyArgs := []string{
 		"image",
 		"-f", "json",
 		"-o", reportOutputFile,
 	}
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
-		triviArgs = append(triviArgs, "--skip-update")
+		trivyArgs = append(trivyArgs, "--skip-update")
 		// Log warn if skip vulnerability db update and image tag is latest.
 		if strings.HasSuffix(target, "latest") {
 			logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
@@ -138,21 +147,23 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
-		triviArgs = append(triviArgs, "--ignore-unfixed")
+		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
-		triviArgs = append(triviArgs, severitiesFlag...)
+		trivyArgs = append(trivyArgs, severitiesFlag...)
 	}
+	// Restrict to vulnerabilities (no config/secrets yet)
+	trivyArgs = append(trivyArgs, "--security-checks", "vuln")
 	// Append the target (docker image including registry hostname).
-	triviArgs = append(triviArgs, target)
+	trivyArgs = append(trivyArgs, target)
 
-	logger.Infof("running command: %s %s\n", triviCmd, triviArgs)
+	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
 	err = retry.Do(
 		func() error {
-			cmd := exec.Command(triviCmd, triviArgs...)
+			cmd := exec.Command(trivyCmd, trivyArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
 			if err != nil {
 				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
@@ -176,7 +187,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		return errors.New("trivy report output file read failed")
 	}
 
-	var results Results
+	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
 		return errors.New("unmarshal trivy output failed")
@@ -185,117 +196,136 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	return processVulns(results.Results, registryEnvDomain, target, state)
 }
 
-func processVulns(results ScanResponse, registryEnvDomain, target string, state checkstate.State) error {
-	// If there are no vulnerabilities we can return.
-	if len(results) < 1 || len(results) == 1 && len(results[0].Vulnerabilities) == 0 {
-		return nil
-	}
-
-	outdatedPackageVulns := make(map[string]outdatedPackage)
-	for _, trivyTarget := range results {
-		for _, dockerVuln := range trivyTarget.Vulnerabilities {
-			op, ok := outdatedPackageVulns[dockerVuln.PkgName]
-			if ok {
-				if isMoreSevere(dockerVuln.Severity, op.severity) {
-					op.severity = dockerVuln.Severity
-				}
-				if version.Compare(version.Normalize(dockerVuln.FixedVersion), version.Normalize(op.fixedBy), ">") {
-					op.fixedBy = dockerVuln.FixedVersion
-				}
-			} else {
-				op = outdatedPackage{
-					name:     dockerVuln.PkgName,
-					version:  dockerVuln.InstalledVersion,
-					severity: dockerVuln.Severity,
-					fixedBy:  dockerVuln.FixedVersion,
-					cves:     []string{},
-				}
+func processVulns(results scanResponse, registryEnvDomain, target string, state checkstate.State) error {
+	outdatedPackageVulns := make(map[vulnKey]*vulnData)
+	for _, tt := range results {
+		for _, tv := range tt.Vulnerabilities {
+			path := ""
+			switch {
+			case tt.Class == "os-pkgs":
+				// Type contains the os distro name (i.e. alpine, centos, amazon, ...)
+				path = fmt.Sprintf("%s:%s", tt.Type, tv.PkgName)
+			case tv.PkgPath != "":
+				path = tv.PkgPath
+			default:
+				path = tt.Target
 			}
 
-			op.cves = append(op.cves, dockerVuln.VulnerabilityID)
+			key := vulnKey{
+				name:    tv.PkgName,
+				version: tv.InstalledVersion,
+				path:    path,
+			}
 
-			outdatedPackageVulns[op.name] = op
+			pkg := outdatedPackage{
+				severity: tv.Severity,
+				fixedBy:  tv.FixedVersion,
+				cve:      tv.VulnerabilityID,
+				link:     tv.PrimaryURL,
+				cwes:     tv.CweIDs,
+			}
+
+			if det, ok := outdatedPackageVulns[key]; ok {
+				det.packages = append(det.packages, pkg)
+				if version.Compare(version.Normalize(tv.FixedVersion), version.Normalize(det.fixedBy), ">") {
+					det.fixedBy = tv.FixedVersion
+				}
+			} else {
+				det = &vulnData{
+					packages: []outdatedPackage{pkg},
+					fixedBy:  tv.FixedVersion,
+				}
+				outdatedPackageVulns[key] = det
+			}
 		}
 	}
-
-	var opvArr []outdatedPackage
-	for _, op := range outdatedPackageVulns {
-		sort.Strings(op.cves)
-		opvArr = append(opvArr, op)
-	}
-
-	// Sort outdated packages by severity, alphabetical order of the package
-	// name and version.
-	sort.Slice(opvArr, func(i, j int) bool {
-		si := getScore(opvArr[i].severity)
-		sj := getScore(opvArr[j].severity)
-		switch {
-		case si != sj:
-			return si > sj
-		case opvArr[i].name != opvArr[j].name:
-			return opvArr[i].name < opvArr[j].name
-		default:
-			return opvArr[i].version < opvArr[j].version
-		}
-	})
-
-	// To avoid report size overflow only top 30 most vulnerable packages
-	// are reported.
-	totalVulnerablePackages := len(opvArr)
-	if totalVulnerablePackages > vulnTruncateLimit {
-		logger.Warnf("truncate to top %d vulnerabilities\n", vulnTruncateLimit)
-		opvArr = opvArr[0:vulnTruncateLimit]
-	}
-
 	vp := report.ResourcesGroup{
 		Name: "Package Vulnerabilities",
 		Header: []string{
-			"Name",
-			"Version",
-			"FixedBy",
+			"Fixed Version",
 			"Vulnerabilities",
+			"Severity",
+			"CWEs",
 		},
 	}
-	for _, op := range opvArr {
-		affectedResource := fmt.Sprintf("%s-%s", op.name, op.version)
-		fingerprint := helpers.ComputeFingerprint(op.severity, op.cves)
 
-		// Build vulnerabilities Rsources table.
-		vResourcesTable := make(map[string]string)
-		vResourcesTable["Name"] = op.name
-		vResourcesTable["Version"] = op.version
-		vResourcesTable["FixedBy"] = op.fixedBy
+	for key, det := range outdatedPackageVulns {
+		l := det.packages
 
-		for i := 0; i < len(op.cves) && i < vulnCVETrucateLimit; i++ {
-			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | [%s](https://nvd.nist.gov/vuln/detail/%s)", vResourcesTable["Vulnerabilities"], op.cves[i], op.cves[i])
+		// Sort CVEs by severity desc, cve desc
+		sort.Slice(l, func(i, j int) bool {
+			if l[i].severity == l[j].severity {
+				return cve2num(l[i].cve) > cve2num(l[j].cve)
+			}
+			return getScore(l[i].severity) > getScore(l[j].severity)
+		})
+
+		vp.Rows = []map[string]string{}
+		maxScore := getScore("NONE")
+		fingerprint := []string{}
+		for i, p := range l {
+			fingerprint = append(fingerprint, p.cve+p.severity)
+
+			// Compute the fingerprint for all the CVEs but add only vulnCVETruncateLimit to the table
+			if i >= vulnCVETruncateLimit {
+				continue
+			}
+
+			newScore := getScore(p.severity)
+			if newScore > maxScore {
+				maxScore = newScore
+			}
+			row := map[string]string{}
+			row["Fixed Version"] = p.fixedBy
+			if p.cwes != nil {
+				urls := []string{}
+				for _, cwe := range p.cwes {
+					urls = append(urls, fmt.Sprintf("[%s](https://cwe.mitre.org/data/definitions/%s.html)", cwe, strings.TrimPrefix(cwe, "CWE-")))
+				}
+				row["CWEs"] = strings.Join(urls, ", ")
+			}
+			if p.link == "" {
+				row["Vulnerabilities"] = p.cve
+			} else {
+				row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", p.cve, p.link)
+			}
+			row["Severity"] = p.severity
+			vp.Rows = append(vp.Rows, row)
 		}
-		if len(op.cves) > vulnCVETrucateLimit {
-			logger.Warnf("truncate affected package [%s] CVE list to [%d]\n", op.name, vulnCVETrucateLimit)
-			vResourcesTable["Vulnerabilities"] = fmt.Sprintf("%s | and some others ...)", vResourcesTable["Vulnerabilities"])
-		}
 
-		vp.Rows = []map[string]string{vResourcesTable}
+		// Ensure the order is not relevant.
+		sort.Strings(fingerprint)
 
 		// Build the vulnerability.
-		vuln := report.Vulnerability{
+		state.AddVulnerabilities(report.Vulnerability{
 			// Issue attributes.
-			Summary:     "Outdated Packages in Docker Image",
-			Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
+			AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version)),
+			Fingerprint:      helpers.ComputeFingerprint(key.path, fingerprint),
+			Summary:          "Outdated Packages in Docker Image",
+			Description:      "Vulnerabilities have been found in outdated packages installed in the Docker image.",
 			Recommendations: []string{
 				"Update affected packages to the versions specified in the resources table or newer.",
 			},
 			CWEID:  937,
 			Labels: []string{"potential", "docker"},
-
 			// Finding attributes.
-			Fingerprint:      fingerprint,
-			AffectedResource: affectedResource,
-			Score:            getScore(op.severity),
-			Details:          generateDetails(registryEnvDomain, target),
-			Resources:        []report.ResourcesGroup{vp},
-		}
-
-		state.AddVulnerabilities(vuln)
+			Score:   maxScore,
+			Details: generateDetails(registryEnvDomain, target),
+			Resources: []report.ResourcesGroup{
+				{
+					Name: "Package",
+					Header: []string{
+						"Package",
+						"Min. Recommended Version",
+					},
+					Rows: []map[string]string{{
+						"Package":                  key.path,
+						"Min. Recommended Version": det.fixedBy,
+					}},
+				},
+				vp,
+			},
+		})
 	}
 
 	return nil
@@ -306,7 +336,7 @@ func generateDetails(registry, target string) string {
 		"Run the following command to obtain the full report in your computer.",
 		"If using a public docker registry:",
 		fmt.Sprintf(`
-	docker run -it --rm aquasec/trivy %s`, target,
+	docker run -it --rm aquasec/trivy image %s`, target,
 		),
 		"\n",
 		"If using a private docker registry:",
@@ -315,7 +345,7 @@ func generateDetails(registry, target string) string {
 		-e TRIVY_AUTH_URL=https://%s \
 		-e TRIVY_USERNAME=$REGISTRY_USERNAME \
 		-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
-		aquasec/trivy %s`, registry, target,
+		aquasec/trivy image %s`, registry, target,
 		),
 	}
 	return strings.Join(details, "\n")
@@ -337,9 +367,15 @@ func getScore(severity string) float32 {
 	return report.SeverityThresholdNone
 }
 
-func isMoreSevere(s1, s2 string) bool {
-	if getScore(s1) > getScore(s2) {
-		return true
+var cveRegex = regexp.MustCompile(`^CVE-(\d{4})-(\d+)$`)
+
+// cve2num returns a numeric representation with year and id in case of CVE or a 0 otherwise
+func cve2num(cve string) int {
+	m := cveRegex.FindStringSubmatch(cve)
+	if len(m) == 3 {
+		year, _ := strconv.Atoi(m[1])
+		id, _ := strconv.Atoi(m[2])
+		return year*1000000 + id
 	}
-	return false
+	return 0
 }
