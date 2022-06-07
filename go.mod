@@ -10,7 +10,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/adevinta/gozuul v0.0.0-20191210100135-8808882dea1f
 	github.com/adevinta/restuss v0.0.0-20200401171945-cc64e2b9dd21
-	github.com/adevinta/vulcan-check-sdk v0.0.0-20220527111445-177f904442ae
+	github.com/adevinta/vulcan-check-sdk v0.0.0-20220607093713-44c825e4a855
 	github.com/adevinta/vulcan-report v0.0.0-20211117082128-cadc974cc14c
 	github.com/adevinta/vulcan-types v0.0.0-20220310133120-53f000e5196f
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
@@ -22,7 +22,6 @@ require (
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
-	github.com/knqyf263/go-rpm-version v0.0.0-20170716094938-74609b86c936
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
@@ -36,7 +35,5 @@ require (
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
-	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.8
 )
