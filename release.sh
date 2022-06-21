@@ -96,7 +96,7 @@ for cf in cmd/*; do
 
     echo "Processing: [$check] | ID: $check_version-$dep_version MODE: $check_mode BRANCH: $check_branch"
     # List of tags to apply to check Docker image
-    tag_list="latest,$check_version-$dep_version,$check_branch,$check_mode"
+    tag_list="$check_version-$dep_version,$check_branch,$check_mode"
     # Build check (Go binaries and Docker images + Tagging)
     if [[ $do_build == true ]]; then
         cd "$cf" || exit 1
