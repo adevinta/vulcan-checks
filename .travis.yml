@@ -13,7 +13,7 @@ deploy:
     script: bash release.sh
     on:
       all_branches: true
-      condition: $TRAVIS_BRANCH !~ ^master$
+      condition: $TRAVIS_BRANCH != "master"
   - provider: script
     script: bash release-edge.sh
     on:
