@@ -26,6 +26,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-exposed-ssh** - Checks SSH server configuration for compliance with Mozilla OpenSSH guidelines
 * **vulcan-exposed-varnish** - Checks if an asset is a Web Cache, and also if it is a Varnish
 * **vulcan-github-alerts** - Retrieves existing vulnerability alerts for a Github repository
+* **vulcan-gitleaks** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
 * **vulcan-gozuul** - Checks if a Zuul Gateway is vulnerable to Remote Code Execution as specified in nflx-2016-003
 * **vulcan-heartbleed** - Checks if an asset is vulnerable to heartbleed vulnerability
 * **vulcan-host-discovery** - Performs a quick Nmap ping scan that identifies which hosts are up
