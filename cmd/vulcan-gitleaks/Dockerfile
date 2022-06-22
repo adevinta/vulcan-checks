@@ -2,6 +2,9 @@
 
 FROM zricethezav/gitleaks
 
+# Override base label with 🔑 not supported by artifactory.
+LABEL org.opencontainers.image.description="Protect and discover secrets using Gitleaks"
+
 # Override entrypoint
 ENTRYPOINT ["/usr/bin/env"]
 
