@@ -37,7 +37,7 @@ dkr_login() {
         local -r password="${DKR_PASSWORD:?docker password required}"
         local -r server="${DKR_SERVER:?docker server required}"
 
-        echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${server}"
+        echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${server}" || exit 1
     fi
 }
 
@@ -163,8 +163,6 @@ dkr_push() {
         echo "Docker image [$DKR_USERNAME/$image_name] does not exist" 1>&2
         exit 1
     fi
-    # Ensure we are logged in
-    dkr_login > /dev/null
     echo "Pushing $DKR_USERNAME/$image_name"
     dkr_execute push "$DKR_USERNAME/$image_name" > /dev/null
 }
