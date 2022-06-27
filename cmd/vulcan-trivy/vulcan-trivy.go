@@ -27,7 +27,10 @@ import (
 	"github.com/avast/retry-go"
 )
 
-const vulnCVETruncateLimit = 10
+const (
+	vulnCVETruncateLimit = 10
+	DefaultDepth         = 1
+)
 
 var (
 	checkName        = "vulcan-trivy"
@@ -39,6 +42,8 @@ type options struct {
 	ForceUpdateDB bool   `json:"force_update_db"`
 	IgnoreUnfixed bool   `json:"ignore_unfixed"`
 	Severities    string `json:"severities"`
+	Depth         int    `json:"depth"`
+	Branch        string `json:"branch"`
 }
 
 type results struct {
@@ -62,6 +67,24 @@ type scanResponse []struct {
 		PrimaryURL       string   `json:"PrimaryURL,omitempty"`
 		CweIDs           []string `json:"CweIDs,omitempty"`
 	} `json:"Vulnerabilities"`
+	Misconfigurations []struct {
+		Type          string   `json:"Type"`
+		Title         string   `json:"Title,omitempty"`
+		Description   string   `json:"Description,omitempty"`
+		Message       string   `json:"Message,omitempty"`
+		Resolution    string   `json:"Resolution,omitempty"`
+		Severity      string   `json:"Severity"`
+		References    []string `json:"References,omitempty"`
+		PrimaryURL    string   `json:"PrimaryURL,omitempty"`
+		CauseMetadata struct {
+			StartLine int `json:"StartLine"`
+			EndLine   int `json:"EndLine"`
+			Code      struct {
+				Number  int    `json:"Number"`
+				Content string `json:"Content:omitempty"`
+			} `json:"Code"`
+		} `json:"CauseMetadata"`
+	} `json:"Misconfigurations"`
 }
 
 type vulnKey struct {
@@ -89,11 +112,6 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	// Load required env vars for docker registry authentication.
-	registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
-	registryEnvUsername := os.Getenv("REGISTRY_USERNAME")
-	registryEnvPassword := os.Getenv("REGISTRY_PASSWORD")
-
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options
@@ -103,65 +121,131 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
-	slashSplit := strings.SplitAfterN(target, "/", 2)
-	if len(slashSplit) <= 1 {
-		logger.Warnf("%s does not have a path", target)
-	}
-	targetSplit := strings.Split(slashSplit[len(slashSplit)-1], ":")
-	if len(targetSplit) != 2 {
-		logger.Warnf("%s does not have a tag", target)
-	}
-
-	registryDomain := strings.Trim(slashSplit[0], "/")
-	// If docker registry equals registryDomain, export trivy credential env vars.
-	if registryDomain == registryEnvDomain {
-		os.Setenv("TRIVY_AUTH_URL", registryEnvDomain)
-		os.Setenv("TRIVY_USERNAME", registryEnvUsername)
-		os.Setenv("TRIVY_PASSWORD", registryEnvPassword)
-	}
-
-	isReachable, err := helpers.IsReachable(target, assetType,
-		helpers.NewDockerCreds(os.Getenv("TRIVY_USERNAME"), os.Getenv("TRIVY_PASSWORD")))
-	if err != nil {
-		logger.Warnf("Can not check asset reachability: %v", err)
-	}
-	if !isReachable {
-		return checkstate.ErrAssetUnreachable
-	}
-
-	// Build trivy command with arguments.
-	trivyCmd := "./trivy"
-	trivyArgs := []string{
-		"image",
-		"-f", "json",
-		"-o", reportOutputFile,
-	}
+	trivyArgs := []string{}
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
 		trivyArgs = append(trivyArgs, "--skip-update")
-		// Log warn if skip vulnerability db update and image tag is latest.
-		if strings.HasSuffix(target, "latest") {
-			logger.Warnf("skipping vulnerability db update with latest tag: %s\n", target)
-		}
 	}
-
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
 		trivyArgs = append(trivyArgs, "--ignore-unfixed")
+	}
+	// Restrict to vulnerabilities (no config/secrets yet)
+	trivyArgs = append(trivyArgs, "--security-checks", "vuln")
+
+	if strings.Contains(assetType, "DockerImage") {
+		// Load required env vars for docker registry authentication.
+		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
+		registryEnvUsername := os.Getenv("REGISTRY_USERNAME")
+		registryEnvPassword := os.Getenv("REGISTRY_PASSWORD")
+
+		slashSplit := strings.SplitAfterN(target, "/", 2)
+		if len(slashSplit) <= 1 {
+			logger.Warnf("%s does not have a path", target)
+		}
+		targetSplit := strings.Split(slashSplit[len(slashSplit)-1], ":")
+		if len(targetSplit) != 2 {
+			logger.Warnf("%s does not have a tag", target)
+		}
+
+		registryDomain := strings.Trim(slashSplit[0], "/")
+		// If docker registry equals registryDomain, export trivy credential env vars.
+		if registryDomain == registryEnvDomain {
+			os.Setenv("TRIVY_AUTH_URL", registryEnvDomain)
+			os.Setenv("TRIVY_USERNAME", registryEnvUsername)
+			os.Setenv("TRIVY_PASSWORD", registryEnvPassword)
+		}
+
+		isReachable, err := helpers.IsReachable(target, assetType,
+			helpers.NewDockerCreds(os.Getenv("TRIVY_USERNAME"), os.Getenv("TRIVY_PASSWORD")))
+		if err != nil {
+			logger.Warnf("Can not check asset reachability: %v", err)
+		}
+		if !isReachable {
+			return checkstate.ErrAssetUnreachable
+		}
+
+		results, err := execTrivy(opt, "image", append(trivyArgs, target))
+		if err != nil {
+			return err
+		}
+
+		details := strings.Join([]string{
+			"Run the following command to obtain the full report in your computer.",
+			"If using a public docker registry:",
+			fmt.Sprintf(`docker run -it --rm aquasec/trivy image %s`, target),
+			"\n",
+			"If using a private docker registry:",
+			fmt.Sprintf(`docker run -it --rm \
+			-e TRIVY_AUTH_URL=https://%s \
+			-e TRIVY_USERNAME=$REGISTRY_USERNAME \
+			-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
+			aquasec/trivy image %s`, registryEnvDomain, target),
+		}, "\n")
+
+		return processVulns(results.Results, details, state)
+
+	} else if assetType == "GitRepository" {
+		if opt.Depth == 0 {
+			opt.Depth = DefaultDepth
+		}
+		// TODO: use branch
+		repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		if err != nil {
+			return err
+		}
+		results, err := execTrivy(opt, "fs", append(trivyArgs, repoPath))
+		if err != nil {
+			logger.Errorf("Can not execute trivy: %+v", err)
+		} else {
+			details := strings.Join([]string{
+				"Run the following command to obtain the full report in your computer.",
+				"If using a public git repository:",
+				fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
+				"If using a private repository clone first:",
+				fmt.Sprintf("\tgit clone %s repo", target),
+				"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
+			}, "\n")
+
+			if err := processVulns(results.Results, details, state); err != nil {
+				logger.Errorf("processing fs results: %+v", err)
+			}
+		}
+
+		results, err = execTrivy(opt, "config", []string{repoPath})
+		if err != nil {
+			return err
+		}
+		details := strings.Join([]string{
+			"Run the following command to obtain the full report in your computer.",
+			"Clone your repo and execute:",
+			fmt.Sprintf("\tgit clone %s repo", target),
+			"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy config /repo",
+		}, "\n")
+		return processMisconfigs(results.Results, details, state)
+	}
+	return fmt.Errorf("Unknown assetType %s", assetType)
+}
+
+func execTrivy(opt options, action string, actionArgs []string) (*results, error) {
+	// Build trivy command with arguments.
+	trivyCmd := "./trivy"
+	trivyArgs := []string{
+		action,
+		"-f", "json",
+		"-o", reportOutputFile,
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
 		trivyArgs = append(trivyArgs, severitiesFlag...)
 	}
-	// Restrict to vulnerabilities (no config/secrets yet)
-	trivyArgs = append(trivyArgs, "--security-checks", "vuln")
-	// Append the target (docker image including registry hostname).
-	trivyArgs = append(trivyArgs, target)
+	// Append the custom params.
+	trivyArgs = append(trivyArgs, actionArgs...)
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
 			cmd := exec.Command(trivyCmd, trivyArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
@@ -178,25 +262,47 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	)
 	if err != nil {
 		logger.Errorf("retry exec.Command() failed with error: %s\n", err)
-		return errors.New("trivy command execution failed")
+		return nil, errors.New("trivy command execution failed")
 	}
 
 	byteValue, err := ioutil.ReadFile(reportOutputFile)
 	if err != nil {
 		logger.Errorf("trivy report output file read failed with error: %s\n", err)
-		return errors.New("trivy report output file read failed")
+		return nil, errors.New("trivy report output file read failed")
 	}
 
 	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
-		return errors.New("unmarshal trivy output failed")
+		return nil, errors.New("unmarshal trivy output failed")
 	}
-
-	return processVulns(results.Results, registryEnvDomain, target, state)
+	return &results, nil
 }
 
-func processVulns(results scanResponse, registryEnvDomain, target string, state checkstate.State) error {
+func processMisconfigs(results scanResponse, details string, state checkstate.State) error {
+	for _, tt := range results {
+		for _, tv := range tt.Misconfigurations {
+			state.AddVulnerabilities(report.Vulnerability{
+				// Issue attributes.
+				AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", tt.Type, tt.Target)), // TODO: Type (i.e. "dockerfile"), Target (path)
+				Fingerprint:      helpers.ComputeFingerprint(tv.CauseMetadata.StartLine, tv.CauseMetadata.EndLine),
+				Summary:          tv.Type, // TODO: review ... ("Dockerfile Security Check")
+				Description:      tv.Description,
+				Recommendations: []string{
+					tv.Resolution,
+				},
+				// CWEID:  937,
+				Labels: []string{"potential", "config"},
+				// Finding attributes.
+				Score:   getScore(tv.Severity),
+				Details: details,
+			})
+		}
+	}
+	return nil
+}
+
+func processVulns(results scanResponse, details string, state checkstate.State) error {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
@@ -310,7 +416,7 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 			Score:   maxScore,
-			Details: generateDetails(registryEnvDomain, target),
+			Details: details,
 			Resources: []report.ResourcesGroup{
 				{
 					Name: "Package",
@@ -329,26 +435,6 @@ func processVulns(results scanResponse, registryEnvDomain, target string, state 
 	}
 
 	return nil
-}
-
-func generateDetails(registry, target string) string {
-	details := []string{
-		"Run the following command to obtain the full report in your computer.",
-		"If using a public docker registry:",
-		fmt.Sprintf(`
-	docker run -it --rm aquasec/trivy image %s`, target,
-		),
-		"\n",
-		"If using a private docker registry:",
-		fmt.Sprintf(`
-	docker run -it --rm \
-		-e TRIVY_AUTH_URL=https://%s \
-		-e TRIVY_USERNAME=$REGISTRY_USERNAME \
-		-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
-		aquasec/trivy image %s`, registry, target,
-		),
-	}
-	return strings.Join(details, "\n")
 }
 
 func getScore(severity string) float32 {
