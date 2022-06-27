@@ -127,7 +127,7 @@ for cf in cmd/*; do
     # Push docker image
     ts_docker_push_start=$(date +"%s")
     if [[ $do_push == true ]]; then
-        dkr_push "$check"
+        dkr_push_tags "$check" "$tag_list"
     else
         echo "Skip push process for check: [$check]"
     fi

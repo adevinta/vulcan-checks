@@ -23,6 +23,7 @@ go mod download
 # Iterate over all checks
 for cf in cmd/*; do
     check=$(basename "$cf")
+    echo "Procesing $check"
 
     # List of tags to apply to check Docker image
     tag_list="latest,edge"
@@ -38,6 +39,6 @@ for cf in cmd/*; do
     # Tag docker image
     dkr_tag "$check" "$tag_list"
 
-    # Push docker image
-    dkr_push "$check"
+    # Push all the tags
+    dkr_push_tags "$check" "$tag_list"
 done
