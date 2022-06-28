@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -36,6 +37,7 @@ var (
 	checkName        = "vulcan-trivy"
 	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = "report.json"
+	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 )
 
 type options struct {
@@ -68,6 +70,7 @@ type scanResponse []struct {
 		CweIDs           []string `json:"CweIDs,omitempty"`
 	} `json:"Vulnerabilities"`
 	Misconfigurations []struct {
+		ID            string   `json:"ID"`
 		Type          string   `json:"Type"`
 		Title         string   `json:"Title,omitempty"`
 		Description   string   `json:"Description,omitempty"`
@@ -80,8 +83,10 @@ type scanResponse []struct {
 			StartLine int `json:"StartLine"`
 			EndLine   int `json:"EndLine"`
 			Code      struct {
-				Number  int    `json:"Number"`
-				Content string `json:"Content:omitempty"`
+				Lines []struct {
+					Number  int    `json:"Number"`
+					Content string `json:"Content:omitempty"`
+				}
 			} `json:"Code"`
 		} `json:"CauseMetadata"`
 	} `json:"Misconfigurations"`
@@ -201,7 +206,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			opt.Depth = DefaultDepth
 		}
 		// TODO: use branch
-		repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 		if err != nil {
 			return err
 		}
@@ -232,17 +237,13 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				logger.Errorf("processing fs results: %+v", err)
 			}
 		}
-		results, err = execTrivy(opt, "config", []string{repoPath})
+		results, err = execTrivy(opt, "config", []string{
+			"--ignorefile", path.Join(repoPath, ".trivyignore"),
+			repoPath})
 		if err != nil {
 			return err
 		}
-		details := strings.Join([]string{
-			"Run the following command to obtain the full report in your computer.",
-			"Clone your repo and execute:",
-			fmt.Sprintf("\tgit clone %s repo", target),
-			"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy config /repo",
-		}, "\n")
-		return processMisconfigs(results.Results, details, state)
+		return processMisconfigs(results.Results, target, branchName, state)
 	}
 	return fmt.Errorf("Unknown assetType %s", assetType)
 }
@@ -299,27 +300,47 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 	return &results, nil
 }
 
-func processMisconfigs(results scanResponse, details string, state checkstate.State) error {
+func processMisconfigs(results scanResponse, target string, branch string, state checkstate.State) error {
 	for _, tt := range results {
 		for _, tv := range tt.Misconfigurations {
-			state.AddVulnerabilities(report.Vulnerability{
-				// Issue attributes.
-				AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", tt.Type, tt.Target)), // TODO: Type (i.e. "dockerfile"), Target (path)
-				Fingerprint:      helpers.ComputeFingerprint(tv.CauseMetadata.StartLine, tv.CauseMetadata.EndLine),
-				Summary:          tv.Type, // TODO: review ... ("Dockerfile Security Check")
-				Description:      tv.Description,
-				Recommendations: []string{
-					tv.Resolution,
-				},
+
+			var sb strings.Builder
+			for _, l := range tv.CauseMetadata.Code.Lines {
+				sb.WriteString(l.Content)
+			}
+			vuln := report.Vulnerability{
+				Details: strings.Join([]string{
+					tv.Message, // Message changes on the target.
+					"",
+					"Run the following command to obtain the full report in your computer.",
+					"Clone your repo and execute:",
+					fmt.Sprintf("\tgit clone %s repo", target),
+					"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy config --ignorefile /repo/.trivyignore /repo",
+					fmt.Sprintf("If you want to ignore this findings you can add %s to a .trivyignore file in your repo", tv.ID),
+				}, "\n"),
 				// CWEID:  937,
 				Labels: []string{"potential", "config"},
-				// Finding attributes.
-				Score:   getScore(tv.Severity),
-				Details: details,
-			})
+			}
+			vuln.Summary = fmt.Sprintf("%s - %s", tv.Type, tv.Title)
+			vuln.Description = tv.Description
+			// TODO: Type (i.e. "dockerfile"), Target (path)
+			vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s:%s", tt.Type, tt.Target))
+			vuln.AffectedResourceString = computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine)
+			vuln.Fingerprint = helpers.ComputeFingerprint(tv.ID, tv.CauseMetadata.StartLine, tv.CauseMetadata.EndLine, sb.String())
+			vuln.Recommendations = []string{tv.Resolution}
+			vuln.Score = getScore(tv.Severity)
+			vuln.References = tv.References
+			state.AddVulnerabilities(vuln)
 		}
 	}
 	return nil
+}
+
+func computeAffectedResource(target, branch string, file string, l int) string {
+	if localTargets.MatchString(target) {
+		return fmt.Sprintf("%s#%d", strings.TrimPrefix(file, "/"), l)
+	}
+	return helpers.GenerateGithubURL(target, branch, file, l)
 }
 
 func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
