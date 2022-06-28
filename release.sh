@@ -96,7 +96,7 @@ for cf in cmd/*; do
 
     echo "Processing: [$check] | ID: $check_version-$dep_version MODE: $check_mode BRANCH: $check_branch"
     # List of tags to apply to check Docker image
-    tag_list="latest,$check_version-$dep_version,$check_branch,$check_mode"
+    tag_list="$check_version-$dep_version,$check_branch,$check_mode"
     # Build check (Go binaries and Docker images + Tagging)
     if [[ $do_build == true ]]; then
         cd "$cf" || exit 1
@@ -127,7 +127,7 @@ for cf in cmd/*; do
     # Push docker image
     ts_docker_push_start=$(date +"%s")
     if [[ $do_push == true ]]; then
-        dkr_push "$check"
+        dkr_push_tags "$check" "$tag_list"
     else
         echo "Skip push process for check: [$check]"
     fi

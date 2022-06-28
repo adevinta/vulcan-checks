@@ -37,7 +37,7 @@ dkr_login() {
         local -r password="${DKR_PASSWORD:?docker password required}"
         local -r server="${DKR_SERVER:?docker server required}"
 
-        echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${server}"
+        echo "${password}" | dkr_execute login -u "${username}" --password-stdin "${server}" || exit 1
     fi
 }
 
@@ -127,9 +127,28 @@ dkr_tag() {
     fi
 
     for t in "${tags[@]}"; do
+        echo "Tagging $DKR_USERNAME/$image_name:$t"
         dkr_execute tag "$DKR_USERNAME/$image_name" "$DKR_USERNAME/$image_name:$t"
     done
 }
+
+########################
+# Pushes the image with the list of tags
+# Arguments:
+#   $1 - Docker image name
+#   $@ - List of tags to push
+# Returns:
+#   None
+dkr_push_tags() {
+    local -r image_name="${1:?docker image name argument required}"
+    shift
+    read -r -a tags <<< "$(tr ',;' ' ' <<< "$@")"
+
+    for t in "${tags[@]}"; do
+        dkr_push "$image_name:$t"
+    done
+}
+
 
 ########################
 # Push docker image to registry.
@@ -144,8 +163,7 @@ dkr_push() {
         echo "Docker image [$DKR_USERNAME/$image_name] does not exist" 1>&2
         exit 1
     fi
-    # Ensure we are logged in
-    dkr_login > /dev/null
+    echo "Pushing $DKR_USERNAME/$image_name"
     dkr_execute push "$DKR_USERNAME/$image_name" > /dev/null
 }
 
