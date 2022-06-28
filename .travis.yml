@@ -1,4 +1,6 @@
 dist: bionic
+git:
+  depth: false
 language: go
 go:
   - 1.18.x
