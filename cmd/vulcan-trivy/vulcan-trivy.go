@@ -171,20 +171,30 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return err
 		}
 
-		details := strings.Join([]string{
-			"Run the following command to obtain the full report in your computer.",
-			"If using a public docker registry:",
-			fmt.Sprintf(`docker run -it --rm aquasec/trivy image %s`, target),
-			"\n",
-			"If using a private docker registry:",
-			fmt.Sprintf(`docker run -it --rm \
-			-e TRIVY_AUTH_URL=https://%s \
-			-e TRIVY_USERNAME=$REGISTRY_USERNAME \
-			-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
-			aquasec/trivy image %s`, registryEnvDomain, target),
-		}, "\n")
-
-		return processVulns(results.Results, details, state)
+		vuln := report.Vulnerability{
+			// Issue attributes.
+			Summary:     "Outdated Packages in Docker Image",
+			Description: "Vulnerabilities have been found in outdated packages installed in the Docker image.",
+			Recommendations: []string{
+				"Update affected packages to the versions specified in the resources table or newer.",
+			},
+			Details: strings.Join([]string{
+				"Run the following command to obtain the full report in your computer.",
+				"If using a public docker registry:",
+				fmt.Sprintf(`docker run -it --rm aquasec/trivy image %s`, target),
+				"\n",
+				"If using a private docker registry:",
+				fmt.Sprintf(`docker run -it --rm \
+				-e TRIVY_AUTH_URL=https://%s \
+				-e TRIVY_USERNAME=$REGISTRY_USERNAME \
+				-e TRIVY_PASSWORD=$REGISTRY_PASSWORD \
+				aquasec/trivy image %s`, registryEnvDomain, target),
+			}, "\n"),
+			CWEID:  937,
+			Labels: []string{"potential", "docker"},
+			// Finding attributes.
+		}
+		return processVulns(results.Results, vuln, state)
 
 	} else if assetType == "GitRepository" {
 		if opt.Depth == 0 {
@@ -199,20 +209,29 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
 		} else {
-			details := strings.Join([]string{
-				"Run the following command to obtain the full report in your computer.",
-				"If using a public git repository:",
-				fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
-				"If using a private repository clone first:",
-				fmt.Sprintf("\tgit clone %s repo", target),
-				"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
-			}, "\n")
-
-			if err := processVulns(results.Results, details, state); err != nil {
+			vuln := report.Vulnerability{
+				// Issue attributes.
+				Summary:     "Outdated Packages in Git Repository",
+				Description: "Vulnerabilities have been found in outdated packages referenced in Git Repository.",
+				Recommendations: []string{
+					"Update affected packages to the versions specified in the resources table or newer.",
+				},
+				Details: strings.Join([]string{
+					"Run the following command to obtain the full report in your computer.",
+					"If using a public git repository:",
+					fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
+					"If using a private repository clone first:",
+					fmt.Sprintf("\tgit clone %s repo", target),
+					"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
+				}, "\n"),
+				CWEID:  937,
+				Labels: []string{"potential", "git"},
+				// Finding attributes.
+			}
+			if err := processVulns(results.Results, vuln, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
 		}
-
 		results, err = execTrivy(opt, "config", []string{repoPath})
 		if err != nil {
 			return err
@@ -303,7 +322,7 @@ func processMisconfigs(results scanResponse, details string, state checkstate.St
 	return nil
 }
 
-func processVulns(results scanResponse, details string, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
@@ -406,36 +425,26 @@ func processVulns(results scanResponse, details string, state checkstate.State) 
 		// Ensure the order is not relevant.
 		sort.Strings(fingerprint)
 
-		// Build the vulnerability.
-		state.AddVulnerabilities(report.Vulnerability{
-			// Issue attributes.
-			AffectedResource: strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version)),
-			Fingerprint:      helpers.ComputeFingerprint(key.path, fingerprint),
-			Summary:          "Outdated Packages in Docker Image",
-			Description:      "Vulnerabilities have been found in outdated packages installed in the Docker image.",
-			Recommendations: []string{
-				"Update affected packages to the versions specified in the resources table or newer.",
-			},
-			CWEID:  937,
-			Labels: []string{"potential", "docker"},
-			// Finding attributes.
-			Score:   maxScore,
-			Details: details,
-			Resources: []report.ResourcesGroup{
-				{
-					Name: "Package",
-					Header: []string{
-						"Package",
-						"Min. Recommended Version",
-					},
-					Rows: []map[string]string{{
-						"Package":                  key.path,
-						"Min. Recommended Version": det.fixedBy,
-					}},
+		vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s:%s", key.name, key.version))
+		vuln.Fingerprint = helpers.ComputeFingerprint(key.path, fingerprint)
+		vuln.Score = maxScore
+		vuln.Resources = []report.ResourcesGroup{
+			{
+				Name: "Package",
+				Header: []string{
+					"Package",
+					"Min. Recommended Version",
 				},
-				vp,
+				Rows: []map[string]string{{
+					"Package":                  key.path,
+					"Min. Recommended Version": det.fixedBy,
+				}},
 			},
-		})
+			vp,
+		}
+
+		// Build the vulnerability.
+		state.AddVulnerabilities(vuln)
 	}
 
 	return nil
