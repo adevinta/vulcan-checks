@@ -104,6 +104,7 @@ type outdatedPackage struct {
 	cve      string
 	link     string
 	cwes     []string
+	title    string
 }
 
 func main() {
@@ -329,6 +330,7 @@ func processVulns(results scanResponse, details string, state checkstate.State) 
 				cve:      tv.VulnerabilityID,
 				link:     tv.PrimaryURL,
 				cwes:     tv.CweIDs,
+				title:    tv.Title,
 			}
 
 			if det, ok := outdatedPackageVulns[key]; ok {
@@ -352,6 +354,7 @@ func processVulns(results scanResponse, details string, state checkstate.State) 
 			"Vulnerabilities",
 			"Severity",
 			"CWEs",
+			"Title",
 		},
 	}
 
@@ -396,6 +399,7 @@ func processVulns(results scanResponse, details string, state checkstate.State) 
 				row["Vulnerabilities"] = fmt.Sprintf("[%s](%s)", p.cve, p.link)
 			}
 			row["Severity"] = p.severity
+			row["Title"] = p.title
 			vp.Rows = append(vp.Rows, row)
 		}
 
