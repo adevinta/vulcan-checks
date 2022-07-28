@@ -100,7 +100,9 @@ func addVulnsToState(state checkstate.State, r *WpScanReport) {
 	addVulns(state, r.EffectiveURL, r.MainTheme.Version.Vulnerabilities)
 
 	for name, pl := range r.Plugins {
-		addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
+		if pl.Version != nil {
+			addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
+		}
 	}
 
 }
@@ -133,11 +135,16 @@ func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {
 
 			for p, v := range r.Plugins {
 				version := "n/a"
+				versionConfidence := 0
 				if v.Version != nil {
 					version = v.Version.Number
+					versionConfidence = v.Version.Confidence
 				}
 
-				details += fmt.Sprintf("\tPlugin: %v, Version: %v, Location: %v\n", p, version, v.Location)
+				details += fmt.Sprintf(
+					"\tPlugin: %v, Confidence: %v%%, Version: %v, Version Confidence: %v%%, Location: %v\n",
+					p, v.Confidence, version, versionConfidence, v.Location,
+				)
 			}
 		}
 
