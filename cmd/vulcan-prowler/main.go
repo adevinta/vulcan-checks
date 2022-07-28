@@ -29,7 +29,9 @@ import (
 )
 
 const (
-	defaultRegion          = `eu-west-1`
+	// defaultAPIRegion defines the default AWS region to use when querying AWS
+	// services API endpoints.
+	defaultAPIRegion       = `eu-west-1`
 	defaultSessionDuration = 3600 // 1 hour.
 
 	envEndpoint = `VULCAN_ASSUME_ROLE_ENDPOINT`
@@ -191,9 +193,6 @@ func buildOptions(optJSON string) (options, error) {
 		if err := json.Unmarshal([]byte(optJSON), &opts); err != nil {
 			return opts, err
 		}
-	}
-	if opts.Region == "" {
-		opts.Region = defaultRegion
 	}
 	if opts.Groups == nil {
 		opts.Groups = defaultGroups

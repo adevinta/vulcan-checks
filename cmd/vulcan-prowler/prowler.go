@@ -49,12 +49,17 @@ type entry struct {
 */
 
 func buildParams(region string, groups []string) []string {
-	return []string{
-		"-r", region,
+	params := []string{
 		"-g", strings.Join(groups, ","),
 		"-M", reportFormat,
 		"-F", reportName,
 	}
+	if region != "" {
+		params = append(params, "-r", region, "-f", region)
+	} else {
+		params = append(params, "-r", defaultAPIRegion)
+	}
+	return params
 }
 
 func runProwler(ctx context.Context, region string, groups []string) (*prowlerReport, error) {
