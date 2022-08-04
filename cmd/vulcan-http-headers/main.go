@@ -168,8 +168,6 @@ func processResults(target string, r observatoryResult, s state.State) error {
 
 	processXFrame(xFrameVuln, target, r, s)
 
-	processXXSS(xXSSVuln, target, r, s)
-
 	processGrading(observatoryGrading, target, r, s)
 
 	return nil
