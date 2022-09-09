@@ -67,6 +67,12 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 
 	fmt.Printf("ASSET:\n%+v\n", asset)
 
+	findings, err := r.getAssetFindings(ctx, target)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("FINDINGS:\n%+v\n", findings)
+
 	/*
 		vulns, err := r.addVulnerabilities(*scanDetail, target)
 		if err != nil {
@@ -101,6 +107,10 @@ func (r *runner) findAsset(ctx context.Context, name string) (restuss.Asset, err
 		return restuss.Asset{}, err
 	}
 	return *asset, nil
+}
+
+func (r *runner) getAssetFindings(ctx context.Context, name string) ([]restuss.Finding, error) {
+	return r.nessusCli.GetFindingsByAssetName(ctx, name)
 }
 
 // CleanUp is called by the sdk when the check needs to be aborted in order to give the
