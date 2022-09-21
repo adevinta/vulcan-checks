@@ -67,15 +67,15 @@ var (
 		Summary:     "Certificate Host Mismatch",
 		Description: "The Common Name (CN) or Subject Alternative Name (SAN) of the certificate used in this site does not match the actual name of the site. This commonly happens when a certificate issued for a site is reused in a different site; usually one that hosts the same content, such as a subdomain or a staging environment.",
 		Score:       report.SeverityThresholdMedium,
-		ImpactDetails: `Even if a certificate is well-formed, signed, and follows the chain of trust,
-                    it may simply be a valid certificate for a different site than the site that
-                    the software is interacting with. If the certificate's host-specific data is
-                    not properly checked - such as the Common Name (CN) in the Subject or the
-                    Subject Alternative Name (SAN) extension of an X.509 certificate - it may be
-                    possible for a redirection or spoofing attack to allow a malicious host with
-                    a valid certificate to provide data, impersonating a trusted host. In order
-                    to ensure data integrity, the certificate must be valid and it must pertain
-                    to the site that is being accessed.`,
+		ImpactDetails: "Even if a certificate is well-formed, signed, and follows the chain of trust " +
+			"it may simply be a valid certificate for a different site than the site that " +
+			"the software is interacting with. If the certificate's host-specific data is " +
+			"not properly checked - such as the Common Name (CN) in the Subject or the " +
+			"Subject Alternative Name (SAN) extension of an X.509 certificate - it may be " +
+			"possible for a redirection or spoofing attack to allow a malicious host with " +
+			"a valid certificate to provide data, impersonating a trusted host. In order " +
+			"to ensure data integrity, the certificate must be valid and it must pertain " +
+			"to the site that is being accessed.",
 		Labels: []string{"issue", "ssl"},
 		Recommendations: []string{
 			"Issue a certificate specifically for this site with a matching CN",
