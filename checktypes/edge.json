@@ -1,0 +1,578 @@
+{
+	"checktypes": [
+		{
+			"name": "vulcan-aws-alerts",
+			"description": "Detects general issues for an AWS account",
+			"image": "vulcansec/vulcan-aws-alerts:edge",
+			"timeout": 0,
+			"required_vars": [
+				"VULCAN_ASSUME_ROLE_ENDPOINT",
+				"ROLE_NAME"
+			],
+			"assets": [
+				"AWSAccount"
+			]
+		},
+		{
+			"name": "vulcan-aws-trusted-advisor",
+			"description": "Runs an AWS Trusted Advisor check against an AWS account",
+			"image": "vulcansec/vulcan-aws-trusted-advisor:edge",
+			"timeout": 0,
+			"options": {
+				"refresh_timeout": 60
+			},
+			"required_vars": [
+				"VULCAN_ASSUME_ROLE_ENDPOINT",
+				"ROLE_NAME"
+			],
+			"assets": [
+				"AWSAccount"
+			]
+		},
+		{
+			"name": "vulcan-burp",
+			"description": "Runs a Burp Suite Enterprise Edition scan.",
+			"image": "vulcansec/vulcan-burp:edge",
+			"timeout": 36000,
+			"required_vars": [
+				"BURP_BASE_URL",
+				"BURP_API_TOKEN",
+				"BURP_SCAN_CONFIG",
+				"BURP_INSECURE_SKIP_VERIFY"
+			],
+			"assets": [
+				"WebAddress"
+			]
+		},
+		{
+			"name": "vulcan-certinfo",
+			"description": "Gathers TLS Certificate information",
+			"image": "vulcansec/vulcan-certinfo:edge",
+			"timeout": 60,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-dmarc",
+			"description": "Checks if a domain have valid DNS configuration for DMARC",
+			"image": "vulcansec/vulcan-dmarc:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"DomainName"
+			]
+		},
+		{
+			"name": "vulcan-drupal",
+			"description": "Checks for some vulnerable versions of Drupal.",
+			"image": "vulcansec/vulcan-drupal:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-exposed-amt",
+			"description": "Checks if an asset has the Intel AMT port exposed.",
+			"image": "vulcansec/vulcan-exposed-amt:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-bgp",
+			"description": "Checks for exposed BGP port on Internet routers",
+			"image": "vulcansec/vulcan-exposed-bgp:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-db",
+			"description": "Checks if an asset has database well known ports open",
+			"image": "vulcansec/vulcan-exposed-db:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-files",
+			"description": "Checks web servers for exposed sensitive files",
+			"image": "vulcansec/vulcan-exposed-files:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-exposed-ftp",
+			"description": "Checks if an asset has FTP well known ports open and if they allow anonymous logins or if they are vulnerable to bounce attack",
+			"image": "vulcansec/vulcan-exposed-ftp:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-hdfs",
+			"description": "Checks if an asset has an Hadoop HDFS port exposed.",
+			"image": "vulcansec/vulcan-exposed-hdfs:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-http",
+			"description": "Checks if an asset has HTTP well known ports open",
+			"image": "vulcansec/vulcan-exposed-http:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-http-resources",
+			"description": "This checks looks for a well known or custom list of exposed resources in an HTTP address",
+			"image": "vulcansec/vulcan-exposed-http-resources:edge",
+			"timeout": 240,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"WebAddress"
+			]
+		},
+		{
+			"name": "vulcan-exposed-memcached",
+			"description": "Checks if the asset contains an exposed Memcached server",
+			"image": "vulcansec/vulcan-exposed-memcached:edge",
+			"timeout": 0,
+			"options": {
+				"port": 11211
+			},
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-rdp",
+			"description": "Checks if an asset has a RDP port exposed.",
+			"image": "vulcansec/vulcan-exposed-rdp:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-router-ports",
+			"description": "Checks if an asset has routers well known ports open.",
+			"image": "vulcansec/vulcan-exposed-router-ports:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-services",
+			"description": "Checks if a host has any open ports by scanning the 1000 most common TCP and UDP ports",
+			"image": "vulcansec/vulcan-exposed-services:edge",
+			"timeout": 10800,
+			"options": {
+				"timing": 4
+			},
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-ssh",
+			"description": "Checks SSH server configuration for compliance with Mozilla OpenSSH guidelines",
+			"image": "vulcansec/vulcan-exposed-ssh:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-exposed-varnish",
+			"description": "Checks if an asset is a Varnish Cache",
+			"image": "vulcansec/vulcan-exposed-varnish:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-github-alerts",
+			"description": "Retrieves existing vulnerability alerts for a Github repository",
+			"image": "vulcansec/vulcan-github-alerts:edge",
+			"timeout": 60,
+			"required_vars": [
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
+			],
+			"assets": [
+				"GitRepository"
+			]
+		},
+		{
+			"name": "vulcan-gitleaks",
+			"description": "Finds potential secrets in source code from a Git repository using gitleaks",
+			"image": "vulcansec/vulcan-gitleaks:edge",
+			"timeout": 900,
+			"options": {
+				"branch": "",
+				"depth": 1
+			},
+			"required_vars": [
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
+			],
+			"assets": [
+				"GitRepository"
+			]
+		},
+		{
+			"name": "vulcan-gozuul",
+			"description": "Checks if an asset is vulnerable to Remote Code Execution as specified in nflx-2016-003",
+			"image": "vulcansec/vulcan-gozuul:edge",
+			"timeout": 0,
+			"options": {
+				"ports": [
+					80,
+					443,
+					8080
+				]
+			},
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP",
+				"WebAddress"
+			]
+		},
+		{
+			"name": "vulcan-heartbleed",
+			"description": "Checks if an asset is vulnerable to Heartbleed",
+			"image": "vulcansec/vulcan-heartbleed:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-host-discovery",
+			"description": "Performs a quick Nmap ping scan that identifies which hosts are up",
+			"image": "vulcansec/vulcan-host-discovery:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"IPRange"
+			]
+		},
+		{
+			"name": "vulcan-http-headers",
+			"description": "Analyzes the HTTP headers using Mozilla Observatory",
+			"image": "vulcansec/vulcan-http-headers:edge",
+			"timeout": 700,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-ipv6",
+			"description": "Checks for IPv6 presence",
+			"image": "vulcansec/vulcan-ipv6:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-lucky",
+			"description": "Checks if an asset is vulnerable to LuckyMinus20 attack",
+			"image": "vulcansec/vulcan-lucky:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-masscan",
+			"description": "Checks if a host has any open port by scanning the whole TCP port range using masscan",
+			"image": "vulcansec/vulcan-masscan:edge",
+			"timeout": 3600,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP",
+				"IPRange"
+			]
+		},
+		{
+			"name": "vulcan-mx",
+			"description": "Checks for MX DNS Records",
+			"image": "vulcansec/vulcan-mx:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"DomainName"
+			]
+		},
+		{
+			"name": "vulcan-nessus",
+			"description": "Runs a Nessus scan",
+			"image": "vulcansec/vulcan-nessus:edge",
+			"timeout": 28800,
+			"required_vars": [
+				"NESSUS_ENDPOINT",
+				"NESSUS_USERNAME",
+				"NESSUS_PASSWORD",
+				"NESSUS_POLICY_ID"
+			],
+			"assets": [
+				"Hostname",
+				"IP",
+				"IPRange"
+			]
+		},
+		{
+			"name": "vulcan-nuclei",
+			"description": "Scan web addresses with projectdiscovery/nuclei",
+			"image": "vulcansec/vulcan-nuclei:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"WebAddress",
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-prowler",
+			"description": "Runs Prowler against an AWS account",
+			"image": "vulcansec/vulcan-prowler:edge",
+			"timeout": 3600,
+			"required_vars": [
+				"VULCAN_ASSUME_ROLE_ENDPOINT",
+				"ROLE_NAME"
+			],
+			"assets": [
+				"AWSAccount"
+			]
+		},
+		{
+			"name": "vulcan-results-load-test",
+			"description": "Check for testing performance when a check generates a lot of data",
+			"image": "vulcansec/vulcan-results-load-test:edge",
+			"timeout": 700,
+			"required_vars": null,
+			"assets": []
+		},
+		{
+			"name": "vulcan-retirejs",
+			"description": "Check web pages for vulnerable JavaScript libraries",
+			"image": "vulcansec/vulcan-retirejs:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"WebAddress"
+			]
+		},
+		{
+			"name": "vulcan-s3-takeover",
+			"description": "Checks if an asset is vulnerable to S3 subdomain takeover",
+			"image": "vulcansec/vulcan-s3-takeover:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"WebAddress"
+			]
+		},
+		{
+			"name": "vulcan-seekret",
+			"description": "Finds leaked secrets in a Git repository using Seekret",
+			"image": "vulcansec/vulcan-seekret:edge",
+			"timeout": 600,
+			"options": {
+				"branch": "",
+				"depth": 1
+			},
+			"required_vars": [
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
+			],
+			"assets": [
+				"GitRepository"
+			]
+		},
+		{
+			"name": "vulcan-semgrep",
+			"description": "Finds potential issues in source code from a Git repository using Semgrep",
+			"image": "vulcansec/vulcan-semgrep:edge",
+			"timeout": 7200,
+			"options": {
+				"branch": "",
+				"depth": 1,
+				"ruleset": "p/r2c-security-audit"
+			},
+			"required_vars": [
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
+			],
+			"assets": [
+				"GitRepository"
+			]
+		},
+		{
+			"name": "vulcan-sleep",
+			"description": "Check for testing timeout functionality",
+			"image": "vulcansec/vulcan-sleep:edge",
+			"timeout": 60,
+			"required_vars": null,
+			"assets": []
+		},
+		{
+			"name": "vulcan-smtp-open-relay",
+			"description": "Check for testing SMTP Open Relay",
+			"image": "vulcansec/vulcan-smtp-open-relay:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-spf",
+			"description": "Checks if a domain has a SPF record on DNS",
+			"image": "vulcansec/vulcan-spf:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": [
+				"DomainName"
+			]
+		},
+		{
+			"name": "vulcan-tls",
+			"description": "Analyzes TLS health of an asset using Mozilla Observatory",
+			"image": "vulcansec/vulcan-tls:edge",
+			"timeout": 700,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-trivy",
+			"description": "Scan docker images using aquasec/trivy",
+			"image": "vulcansec/vulcan-trivy:edge",
+			"timeout": 0,
+			"required_vars": [
+				"REGISTRY_DOMAIN",
+				"REGISTRY_USERNAME",
+				"REGISTRY_PASSWORD"
+			],
+			"assets": [
+				"DockerImage"
+			]
+		},
+		{
+			"name": "vulcan-unclassified",
+			"description": "Raises an unclassified vulnerability for testing purposes",
+			"image": "vulcansec/vulcan-unclassified:edge",
+			"timeout": 0,
+			"required_vars": null,
+			"assets": []
+		},
+		{
+			"name": "vulcan-vulners",
+			"description": "Runs the nmap-script vulners against the target opened ports",
+			"image": "vulcansec/vulcan-vulners:edge",
+			"timeout": 3600,
+			"required_vars": null,
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
+			"name": "vulcan-wpscan",
+			"description": "Runs Wordpress scan",
+			"image": "vulcansec/vulcan-wpscan:edge",
+			"timeout": 1500,
+			"required_vars": [
+				"WPVULNDB_API_TOKEN"
+			],
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
+			"name": "vulcan-zap",
+			"description": "Runs an OWASP ZAP passive or active scan",
+			"image": "vulcansec/vulcan-zap:edge",
+			"timeout": 36000,
+			"options": {
+				"active": true,
+				"depth": 2,
+				"disabled_scanners": [
+					"10062",
+					"10003",
+					"10108"
+				],
+				"ignored_fingerprint_scanners": [
+					"40018"
+				],
+				"max_rule_duration": 0,
+				"max_scan_duration": 0,
+				"max_spider_duration": 0,
+				"min_score": 0,
+				"openapi_host": "",
+				"openapi_url": ""
+			},
+			"required_vars": null,
+			"assets": [
+				"WebAddress"
+			]
+		}
+	]
+}
