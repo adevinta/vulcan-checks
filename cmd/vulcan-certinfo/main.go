@@ -24,6 +24,8 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
+const AWS_ELB_DNS_SUFFIX = ".elb.amazonaws.com"
+
 type certificateChecker struct {
 	ownerCertificate *x509.Certificate
 	certificateInfo  []report.Vulnerability
@@ -75,6 +77,13 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 		}
 
 		if strings.HasPrefix(err.Error(), "x509: certificate is valid for") {
+
+			// In case of an AWS ELB we lower the severity as it's a common scenario where
+			// this service is accessed by a custom domain instead of the AWS assigned.
+			if strings.HasSuffix(target, AWS_ELB_DNS_SUFFIX) {
+				certificateHostMismatch.Score = report.SeverityThresholdLow
+			}
+
 			checker.certificateInfo = append(checker.certificateInfo, certificateHostMismatch)
 			checker.expired = true
 			return nil
