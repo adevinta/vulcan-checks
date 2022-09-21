@@ -17,6 +17,17 @@ deploy:
       all_branches: true
       condition: $TRAVIS_BRANCH != "master"
   - provider: script
-    script: bash release-edge.sh
+    script: >-
+      bash release-edge.sh &&
+      mkdir pages/checktypes &&
+      go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}" &&
+      vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag edge -output pages/checktypes/edge.json cmd/
+    on:
+      branch: master
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN
+    keep_history: true
+    local_dir: ./pages
     on:
       branch: master
