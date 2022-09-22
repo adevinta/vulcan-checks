@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,12 +16,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"crypto/sha256"
+
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -36,7 +38,7 @@ var (
 		Summary:       "Secret Leaked in Git Repository",
 		Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 		CWEID:         540,
-		Score:         float32(report.SeverityHigh),
+		Score:         8.9,
 		ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
 		Labels:        []string{"issue"},
 		Recommendations: []string{
@@ -137,7 +139,8 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 		}
 		file := strings.TrimPrefix(f.File, repoPath)
 		v := leakedSecret
-		s, _ := bcrypt.GenerateFromPassword([]byte(f.Secret), 0)
+		h := sha256.New()
+		s := hex.EncodeToString(h.Sum([]byte(f.Secret)))[1:48]
 		v.AffectedResource = string(s)
 		v.AffectedResourceString = computeAffectedResource(target, branch, file, f.StartLine)
 		v.Fingerprint = helpers.ComputeFingerprint()
@@ -167,7 +170,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	return helpers.GenerateGithubURL(target, branch, file, l)
 }
 
-func setDetails(target string, f Finding, s []byte) string {
+func setDetails(target string, f Finding, s string) string {
 	u, _ := url.Parse(target)
 	if stringInSlice(u.Hostname(), &localTargets) {
 		return fmt.Sprintf(localDetails, f.Description, f.RuleID, string(s))
