@@ -1,2 +1,5 @@
-# Vulcan Trivy Check
-Utility used: [trivy](https://aquasecurity.github.io/trivy/v0.32/)
+# vulcan-trivy
+
+Checks if a Docker image uses vulnerable packages or dependencies.
+
+Based on [Aqua Security Trivy](https://aquasecurity.github.io/trivy)

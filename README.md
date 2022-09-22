@@ -42,6 +42,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-retirejs** - Checks for vulnerabilities in JS frontend dependencies
 * **vulcan-s3-takeover** - Checks for a vulnerability related to domain names pointing to a S3 static website when the S3 bucket has been deleted
 * **vulcan-seekret** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
+* **vulcan-semgrep** - Runs [Semgrep](https://github.com/returntocorp/semgrep) scanner tool for detect security issues in code
 * **vulcan-sleep** - Internal testing check, not for production
 * **vulcan-smtp-open-relay** - Checks for exposed SMTP, and if they are open relay
 * **vulcan-spf** - Checks if a domain (asset with a SOA record) have valid DNS configuration for SPF

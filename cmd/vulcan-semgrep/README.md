@@ -1,2 +1,5 @@
-# Vulcan Semgrep Check
-Utility used: [semgrep](https://github.com/returntocorp/semgrep)
+# vulcan-semgrep
+
+Check for detect security issues in code.
+
+Based on [Semgrep](https://github.com/returntocorp/semgrep)
