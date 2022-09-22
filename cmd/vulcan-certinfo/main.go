@@ -75,6 +75,14 @@ func (checker *certificateChecker) getOwnerCertificate(target string, port int, 
 		}
 
 		if strings.HasPrefix(err.Error(), "x509: certificate is valid for") {
+
+			// In case of an AWS ELB we lower the severity as it's a common scenario where
+			// this service is accessed by a custom domain instead of the AWS assigned.
+			if strings.HasSuffix(target, ".elb.amazonaws.com") {
+				certificateHostMismatch.Score = report.SeverityThresholdLow
+				certificateHostMismatch.Details = "The severity of this issue has been downgraded as the host appears to be a load balancer."
+			}
+
 			checker.certificateInfo = append(checker.certificateInfo, certificateHostMismatch)
 			checker.expired = true
 			return nil
