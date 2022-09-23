@@ -33,7 +33,7 @@ var (
 	checkName        = "vulcan-gitleaks"
 	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = filepath.Join(os.TempDir(), "report.json")
-	localTargets     = []string{"localhost", "host.docker.internal", "172.17.0.1"}
+	localTargets     = []string{"localhost", "host.docker.internal", "172.17.0.1", "172.18.0.1"}
 	leakedSecret     = report.Vulnerability{
 		Summary:       "Secret Leaked in Git Repository",
 		Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
