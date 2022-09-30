@@ -307,7 +307,7 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 		for _, tv := range tt.Misconfigurations {
 
 			summary := fmt.Sprintf("%s - %s", tv.Type, tv.Title)
-			key := fmt.Sprintf("%s|%s|%d", summary, tt.Target, tv.CauseMetadata.StartLine)
+			key := fmt.Sprintf("%s|%s", summary, tt.Target)
 
 			vuln, ok := m[key]
 			if !ok {
@@ -326,7 +326,7 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 					Recommendations:  []string{tv.Resolution},
 					References:       tv.References,
 					Score:            getScore(tv.Severity),
-					AffectedResource: computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine),
+					AffectedResource: computeAffectedResource(target, branch, tt.Target, 1),
 					Resources: []report.ResourcesGroup{{
 						Name: "Found in",
 					},
@@ -338,12 +338,13 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 				sb.WriteString(l.Content + "\n")
 			}
 
-			// Store the content as raw string for later processing.
-			vuln.Fingerprint += sb.String()
+			// Store the fingerprint of the contents separated with | for later split and sort.
+			vuln.Fingerprint += fmt.Sprintf("%s|", helpers.ComputeFingerprint(sb.String()))
+
 			vuln.Resources[0].Rows = append(vuln.Resources[0].Rows,
 				map[string]string{
 					"Message": tv.Message,
-					"Line":    strconv.Itoa(tv.CauseMetadata.StartLine),
+					"Link":    computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine),
 				})
 		}
 	}
@@ -351,10 +352,13 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 	// Compress the resource table by removing columns with the same value and adding it to Details
 	fields := []string{
 		"Message",
-		"Line",
+		"Link",
 	}
 	for _, v := range m {
+		v.Fingerprint = helpers.ComputeFingerprint(sort.StringSlice(strings.Split(v.Fingerprint, "|")))
+
 		var reduce strings.Builder
+
 		for _, field := range fields {
 			same := true
 			value := ""
