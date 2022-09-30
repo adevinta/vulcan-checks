@@ -326,7 +326,7 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 					Recommendations:  []string{tv.Resolution},
 					References:       tv.References,
 					Score:            getScore(tv.Severity),
-					AffectedResource: computeAffectedResource(target, branch, tt.Target, 1),
+					AffectedResource: tt.Target,
 					Resources: []report.ResourcesGroup{{
 						Name: "Found in",
 					},
