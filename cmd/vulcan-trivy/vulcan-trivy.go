@@ -85,7 +85,7 @@ type scanResponse []struct {
 			Code      struct {
 				Lines []struct {
 					Number  int    `json:"Number"`
-					Content string `json:"Content:omitempty"`
+					Content string `json:"Content"`
 				}
 			} `json:"Code"`
 		} `json:"CauseMetadata"`
@@ -301,38 +301,92 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 }
 
 func processMisconfigs(results scanResponse, target string, branch string, state checkstate.State) error {
+
+	m := map[string]report.Vulnerability{}
 	for _, tt := range results {
 		for _, tv := range tt.Misconfigurations {
 
+			summary := fmt.Sprintf("%s - %s", tv.Type, tv.Title)
+			key := fmt.Sprintf("%s|%s|%d", summary, tt.Target, tv.CauseMetadata.StartLine)
+
+			vuln, ok := m[key]
+			if !ok {
+				vuln = report.Vulnerability{
+					Details: strings.Join([]string{
+						"Run the following command to obtain the full report in your computer.",
+						"Clone your repo and execute:",
+						fmt.Sprintf("\tgit clone %s repo", target),
+						"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy config --ignorefile /repo/.trivyignore /repo",
+						fmt.Sprintf("If you want to ignore this findings you can add %s to a .trivyignore file in your repo", tv.ID),
+					}, "\n"),
+					// CWEID:  937,
+					Labels:           []string{"potential", "config", "trivy"},
+					Summary:          summary,
+					Description:      tv.Description,
+					Recommendations:  []string{tv.Resolution},
+					References:       tv.References,
+					Score:            getScore(tv.Severity),
+					AffectedResource: computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine),
+					Resources: []report.ResourcesGroup{{
+						Name: "Found in",
+					},
+					}}
+				m[key] = vuln
+			}
 			var sb strings.Builder
 			for _, l := range tv.CauseMetadata.Code.Lines {
-				sb.WriteString(l.Content)
+				sb.WriteString(l.Content + "\n")
 			}
-			vuln := report.Vulnerability{
-				Details: strings.Join([]string{
-					tv.Message, // Message changes on the target.
-					"",
-					"Run the following command to obtain the full report in your computer.",
-					"Clone your repo and execute:",
-					fmt.Sprintf("\tgit clone %s repo", target),
-					"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy config --ignorefile /repo/.trivyignore /repo",
-					fmt.Sprintf("If you want to ignore this findings you can add %s to a .trivyignore file in your repo", tv.ID),
-				}, "\n"),
-				// CWEID:  937,
-				Labels: []string{"potential", "config"},
-			}
-			vuln.Summary = fmt.Sprintf("%s - %s", tv.Type, tv.Title)
-			vuln.Description = tv.Description
-			// TODO: Type (i.e. "dockerfile"), Target (path)
-			vuln.AffectedResource = strings.TrimSpace(fmt.Sprintf("%s:%s", tt.Type, tt.Target))
-			vuln.AffectedResourceString = computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine)
-			vuln.Fingerprint = helpers.ComputeFingerprint(tv.ID, tv.CauseMetadata.StartLine, tv.CauseMetadata.EndLine, sb.String())
-			vuln.Recommendations = []string{tv.Resolution}
-			vuln.Score = getScore(tv.Severity)
-			vuln.References = tv.References
-			state.AddVulnerabilities(vuln)
+
+			// Store the content as raw string for later processing.
+			vuln.Fingerprint += sb.String()
+			vuln.Resources[0].Rows = append(vuln.Resources[0].Rows,
+				map[string]string{
+					"Message": tv.Message,
+					"Line":    strconv.Itoa(tv.CauseMetadata.StartLine),
+				})
 		}
 	}
+
+	// Compress the resource table by removing columns with the same value and adding it to Details
+	fields := []string{
+		"Message",
+		"Line",
+	}
+	for _, v := range m {
+		var reduce strings.Builder
+		for _, field := range fields {
+			same := true
+			value := ""
+			for i, row := range v.Resources[0].Rows {
+				if i == 0 {
+					value = row[field]
+				}
+				if same && (row[field] != value) {
+					same = false
+				}
+			}
+			if same {
+				if value != "" {
+					reduce.WriteString(fmt.Sprintf("%s: %s\n", field, value))
+				}
+				for _, row := range v.Resources[0].Rows {
+					delete(row, field)
+				}
+			} else {
+				v.Resources[0].Header = append(v.Resources[0].Header, field)
+			}
+		}
+		if reduce.Len() > 0 {
+			v.Details = fmt.Sprintf("%s\n%s", reduce.String(), v.Details)
+		}
+		if len(v.Resources[0].Header) == 0 {
+			v.Resources = nil
+		}
+		v.Fingerprint = helpers.ComputeFingerprint(v.Fingerprint)
+		state.AddVulnerabilities(v)
+	}
+
 	return nil
 }
 
