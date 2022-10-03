@@ -1,12 +1,12 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.6.4-slim-stretch
+FROM python:3.7-slim
 
 # Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis
 # this fails.
-RUN apt-get update
-RUN apt-get install -y --fix-missing git build-essential
-RUN apt-get autoremove
+RUN apt update
+RUN apt install -y --fix-missing git build-essential
+RUN apt autoremove
 RUN rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/vulcan-http-headers
@@ -15,7 +15,7 @@ WORKDIR /opt/
 # Install the HTTP Observatory
 RUN git clone https://github.com/mozilla/http-observatory
 WORKDIR /opt/http-observatory
-RUN git reset --hard e3ef44d9ef3a0d6147b55934e81bd67fd7e2bd7e
+RUN git reset --hard ec0e4071d42b4f5bc429d97868d51e247e2caece
 RUN pip3 install --upgrade .
 RUN pip3 install --upgrade -r requirements.txt
 
