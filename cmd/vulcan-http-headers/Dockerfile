@@ -1,6 +1,6 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.7.13-slim-bullseye
+FROM python:3.7-slim
 
 # Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis
 # this fails.
@@ -15,7 +15,7 @@ WORKDIR /opt/
 # Install the HTTP Observatory
 RUN git clone https://github.com/mozilla/http-observatory
 WORKDIR /opt/http-observatory
-RUN git reset --hard 0b7928ee9d09a3f5dffdb81f27d3e5f80ef2024c
+RUN git reset --hard ec0e4071d42b4f5bc429d97868d51e247e2caece
 RUN pip3 install --upgrade .
 RUN pip3 install --upgrade -r requirements.txt
 
