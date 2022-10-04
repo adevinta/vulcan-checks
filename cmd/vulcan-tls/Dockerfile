@@ -1,17 +1,17 @@
 # Copyright 2019 Adevinta
 
-FROM debian:stretch-slim
+FROM python:3.7-slim
 
-RUN apt-get update && \
-	apt-get install -y bash python python-six git && \
-	apt-get autoremove && \
+RUN apt update && \
+	apt install -y git && \
+	apt autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/vulcan-tls
 WORKDIR /opt/vulcan-tls
 
 # Install Cipherscan.
-RUN git clone https://github.com/mozilla/cipherscan
+RUN git clone --depth=1 https://github.com/mozilla/cipherscan
 WORKDIR /opt/vulcan-tls/cipherscan
 
 # Fix silly naming.
