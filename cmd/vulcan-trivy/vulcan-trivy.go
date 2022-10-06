@@ -6,10 +6,11 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -25,6 +26,7 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+
 	"github.com/avast/retry-go"
 )
 
@@ -41,13 +43,18 @@ var (
 )
 
 type options struct {
-	ForceUpdateDB bool   `json:"force_update_db"`
-	IgnoreUnfixed bool   `json:"ignore_unfixed"`
-	Severities    string `json:"severities"`
-	Depth         int    `json:"depth"`
-	Branch        string `json:"branch"`
+	ForceUpdateDB  bool   `json:"force_update_db"`
+	IgnoreUnfixed  bool   `json:"ignore_unfixed"`
+	Severities     string `json:"severities"`
+	Depth          int    `json:"depth"`
+	Branch         string `json:"branch"`
+	FSEnabled      bool   `json:"fs_enabled"`
+	ImageEnabled   bool   `json:"image_enabled"`
+	SecretsEnabled bool   `json:"secrets_enabled"`
+	ConfigsEnabled bool   `json:"configs_enabled"`
 }
 
+// TODO: Replace with "github.com/aquasecurity/trivy/pkg/types"
 type results struct {
 	Results scanResponse `json:"Results"`
 }
@@ -86,10 +93,28 @@ type scanResponse []struct {
 				Lines []struct {
 					Number  int    `json:"Number"`
 					Content string `json:"Content"`
-				}
+				} `json:"Lines"`
 			} `json:"Code"`
 		} `json:"CauseMetadata"`
 	} `json:"Misconfigurations"`
+	Secrets []struct {
+		RuleID    string `json:"RuleID"`
+		Category  string `json:"Category"`
+		Severity  string `json:"Severity"`
+		Title     string `json:"Title"`
+		StartLine int    `json:"StartLine"`
+		EndLine   int    `json:"EndLine"`
+		Code      struct {
+			Lines []struct {
+				Number  int    `json:"Number"`
+				Content string `json:"Content"`
+				IsCause bool   `json:"IsCause"`
+			} `json:"Lines"`
+			Layer struct {
+				CreatedBy string `json:"CreatedBy"`
+			} `json:"Layer"`
+		} `json:"Code"`
+	} `json:"Secrets"`
 }
 
 type vulnKey struct {
@@ -136,10 +161,20 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	if opt.IgnoreUnfixed {
 		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
-	// Restrict to vulnerabilities (no config/secrets yet)
-	trivyArgs = append(trivyArgs, "--security-checks", "vuln")
+
+	if opt.SecretsEnabled {
+		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln,secret"}...)
+	} else {
+		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln"}...)
+	}
 
 	if strings.Contains(assetType, "DockerImage") {
+
+		if !opt.ImageEnabled {
+			logger.Warnf("Image scanning is not enabled")
+			return nil
+		}
+
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
 		registryEnvUsername := os.Getenv("REGISTRY_USERNAME")
@@ -199,9 +234,36 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 		}
-		return processVulns(results.Results, vuln, state)
+		if err = processVulns(results.Results, vuln, "", state); err != nil {
+			logger.Errorf("processing image vuln results: %+v", err)
+		}
+
+		vuln = report.Vulnerability{
+			Summary:       "Secret Leaked in DockerImage",
+			Description:   "A secret has been found stored in the DockerImage. This secret could be retrieved by anyone with access to the image. Test data and false positives can be marked as such.",
+			CWEID:         540,
+			Score:         8.9,
+			ImpactDetails: "Anyone with access to the image could retrieve the leaked secret and use it in the future with malicious intent.",
+			Labels:        []string{"issue"},
+			Recommendations: []string{
+				"Completely remove the secrets from the repository as explained in the references.",
+				"Encrypt the secrets using a tool like AWS Secrets Manager or Vault.",
+			},
+			References: []string{
+				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
+			},
+		}
+		if err := processSecrets(results.Results, vuln, "", state); err != nil {
+			logger.Errorf("processing image secret results: %+v", err)
+		}
 
 	} else if assetType == "GitRepository" {
+
+		if !opt.FSEnabled {
+			logger.Warnf("Filesystem scanning is not enabled")
+			return nil
+		}
+
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
@@ -210,14 +272,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if err != nil {
 			return err
 		}
+
 		results, err := execTrivy(opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
 		} else {
 			vuln := report.Vulnerability{
 				// Issue attributes.
-				Summary:     "Outdated Packages in Git Repository",
-				Description: "Vulnerabilities have been found in outdated packages referenced in Git Repository.",
+				Summary:     "Outdated Packages in Git repository",
+				Description: "Vulnerabilities have been found in outdated packages referenced in Git repository.",
 				Recommendations: []string{
 					"Update affected packages to the versions specified in the resources table or newer.",
 				},
@@ -233,10 +296,36 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				Labels: []string{"potential", "git"},
 				// Finding attributes.
 			}
-			if err := processVulns(results.Results, vuln, state); err != nil {
+			if err := processVulns(results.Results, vuln, branchName, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
+
+			vuln = report.Vulnerability{
+				Summary:       "Secret Leaked in Git Repository",
+				Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
+				CWEID:         540,
+				Score:         8.9,
+				ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
+				Labels:        []string{"issue"},
+				Recommendations: []string{
+					"Completely remove the secrets from the repository as explained in the references.",
+					"Encrypt the secrets using a tool like AWS Secrets Manager or Vault.",
+				},
+				References: []string{
+					"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
+				},
+			}
+			if err := processSecrets(results.Results, vuln, branchName, state); err != nil {
+				logger.Errorf("processing fs results: %+v", err)
+			}
+
 		}
+
+		if !opt.ConfigsEnabled {
+			logger.Infof("Config scanning is not enabled")
+			return nil
+		}
+
 		results, err = execTrivy(opt, "config", []string{
 			"--ignorefile", path.Join(repoPath, ".trivyignore"),
 			repoPath})
@@ -245,7 +334,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		return processMisconfigs(results.Results, target, branchName, state)
 	}
-	return fmt.Errorf("Unknown assetType %s", assetType)
+	return fmt.Errorf("unknown assetType %s", assetType)
 }
 
 func execTrivy(opt options, action string, actionArgs []string) (*results, error) {
@@ -286,7 +375,7 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 		return nil, errors.New("trivy command execution failed")
 	}
 
-	byteValue, err := ioutil.ReadFile(reportOutputFile)
+	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
 		logger.Errorf("trivy report output file read failed with error: %s\n", err)
 		return nil, errors.New("trivy report output file read failed")
@@ -398,10 +487,14 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	if localTargets.MatchString(target) {
 		return fmt.Sprintf("%s#%d", strings.TrimPrefix(file, "/"), l)
 	}
-	return helpers.GenerateGithubURL(target, branch, file, l)
+	s := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, ".git"), path.Join("blob", branch, file))
+	if l == 0 {
+		return s
+	}
+	return s + fmt.Sprintf("#%d", l)
 }
 
-func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
@@ -509,13 +602,15 @@ func processVulns(results scanResponse, vuln report.Vulnerability, state checkst
 		vuln.Score = maxScore
 		vuln.Resources = []report.ResourcesGroup{
 			{
-				Name: "Package",
+				Name: "Location",
 				Header: []string{
 					"Package",
+					"Location",
 					"Min. Recommended Version",
 				},
 				Rows: []map[string]string{{
-					"Package":                  key.path,
+					"Package":                  key.name,
+					"Location":                 key.path,
 					"Min. Recommended Version": det.fixedBy,
 				}},
 			},
@@ -524,6 +619,48 @@ func processVulns(results scanResponse, vuln report.Vulnerability, state checkst
 
 		// Build the vulnerability.
 		state.AddVulnerabilities(vuln)
+	}
+
+	return nil
+}
+
+func processSecrets(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
+	for _, tt := range results {
+		for _, ts := range tt.Secrets {
+
+			var sbAll, sbCause strings.Builder
+			for _, b := range ts.Code.Lines {
+				sbAll.WriteString(b.Content)
+				if b.IsCause {
+					sbCause.WriteString(b.Content)
+				}
+			}
+
+			vuln.Details = fmt.Sprintf("This secret was found by the trivy rule '%s'.", ts.RuleID)
+			vuln.AffectedResource = string(hex.EncodeToString(sha256.New().Sum([]byte(sbAll.String())))[1:48])
+			vuln.AffectedResourceString = computeAffectedResource(tt.Target, branch, tt.Target, ts.StartLine)
+			vuln.Fingerprint = helpers.ComputeFingerprint()
+			vuln.Resources = []report.ResourcesGroup{{
+				Name: "Secrets found",
+				Header: []string{
+					"RuleID",
+					"Title",
+					"Cause",
+					"StartLine",
+					"EndLine",
+				},
+				Rows: []map[string]string{
+					{
+						"RuleID":    ts.RuleID,
+						"Title":     ts.Title,
+						"Cause":     sbCause.String(),
+						"StartLine": fmt.Sprint(ts.StartLine),
+						"EndLine":   fmt.Sprint(ts.EndLine),
+					},
+				},
+			}}
+			state.AddVulnerabilities(vuln)
+		}
 	}
 
 	return nil
