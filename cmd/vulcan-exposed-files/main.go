@@ -25,7 +25,7 @@ import (
 var (
 	checkName          = "vulcan-exposed-files"
 	logger             = check.NewCheckLog(checkName)
-	maxReadBytes int64 = 2097152 // 2MB. Maximum size to read from HTTP response.
+	maxReadBytes int64 = 2 * 1024 * 1024 // 2MB. Maximum size to read from HTTP response.
 )
 
 type FileCheck struct {
