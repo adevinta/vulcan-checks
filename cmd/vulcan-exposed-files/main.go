@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -22,8 +23,9 @@ import (
 )
 
 var (
-	checkName = "vulcan-exposed-files"
-	logger    = check.NewCheckLog(checkName)
+	checkName          = "vulcan-exposed-files"
+	logger             = check.NewCheckLog(checkName)
+	maxReadBytes int64 = 2048 // Maximum size to read from HTTP response.
 )
 
 type FileCheck struct {
@@ -129,6 +131,16 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 			[]string{"systemProperties", "systemEnvironment"},
 		},
 		{
+			"Spring Boot heap dump",
+			report.SeverityThresholdHigh,
+			[]string{"/heapdump", "/actuator/heapdump"},
+			[]string{
+				"\x4a\x41\x56\x41\x20\x50\x52\x4f\x46\x49\x4c\x45", // JAVA PROFILE
+				"\x48\x50\x52\x4f\x46",                             // HPROF
+				"portable heap dump",                               // For OpenJ9 JVM
+			},
+		},
+		{
 			"PHP info",
 			report.SeverityThresholdLow,
 			[]string{"/phpinfo.php"},
@@ -159,7 +171,7 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 					logger.Fatal(err)
 				}
 
-				bodyBytes, err := ioutil.ReadAll(response.Body)
+				bodyBytes, err := ioutil.ReadAll(io.LimitReader(response.Body, maxReadBytes))
 				if err != nil {
 					return err
 				}
@@ -184,10 +196,14 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 						Summary:          "Sensitive file exposed on web server",
 						Score:            check.Score,
 						References:       []string{checkUrl},
-						Recommendations:  []string{"Remove file from webserver.", "Add sensitive files to .gitignore"},
-						Description:      "The server stores sensitive information in files or directories that are accessible to actors outside of the intended control sphere.",
-						Details:          checkUrl + " is publicly available which contains sensitive information.",
-						CWEID:            538, // File and Directory Information Exposure
+						Recommendations: []string{
+							"Follow the instructions for a production deployment of the application.",
+							"Add sensitive files to \".gitignore\" to avoid deploying them with the code.",
+							"Remove development and backup files from the webserver.",
+						},
+						Description: "The server exposes sensitive information in paths that are accessible to actors outside of the intended control sphere.",
+						Details:     checkUrl + " is publicly available which contains sensitive information.",
+						CWEID:       538, // File and Directory Information Exposure
 					})
 				}
 			}
