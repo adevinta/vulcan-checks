@@ -126,7 +126,7 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 		},
 		{
 			"Spring Boot environment variables",
-			report.SeverityThresholdMedium,
+			report.SeverityThresholdHigh,
 			[]string{"/env", "/actuator/env"},
 			[]string{"systemProperties", "systemEnvironment"},
 		},
