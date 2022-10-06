@@ -144,6 +144,10 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 			Labels:          []string{"issue", "nessus"},
 		}
 
+		if vuln.Summary == "Common Platform Enumeration (CPE)" {
+			vuln.Description = "FAKE DESC"
+		}
+
 		// Tenable is now using CVSS v3 score as their default scoring system.
 		// In order to match the score of the vulnerabilities we report with
 		// the score Tenable reports in the tenable.io UI, we will default to
