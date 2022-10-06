@@ -425,4 +425,19 @@
   status: 200
   regex: "This domain is for use in illustrative examples in documents"
   severity: 9.0
-  description: Unauthenticated SSRF in Hystrix dashboard 
+  description: Unauthenticated SSRF in Hystrix dashboard
+
+- paths:
+  - "login/"
+  - "admin/airflow/login"
+  status: 200
+  regex: "(Airflow - Login|Sign In - Airflow)"
+  severity: 6.9
+  description: Apache Airflow Admin Login Panel
+
+- paths:
+  - "admin/"
+  status: 200
+  regex: "<title>Airflow - DAGs</title>"
+  severity: 10
+  description: Apache Airflow Unauthenticated Access
