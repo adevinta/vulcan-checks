@@ -253,7 +253,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 			},
 		}
-		if err := processSecrets(results.Results, vuln, "", state); err != nil {
+		if err := processSecrets(results.Results, vuln, target, "", state); err != nil {
 			logger.Errorf("processing image secret results: %+v", err)
 		}
 
@@ -315,7 +315,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 					"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 				},
 			}
-			if err := processSecrets(results.Results, vuln, branchName, state); err != nil {
+			if err := processSecrets(results.Results, vuln, target, branchName, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
 
@@ -486,10 +486,14 @@ func getUniqueFields(rg report.ResourcesGroup) map[string]string {
 }
 
 func computeAffectedResource(target, branch string, file string, l int) string {
-	if localTargets.MatchString(target) {
-		return fmt.Sprintf("%s#%d", strings.TrimPrefix(file, "/"), l)
+	s := ""
+	if branch == "" { // it's a docker image
+		s = file
+	} else if localTargets.MatchString(target) {
+		s = strings.TrimPrefix(file, "/")
+	} else {
+		s = fmt.Sprintf("%s/%s", strings.TrimSuffix(target, ".git"), path.Join("blob", branch, file))
 	}
-	s := fmt.Sprintf("%s/%s", strings.TrimSuffix(target, ".git"), path.Join("blob", branch, file))
 	if l == 0 {
 		return s
 	}
@@ -626,7 +630,7 @@ func processVulns(results scanResponse, vuln report.Vulnerability, branch string
 	return nil
 }
 
-func processSecrets(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
+func processSecrets(results scanResponse, vuln report.Vulnerability, target, branch string, state checkstate.State) error {
 	for _, tt := range results {
 		for _, ts := range tt.Secrets {
 
@@ -640,7 +644,7 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, branch stri
 
 			vuln.Details = fmt.Sprintf("This secret was found by the trivy rule '%s'.", ts.RuleID)
 			vuln.AffectedResource = string(hex.EncodeToString(sha256.New().Sum([]byte(sbAll.String())))[1:48])
-			vuln.AffectedResourceString = computeAffectedResource(tt.Target, branch, tt.Target, ts.StartLine)
+			vuln.AffectedResourceString = computeAffectedResource(target, branch, tt.Target, ts.StartLine)
 			vuln.Fingerprint = helpers.ComputeFingerprint()
 			vuln.Resources = []report.ResourcesGroup{{
 				Name: "Secrets found",
