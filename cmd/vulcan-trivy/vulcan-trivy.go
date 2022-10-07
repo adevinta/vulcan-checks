@@ -390,17 +390,15 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 }
 
 func processMisconfigs(results scanResponse, target string, branch string, state checkstate.State) error {
-
 	m := map[string]report.Vulnerability{}
 	for _, tt := range results {
 		for _, tv := range tt.Misconfigurations {
-
-			summary := fmt.Sprintf("%s - %s", tv.Type, tv.Title)
-			key := fmt.Sprintf("%s|%s", summary, tt.Target)
+			key := fmt.Sprintf("%s|%s", tv.ID, tt.Target)
 
 			vuln, ok := m[key]
 			if !ok {
 				vuln = report.Vulnerability{
+					Summary: fmt.Sprintf("%s - %s", tv.Type, tv.Title),
 					Details: strings.Join([]string{
 						"Run the following command to obtain the full report in your computer.",
 						"Clone your repo and execute:",
@@ -410,14 +408,14 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 					}, "\n"),
 					// CWEID:  937,
 					Labels:           []string{"potential", "config", "trivy"},
-					Summary:          summary,
 					Description:      tv.Description,
 					Recommendations:  []string{tv.Resolution},
 					References:       tv.References,
 					Score:            getScore(tv.Severity),
-					AffectedResource: tt.Target,
+					AffectedResource: computeAffectedResource(target, branch, tt.Target, 0),
 					Resources: []report.ResourcesGroup{{
-						Name: "Found in",
+						Name:   "Occurrences",
+						Header: []string{"Link", "Message"},
 					},
 					}}
 				m[key] = vuln
@@ -429,58 +427,62 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 
 			// Store the fingerprint of the contents separated with | for later split and sort.
 			vuln.Fingerprint += fmt.Sprintf("%s|", helpers.ComputeFingerprint(sb.String()))
-
 			vuln.Resources[0].Rows = append(vuln.Resources[0].Rows,
 				map[string]string{
-					"Message": tv.Message,
 					"Link":    computeAffectedResource(target, branch, tt.Target, tv.CauseMetadata.StartLine),
+					"Message": tv.Message,
 				})
 		}
 	}
 
-	// Compress the resource table by removing columns with the same value and adding it to Details
-	fields := []string{
-		"Message",
-		"Link",
-	}
 	for _, v := range m {
 		v.Fingerprint = helpers.ComputeFingerprint(sort.StringSlice(strings.Split(v.Fingerprint, "|")))
 
-		var reduce strings.Builder
-
-		for _, field := range fields {
-			same := true
-			value := ""
-			for i, row := range v.Resources[0].Rows {
-				if i == 0 {
-					value = row[field]
-				}
-				if same && (row[field] != value) {
-					same = false
-				}
-			}
-			if same {
-				if value != "" {
-					reduce.WriteString(fmt.Sprintf("%s: %s\n", field, value))
-				}
-				for _, row := range v.Resources[0].Rows {
-					delete(row, field)
-				}
-			} else {
-				v.Resources[0].Header = append(v.Resources[0].Header, field)
-			}
+		unique := getUniqueFields(v.Resources[0])
+		// Set the affectedResource with the line in case all the occurrences have the same line.
+		if link, ok := unique["Link"]; ok {
+			removeColumn(&v.Resources[0], "Link")
+			v.AffectedResource = link
 		}
-		if reduce.Len() > 0 {
-			v.Details = fmt.Sprintf("%s\n%s", reduce.String(), v.Details)
-		}
-		if len(v.Resources[0].Header) == 0 {
-			v.Resources = nil
-		}
-		v.Fingerprint = helpers.ComputeFingerprint(v.Fingerprint)
 		state.AddVulnerabilities(v)
 	}
 
 	return nil
+}
+
+func removeColumn(rg *report.ResourcesGroup, field string) {
+	h := []string{}
+	for _, f := range rg.Header {
+		if f != field {
+			h = append(h, f)
+		}
+	}
+
+	rg.Header = h
+
+	for _, r := range rg.Rows {
+		delete(r, field)
+	}
+}
+
+func getUniqueFields(rg report.ResourcesGroup) map[string]string {
+	uniqueFields := map[string]string{}
+	for _, field := range rg.Header {
+		same := true
+		value := ""
+		for i, row := range rg.Rows {
+			if i == 0 {
+				value = row[field]
+			}
+			if same && (row[field] != value) {
+				same = false
+			}
+		}
+		if same {
+			uniqueFields[field] = value
+		}
+	}
+	return uniqueFields
 }
 
 func computeAffectedResource(target, branch string, file string, l int) string {
