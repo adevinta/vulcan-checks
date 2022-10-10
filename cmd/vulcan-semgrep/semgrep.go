@@ -59,9 +59,9 @@ type Result struct {
 	Extra struct {
 		Message  string `json:"message"`
 		Metadata struct {
-			// The field Owasp can be a string or a []string
+			// The fields Owasp and Cwe can be a string or a []string
 			// Owasp         string   `json:"owasp"`
-			Cwe           string   `json:"cwe"`
+			// Cwe           string   `json:"cwe"`
 			SourceRuleURL string   `json:"source-rule-url"`
 			References    []string `json:"references"`
 		} `json:"metadata"`
