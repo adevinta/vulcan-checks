@@ -40,6 +40,12 @@ var (
 	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = "report.json"
 	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
+
+	FilePatters = []string{
+		// trivy only detect requirements.txt files
+		`pip:/requirements/[^/]+\.txt`,    // All the .txt files in a requirements directory.
+		`pip:[^/]*requirements[^/]*\.txt`, // All the files .txt that contains requirements
+	}
 )
 
 type options struct {
@@ -166,6 +172,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln,secret"}...)
 	} else {
 		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln"}...)
+	}
+
+	for _, p := range FilePatters {
+		trivyArgs = append(trivyArgs, []string{"--file-patterns", fmt.Sprintf(`"%s"`, p)}...)
 	}
 
 	if strings.Contains(assetType, "DockerImage") {
