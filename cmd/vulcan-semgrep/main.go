@@ -249,7 +249,17 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 	summary := issue
 
 	var cweID int
-	if matches := CWERegex.FindStringSubmatch(result.Extra.Metadata.Cwe); len(matches) == 3 {
+
+	// Most of the times Cwe is an []string, in that case use the first one.
+	firstCwe := ""
+	if slice, ok := result.Extra.Metadata.Cwe.([]interface{}); ok {
+		if len(slice) > 0 {
+			firstCwe = fmt.Sprintf("%v", slice[0])
+		}
+	} else if s, ok := result.Extra.Metadata.Cwe.(string); ok {
+		firstCwe = s
+	}
+	if matches := CWERegex.FindStringSubmatch(firstCwe); len(matches) == 3 {
 		cweText := strings.TrimSpace(matches[2])
 
 		// Example:

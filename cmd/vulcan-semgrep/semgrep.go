@@ -61,9 +61,9 @@ type Result struct {
 		Metadata struct {
 			// The field Owasp can be a string or a []string
 			// Owasp         string   `json:"owasp"`
-			Cwe           string   `json:"cwe"`
-			SourceRuleURL string   `json:"source-rule-url"`
-			References    []string `json:"references"`
+			Cwe           interface{} `json:"cwe"` // string or []string
+			SourceRuleURL string      `json:"source-rule-url"`
+			References    []string    `json:"references"`
 		} `json:"metadata"`
 		Severity string `json:"severity"`
 		Fix      string `json:"fix"`
