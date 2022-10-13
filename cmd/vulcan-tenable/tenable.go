@@ -144,6 +144,12 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 			Labels:          []string{"issue", "nessus"},
 		}
 
+		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
+		// we use `n/a` when there is any recommendation.
+		if len(vuln.Recommendations) == 1 && vuln.Recommendations[0] == "" {
+			vuln.Recommendations[0] = "n/a"
+		}
+
 		// Tenable is now using CVSS v3 score as their default scoring system.
 		// In order to match the score of the vulnerabilities we report with
 		// the score Tenable reports in the tenable.io UI, we will default to
