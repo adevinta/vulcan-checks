@@ -170,10 +170,12 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 			vuln.CWEID = uint32(cweid)
 		}
 
-		// If there are no ports specified in the finding, we can't be more
-		// specific for the affected resource than the whole target.
-		vuln.AffectedResource = target
-		if finding.Port != 0 {
+		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
+		// when there are no ports specificed in the finding we will use `0 /
+		// PROTOCOL` as the affected resource instead of the whole target.
+		if finding.Port == 0 {
+			vuln.AffectedResource = fmt.Sprintf("%v / %v", finding.Port, finding.Protocol)
+		} else {
 			vuln.AffectedResource = fmt.Sprintf("%v / %v / %v", finding.Port, finding.Protocol, finding.Service)
 
 			networkResource := map[string]string{
