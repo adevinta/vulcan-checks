@@ -15,8 +15,6 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 const (
@@ -215,7 +213,7 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 		cweID, _ = strconv.Atoi(matches[1])
 	}
 
-	summary = cases.Title(language.English).String(summary)
+	summary = strings.Title(summary)
 
 	key := fmt.Sprintf("%s - %s", summary, filepath)
 	v, ok := vulns[key]
