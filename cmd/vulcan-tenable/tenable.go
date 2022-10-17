@@ -148,11 +148,7 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 		// we the description formatted as returned by the plugin endpoint, as
 		// it differs in the format as the one returned by the findings
 		// endpoint.
-		pluginID, err := strconv.Atoi(finding.Definition.PluginID)
-		if err != nil {
-			return nil, err
-		}
-		p, err := r.nessusCli.GetPluginByID(int64(pluginID))
+		p, err := r.nessusCli.GetPluginByID(int64(finding.Definition.ID))
 		if err != nil {
 			return nil, err
 		}
