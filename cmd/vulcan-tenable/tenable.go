@@ -135,19 +135,18 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 	var vulns []report.Vulnerability
 	for _, finding := range findings {
 		vuln := report.Vulnerability{
-			Summary:         finding.Definition.Name,
-			Description:     finding.Definition.Description,
-			ImpactDetails:   finding.Definition.Synopsis,
-			Recommendations: []string{finding.Definition.Solution},
-			References:      finding.Definition.SeeAlso,
-			Details:         finding.Output,
-			Labels:          []string{"issue", "nessus"},
+			Summary:       finding.Definition.Name,
+			Description:   finding.Definition.Description,
+			ImpactDetails: finding.Definition.Synopsis,
+			References:    finding.Definition.SeeAlso,
+			Details:       finding.Output,
+			Labels:        []string{"issue", "nessus"},
 		}
 
-		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
-		// we the description formatted as returned by the plugin endpoint, as
-		// it differs in the format as the one returned by the findings
-		// endpoint.
+		// NOTE: for retro-compatibility with the vulcan-nessus check findings
+		// we are using the information provided by the plugin instead of by
+		// the findings endpoint for the description, impact details and
+		// recommendations fields.
 		p, err := r.nessusCli.GetPluginByID(int64(finding.Definition.ID))
 		if err != nil {
 			return nil, err
@@ -155,14 +154,11 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 		for _, attr := range p.Attributes {
 			if attr.Name == "description" {
 				vuln.Description = attr.Value
-				break
+			} else if attr.Name == "synopsis" {
+				vuln.ImpactDetails = attr.Value
+			} else if attr.Name == "solution" {
+				vuln.Recommendations = append(vuln.Recommendations, attr.Value)
 			}
-		}
-
-		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
-		// we use `n/a` when there is any recommendation.
-		if len(vuln.Recommendations) == 1 && vuln.Recommendations[0] == "" {
-			vuln.Recommendations[0] = "n/a"
 		}
 
 		// Tenable is now using CVSS v3 score as their default scoring system.
