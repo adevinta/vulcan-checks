@@ -145,6 +145,25 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 		}
 
 		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
+		// we the description formatted as returned by the plugin endpoint, as
+		// it differs in the format as the one returned by the findings
+		// endpoint.
+		pluginID, err := strconv.Atoi(finding.Definition.PluginID)
+		if err != nil {
+			return nil, err
+		}
+		p, err := r.nessusCli.GetPluginByID(int64(pluginID))
+		if err != nil {
+			return nil, err
+		}
+		for _, attr := range p.Attributes {
+			if attr.Name == "description" {
+				vuln.Description = attr.Value
+				break
+			}
+		}
+
+		// NOTE: for retro-compatibility with the vulcan-nessus check findings,
 		// we use `n/a` when there is any recommendation.
 		if len(vuln.Recommendations) == 1 && vuln.Recommendations[0] == "" {
 			vuln.Recommendations[0] = "n/a"
