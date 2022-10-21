@@ -48,16 +48,20 @@ var (
 	}
 )
 
+type checks struct {
+	Vuln   bool `json:"vuln"`
+	Secret bool `json:"secret"`
+	Config bool `json:"config"`
+}
+
 type options struct {
-	ForceUpdateDB  bool   `json:"force_update_db"`
-	IgnoreUnfixed  bool   `json:"ignore_unfixed"`
-	Severities     string `json:"severities"`
-	Depth          int    `json:"depth"`
-	Branch         string `json:"branch"`
-	FSEnabled      bool   `json:"fs_enabled"`
-	ImageEnabled   bool   `json:"image_enabled"`
-	SecretsEnabled bool   `json:"secrets_enabled"`
-	ConfigsEnabled bool   `json:"configs_enabled"`
+	ForceUpdateDB bool   `json:"force_update_db"`
+	IgnoreUnfixed bool   `json:"ignore_unfixed"`
+	Severities    string `json:"severities"`
+	Depth         int    `json:"depth"`
+	Branch        string `json:"branch"`
+	GitChecks     checks `json:"git_checks"`
+	ImageChecks   checks `json:"image_checks"`
 }
 
 // TODO: Replace with "github.com/aquasecurity/trivy/pkg/types"
@@ -148,6 +152,20 @@ func main() {
 	c.RunAndServe()
 }
 
+func checksToParam(c checks) string {
+	checks := []string{}
+	if c.Vuln {
+		checks = append(checks, "vuln")
+	}
+	if c.Secret {
+		checks = append(checks, "secret")
+	}
+	if c.Config {
+		checks = append(checks, "config")
+	}
+	return strings.Join(checks, ",")
+}
+
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
@@ -168,22 +186,17 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
 
-	if opt.SecretsEnabled {
-		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln,secret"}...)
-	} else {
-		trivyArgs = append(trivyArgs, []string{"--security-checks", "vuln"}...)
-	}
-
 	for _, p := range FilePatters {
 		trivyArgs = append(trivyArgs, []string{"--file-patterns", fmt.Sprintf(`"%s"`, p)}...)
 	}
 
 	if strings.Contains(assetType, "DockerImage") {
-
-		if !opt.ImageEnabled {
-			logger.Warnf("Image scanning is not enabled")
+		sc := checksToParam(opt.ImageChecks)
+		if sc == "" {
+			logger.Warnf("No checks enabled for DockerImage")
 			return nil
 		}
+		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
 
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
@@ -267,17 +280,20 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Errorf("processing image secret results: %+v", err)
 		}
 
+		return processMisconfigs(results.Results, target, "", state)
+
 	} else if assetType == "GitRepository" {
 
-		if !opt.FSEnabled {
-			logger.Warnf("Filesystem scanning is not enabled")
+		sc := checksToParam(opt.GitChecks)
+		if sc == "" {
+			logger.Warnf("No checks enabled for DockerImage")
 			return nil
 		}
+		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
 
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
-		// TODO: use branch
 		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 		if err != nil {
 			return err
@@ -328,20 +344,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			if err := processSecrets(results.Results, vuln, target, branchName, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
-
 		}
 
-		if !opt.ConfigsEnabled {
-			logger.Infof("Config scanning is not enabled")
-			return nil
-		}
-
-		results, err = execTrivy(opt, "config", []string{
-			"--ignorefile", path.Join(repoPath, ".trivyignore"),
-			repoPath})
-		if err != nil {
-			return err
-		}
 		return processMisconfigs(results.Results, target, branchName, state)
 	}
 	return fmt.Errorf("unknown assetType %s", assetType)
