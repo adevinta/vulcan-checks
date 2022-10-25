@@ -29,5 +29,6 @@ RUN git clone --depth=1 https://github.com/warner/python-ecdsa.git .python-ecdsa
 	ln -s .python-ecdsa/src/ecdsa ecdsa
 
 # Install check
-COPY vulcan-tls /vulcan-tls
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-tls /
 CMD ["/vulcan-tls"]

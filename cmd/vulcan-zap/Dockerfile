@@ -6,5 +6,6 @@ USER root
 RUN chown -R zap /zap/
 
 USER zap
-ADD vulcan-zap /vulcan-zap
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-zap /
 CMD ["/vulcan-zap"]

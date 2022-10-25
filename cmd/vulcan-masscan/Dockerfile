@@ -10,5 +10,6 @@ RUN make -j
 FROM alpine
 RUN apk update && apk add libpcap-dev
 COPY --from=builder /masscan/bin/masscan /usr/local/bin
-ADD vulcan-masscan /vulcan-masscan
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-masscan /
 CMD ["/vulcan-masscan"]

@@ -5,3 +5,5 @@ local.toml
 .idea/
 vulcan-checks.iml
 .vscode/
+build/
+linux/

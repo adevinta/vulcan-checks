@@ -19,5 +19,6 @@ RUN apt update && \
 WORKDIR /
 
 # Install check
-COPY /vulcan-http-headers .
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-http-headers /
 CMD ["/vulcan-http-headers"]
