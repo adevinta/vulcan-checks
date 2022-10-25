@@ -1,5 +1,6 @@
 # Copyright 2019 Adevinta
 
 FROM alpine
-ADD vulcan-drupal /vulcan-drupal
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-drupal /vulcan-drupal
 CMD ["/vulcan-drupal"]

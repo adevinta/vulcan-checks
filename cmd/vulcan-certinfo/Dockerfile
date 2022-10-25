@@ -2,5 +2,6 @@
 
 FROM alpine
 RUN apk add --no-cache ca-certificates
-ADD vulcan-certinfo /vulcan-certinfo
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-certinfo /vulcan-certinfo
 CMD ["/vulcan-certinfo"]

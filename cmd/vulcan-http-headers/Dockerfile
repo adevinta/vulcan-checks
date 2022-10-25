@@ -5,7 +5,7 @@ FROM python:3.7-slim
 # Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis
 # this fails.
 RUN apt update
-RUN apt install -y --fix-missing git build-essential
+RUN apt install -y --fix-missing git build-essential libpq-dev python3-dev
 RUN apt autoremove
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -24,5 +24,6 @@ ENV PYTHONPATH $PYTHONPATH:/opt/http-observatory
 WORKDIR /opt/vulcan-http-headers
 
 # Install check
-COPY vulcan-http-headers /opt/vulcan-http-headers
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-http-headers /opt/vulcan-http-headers
 CMD ["/opt/vulcan-http-headers/vulcan-http-headers"]

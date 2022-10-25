@@ -13,5 +13,6 @@ RUN git clone https://github.com/robertdavidgraham/masscan
 WORKDIR ./masscan
 RUN make -j
 RUN cp -a ./bin/masscan /usr/local/bin
-ADD vulcan-masscan /vulcan-masscan
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-masscan /vulcan-masscan
 CMD ["/vulcan-masscan"]

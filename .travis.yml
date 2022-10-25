@@ -6,9 +6,9 @@ go:
   - 1.18.x
 env:
   global:
-  - DKR_USERNAME=vulcansec
   - CGO_ENABLED=0
   - GO111MODULE=on
+  - PLATFORMS="linux/arm64 linux/amd64"
 go_import_path: github.com/adevinta/vulcan-checks
 deploy:
   - provider: script
@@ -18,7 +18,7 @@ deploy:
       condition: $TRAVIS_BRANCH != "master"
   - provider: script
     script: >-
-      bash release-edge.sh &&
+      bash release-multi-edge.sh &&
       mkdir pages/checktypes &&
       go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}" &&
       vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag edge -output pages/checktypes/edge.json cmd/
