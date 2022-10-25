@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"sort"
@@ -31,7 +31,7 @@ var (
 	checkName              = "vulcan-nuclei"
 	logger                 = check.NewCheckLog(checkName)
 	userAgent              = "x-vulcan-nuclei"
-	nucleiCmd              = "./nuclei"
+	nucleiCmd              = "nuclei"
 	nucleiTemplatePath     = "/root/nuclei-templates/"
 	nucleiTemplateListJSON = "TEMPLATES-STATS.json"
 
@@ -58,13 +58,6 @@ type TemplateList struct {
 		Name  string `json:"name"`
 		Count int    `json:"count"`
 	} `json:"directory"`
-}
-
-type finding struct {
-	name     string
-	severity string
-	template string
-	match    string
 }
 
 func main() {
@@ -348,9 +341,7 @@ func generateTemplateSelectionList(skipUpdateTemplates bool, inclusionList, excl
 	logger.Infof("exclued templates: %+v", exclusionList)
 
 	for _, v := range exclusionList {
-		if _, ok := selectedTemplates[v]; ok {
-			delete(selectedTemplates, v)
-		}
+		delete(selectedTemplates, v)
 	}
 
 	selectedTemplateList := []string{}
@@ -364,7 +355,7 @@ func generateTemplateSelectionList(skipUpdateTemplates bool, inclusionList, excl
 
 func templateList() (TemplateList, error) {
 	var tl TemplateList
-	data, err := ioutil.ReadFile(fmt.Sprintf("%s%s", nucleiTemplatePath, nucleiTemplateListJSON))
+	data, err := os.ReadFile(fmt.Sprintf("%s%s", nucleiTemplatePath, nucleiTemplateListJSON))
 	if err != nil {
 		return tl, err
 	}
