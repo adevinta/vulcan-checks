@@ -6,8 +6,6 @@ go:
   - 1.18.x
 env:
   global:
-  - CGO_ENABLED=0
-  - GO111MODULE=on
   - PLATFORMS="linux/arm64 linux/amd64"
 go_import_path: github.com/adevinta/vulcan-checks
 deploy:

@@ -59,26 +59,27 @@ BUILDX_ARGS+=("--label" "org.opencontainers.image.ref=https://github.com/adevint
 BRANCH=${TRAVIS_BRANCH:-$(git_branch .)}
 
 TAGS=()
-DEP_VERSION=
 if [[ $BRANCH == "master" ]]; then
     TAGS+=(latest edge)
+    FORCE_BUILD=true
 elif [[ $TRAVIS_TAG != "" ]]; then
     TAGS+=("$TRAVIS_TAG")
+    FORCE_BUILD=true
 else
     TAGS+=("$BRANCH" "$BRANCH-$(git rev-parse --short HEAD)")
-    DEP_VERSION=$(git_commit_id go.mod)
+    FORCE_BUILD="${FORCE_BUILD:-false}"
 fi
 
 # Iterate over all checks
 for cf in cmd/*; do
     check=$(basename "$cf")
 
-    if [[ $DEP_VERSION != "" ]]; then
-        TAG_CHECK="${DEP_VERSION}-$(git_commit_id "$cf")"
+    if [[ $FORCE_BUILD == "false" ]]; then
+        TAG_CHECK="$(git_commit_id go.mod)-$(git_commit_id "$cf")"
 
         # Check if check version (code+dep) has been already pushed to Registry
         if [[ $(dkr_image_exists "$check" "$TAG_CHECK") == true ]]; then
-            echo "Skip build and push for check: [$check] - ALREADY PUSHED - Version: [$check:$TAG_CHECK]"
+            echo "Skip build and push for existing check image [$check:$TAG_CHECK]"
             continue
         fi
         TAGS+=("$TAG_CHECK")
@@ -97,7 +98,7 @@ for cf in cmd/*; do
         --platform="${PLATFORMS// /,}" \
         "$cf" "${BUILDX_ARGS[@]}" "${BUILDX_CHECK_ARGS[@]}" --push
 
-    log_msg "Processed $check tags=${TAGS[*]}"
+    log_msg "Builded $check:[${TAGS[*]}]"
 done
 
 docker buildx rm multiarch
