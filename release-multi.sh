@@ -10,6 +10,11 @@ trap "exit" INT
 . _scripts/libgit.sh
 . _scripts/libdocker.sh
 
+get_tag_check() {
+    local -r object_path="${1:?path to object argument required}"
+    echo "$(git_commit_id go.mod)-$(git_commit_id "$object_path")"
+}
+
 # Load required env vars
 eval "$(git_env)"
 eval "$(dkr_env)"
@@ -22,27 +27,51 @@ log_msg() {
     echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') [$((LOG_TIME-previous))s] -- $1"
 }
 
+PLATFORMS=${PLATFORMS:-"linux/arm64 linux/amd64"}
+BRANCH=${TRAVIS_BRANCH:-$(git_branch .)}
+
+IMAGE_TAGS=()
+CACHE_TAGS=(edge)
+if [[ $BRANCH == "master" ]]; then
+    IMAGE_TAGS+=(latest edge)
+    FORCE_BUILD="${FORCE_BUILD:-true}"
+    ADD_TAG_CHECK=false
+elif [[ $TRAVIS_TAG != "" ]]; then
+    IMAGE_TAGS+=("$TRAVIS_TAG")
+    FORCE_BUILD="${FORCE_BUILD:-true}"
+    ADD_TAG_CHECK=false
+else
+    IMAGE_TAGS+=("$BRANCH" "$BRANCH-$(git rev-parse --short HEAD)")
+    FORCE_BUILD="${FORCE_BUILD:-false}"
+    ADD_TAG_CHECK=true
+    CACHE_TAGS+=("$BRANCH")  # First time will print a message => ERROR importing cache manifest from XXXX
+fi
+
+log_msg "Starting FORCE_BUILD=$FORCE_BUILD"
+
+CHECKS=()
+for cf in cmd/*; do
+    check=$(basename "$cf")
+    if [[ $FORCE_BUILD == "false" ]]; then
+        TAG_CHECK="$(get_tag_check "cmd/$check")"
+        # Check if check version (code+dep) has been already pushed to Registry
+        if [[ $(dkr_image_exists "$check" "$TAG_CHECK") == true ]]; then
+            echo "Skipping $DKR_USERNAME/$check:$TAG_CHECK exists"
+            continue
+        fi
+    fi
+    CHECKS+=("$check")
+done
+
+log_msg "Computed list of checks to build: [${CHECKS[*]}]"
+
+if [ ${#CHECKS[@]} -eq 0 ]; then
+    exit
+fi
+
 # Download go dependencies
 go mod download
 log_msg "Downloaded go mod"
-
-PLATFORMS=${PLATFORMS:-"linux/arm64 linux/amd64"}
-
-# Building all the binaries is faster than one-by-one.
-for PLATFORM in $PLATFORMS; do
-    OS=$(echo "$PLATFORM" | cut -f1 -d/)
-    ARCH=$(echo "$PLATFORM" | cut -f2 -d/)
-    CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags="-s -w" -o "build/$OS/$ARCH/" ./...
-    log_msg "Builded checks $PLATFORM"
-done
-
-# move the files from build to the check directory.
-find build -type f -exec sh -c '
-for file do
-    target=cmd/$(basename $file)/$(dirname "${file#build/}")
-    mkdir -p $target
-    mv $file $target
-done' sh {} +
 
 # Login into registry (authenticated pulls)
 dkr_login > /dev/null
@@ -56,49 +85,37 @@ BUILDX_ARGS=()
 BUILDX_ARGS+=("--label" "org.opencontainers.image.revision=$(git rev-parse --short HEAD)")
 BUILDX_ARGS+=("--label" "org.opencontainers.image.ref=https://github.com/adevinta/vulcan-checks")
 
-BRANCH=${TRAVIS_BRANCH:-$(git_branch .)}
-
-TAGS=()
-if [[ $BRANCH == "master" ]]; then
-    TAGS+=(latest edge)
-    FORCE_BUILD=true
-elif [[ $TRAVIS_TAG != "" ]]; then
-    TAGS+=("$TRAVIS_TAG")
-    FORCE_BUILD=true
-else
-    TAGS+=("$BRANCH" "$BRANCH-$(git rev-parse --short HEAD)")
-    FORCE_BUILD="${FORCE_BUILD:-false}"
-fi
-
 # Iterate over all checks
-for cf in cmd/*; do
-    check=$(basename "$cf")
+for check in "${CHECKS[@]}"; do
 
-    if [[ $FORCE_BUILD == "false" ]]; then
-        TAG_CHECK="$(git_commit_id go.mod)-$(git_commit_id "$cf")"
-
-        # Check if check version (code+dep) has been already pushed to Registry
-        if [[ $(dkr_image_exists "$check" "$TAG_CHECK") == true ]]; then
-            echo "Skip build and push for existing check image [$check:$TAG_CHECK]"
-            continue
-        fi
-        TAGS+=("$TAG_CHECK")
-    fi
-
-    BUILDX_CHECK_ARGS=()
-    for tag in "${TAGS[@]}"; do
-        BUILDX_CHECK_ARGS+=("--tag" "$DKR_USERNAME/$check:$tag")
+    # Build the go app
+    for PLATFORM in $PLATFORMS; do
+        OS=$(echo "$PLATFORM" | cut -f1 -d/)
+        ARCH=$(echo "$PLATFORM" | cut -f2 -d/)
+        CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags="-s -w" -o "cmd/$check/$OS/$ARCH/$check" "$PWD/cmd/$check"
+        log_msg "Builded go $check:$PLATFORM"
     done
 
-    docker buildx build \
-        --cache-from "type=registry,ref=$DKR_USERNAME/$check:latest" \
+    BUILDX_CHECK_ARGS=()
+    for tag in "${IMAGE_TAGS[@]}"; do
+        BUILDX_CHECK_ARGS+=("--tag" "$DKR_USERNAME/$check:$tag")
+    done
+    if [[ $ADD_TAG_CHECK == "true" ]]; then
+        BUILDX_CHECK_ARGS+=("--tag" "$DKR_USERNAME/$check:$(get_tag_check "cmd/$check")")
+    fi
+
+    for tag in "${CACHE_TAGS[@]}"; do
+        BUILDX_CHECK_ARGS+=("--cache-from" "type=registry,ref=$DKR_USERNAME/$check:$tag")
+    done
+
+    docker buildx build "${BUILDX_ARGS[@]}" "${BUILDX_CHECK_ARGS[@]}" \
         --cache-to "type=inline" \
         --label "org.opencontainers.image.title=$check" \
         --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
         --platform="${PLATFORMS// /,}" \
-        "$cf" "${BUILDX_ARGS[@]}" "${BUILDX_CHECK_ARGS[@]}" --push
+        "cmd/$check" --push
 
-    log_msg "Builded $check:[${TAGS[*]}]"
+    log_msg "Builded image $check:[${IMAGE_TAGS[*]}]"
 done
 
 docker buildx rm multiarch
