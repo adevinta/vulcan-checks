@@ -47,7 +47,9 @@ done' sh {} +
 # Login into registry (authenticated pulls)
 dkr_login > /dev/null
 
-docker buildx create --name mybuilder --use --bootstrap
+# see https://github.com/docker/buildx/issues/495#issuecomment-761562905
+docker run --rm -it --privileged multiarch/qemu-user-static --reset -p yes
+docker buildx create --name multiarch --driver docker-container --use --bootstrap
 log_msg "Created buildx"
 
 BUILDX_ARGS=()
@@ -98,4 +100,4 @@ for cf in cmd/*; do
     log_msg "Processed $check tags=${TAGS[*]}"
 done
 
-docker buildx rm mybuilder
+docker buildx rm multiarch
