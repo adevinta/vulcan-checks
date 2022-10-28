@@ -35,7 +35,7 @@ CACHE_TAGS=(edge)
 if [[ $BRANCH == "master" ]]; then
     IMAGE_TAGS+=(latest edge)
     FORCE_BUILD="${FORCE_BUILD:-true}"
-    ADD_TAG_CHECK=false
+    ADD_TAG_CHECK=true
 elif [[ $TRAVIS_TAG != "" ]]; then
     IMAGE_TAGS+=("$TRAVIS_TAG")
     FORCE_BUILD="${FORCE_BUILD:-true}"
