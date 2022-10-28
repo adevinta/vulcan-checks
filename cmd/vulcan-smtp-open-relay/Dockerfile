@@ -2,5 +2,6 @@
 
 FROM alpine
 RUN apk update && apk add nmap nmap-scripts && rm -rf /var/cache/apk/*
-ADD vulcan-smtp-open-relay /vulcan-smtp-open-relay
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-smtp-open-relay /
 CMD ["/vulcan-smtp-open-relay"]

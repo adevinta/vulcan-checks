@@ -1,5 +1,6 @@
 # Copyright 2019 Adevinta
 
 FROM scratch
-ADD vulcan-exposed-bgp /vulcan-exposed-bgp
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-exposed-bgp /
 CMD ["/vulcan-exposed-bgp"]

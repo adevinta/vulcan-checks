@@ -1,5 +1,6 @@
 # Copyright 2019 Adevinta
 
 FROM alpine
-ADD vulcan-spf /vulcan-spf
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-spf /
 CMD ["/vulcan-spf"]
