@@ -10,11 +10,11 @@ env:
 go_import_path: github.com/adevinta/vulcan-checks
 deploy:
   - provider: script
-    script: bash release-multi.sh
+    script: bash release.sh
     on:
       all_branches: true
   - provider: script
-    script: bash release-multi.sh
+    script: bash release.sh
     on:
       tags: true
   - provider: script
