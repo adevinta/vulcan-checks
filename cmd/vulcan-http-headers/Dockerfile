@@ -1,28 +1,23 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.7-slim
+FROM python:3.8-slim
 
-# Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis
-# this fails.
-RUN apt update
-RUN apt install -y --fix-missing git build-essential
-RUN apt autoremove
-RUN rm -rf /var/lib/apt/lists/*
+COPY setup.py /
 
-RUN mkdir -p /opt/vulcan-http-headers
-WORKDIR /opt/
-
-# Install the HTTP Observatory
-RUN git clone https://github.com/mozilla/http-observatory
 WORKDIR /opt/http-observatory
-RUN git reset --hard ec0e4071d42b4f5bc429d97868d51e247e2caece
-RUN pip3 install --upgrade .
-RUN pip3 install --upgrade -r requirements.txt
 
-ENV PYTHONPATH $PYTHONPATH:/opt/http-observatory
+RUN apt update && \
+    apt install -y --fix-missing build-essential git && \
+    git clone https://github.com/mozilla/http-observatory . && \
+    git reset --hard 6ac246ad72d691fd2d0ac24b8ca8549631d87f7b && \
+    mv /setup.py . && \
+    pip3 install --upgrade -r httpobs/requirements.txt -r httpobs/scanner/requirements.txt . && \
+    apt autoremove -y build-essential git && \
+    rm -rf ./build && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/vulcan-http-headers
+WORKDIR /
 
 # Install check
-COPY vulcan-http-headers /opt/vulcan-http-headers
-CMD ["/opt/vulcan-http-headers/vulcan-http-headers"]
+COPY /vulcan-http-headers .
+CMD ["/vulcan-http-headers"]
