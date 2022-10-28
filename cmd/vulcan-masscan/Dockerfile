@@ -1,17 +1,14 @@
 # Copyright 2019 Adevinta
 
-FROM alpine:3.13.6
-RUN apk update && apk upgrade && apk add \
-	git \
-	gcc \
-	make \
-	libpcap-dev \
-	libc-dev \
-	linux-headers \
-	&& rm -rf /var/cache/apk/*
-RUN git clone https://github.com/robertdavidgraham/masscan
-WORKDIR ./masscan
+FROM alpine as builder
+
+WORKDIR /masscan
+RUN apk update && apk add git gcc make linux-headers libc-dev
+RUN git clone --depth 1 https://github.com/robertdavidgraham/masscan .
 RUN make -j
-RUN cp -a ./bin/masscan /usr/local/bin
+
+FROM alpine
+RUN apk update && apk add libpcap-dev
+COPY --from=builder /masscan/bin/masscan /usr/local/bin
 ADD vulcan-masscan /vulcan-masscan
 CMD ["/vulcan-masscan"]
