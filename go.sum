@@ -21,6 +21,8 @@ github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4 h1:QCg9Ahqhj+Xg+Xm
 github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
 github.com/adevinta/restuss v1.1.0-rc.4 h1:YMZ87FrzNdmDVHJexvdy2HQGraye6dkmW3BV+zsbhsM=
 github.com/adevinta/restuss v1.1.0-rc.4/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
+github.com/adevinta/restuss v1.1.0 h1:ufdZrDEaPfY43xNvkughifyybEJ31mN8X5qUvnZp32A=
+github.com/adevinta/restuss v1.1.0/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
 github.com/adevinta/vulcan-check-sdk v1.0.1 h1:Cfc84Lu3XEw3q66LV0PkchoA/2wxLfw8JiqFBzY47zM=
 github.com/adevinta/vulcan-check-sdk v1.0.1/go.mod h1:8jEaCXAbbEsEm4cx0QLwOA4f8KVaH97k5F4prgpBuBw=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
