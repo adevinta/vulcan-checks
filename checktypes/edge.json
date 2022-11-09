@@ -503,9 +503,23 @@
 		},
 		{
 			"name": "vulcan-trivy",
-			"description": "Scan docker images using aquasec/trivy",
+			"description": "Scan docker images and Git repositories using aquasec/trivy",
 			"image": "vulcansec/vulcan-trivy:edge",
 			"timeout": 0,
+			"options": {
+				"branch": "",
+				"depth": 1,
+				"git_checks": {
+					"config": false,
+					"secret": false,
+					"vuln": true
+				},
+				"image_checks": {
+					"config": false,
+					"secret": false,
+					"vuln": true
+				}
+			},
 			"required_vars": [
 				"REGISTRY_DOMAIN",
 				"REGISTRY_USERNAME",
