@@ -193,8 +193,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	if strings.Contains(assetType, "DockerImage") {
 		sc := checksToParam(opt.ImageChecks)
 		if sc == "" {
-			logger.Warnf("No checks enabled for DockerImage")
-			return nil
+			logger.Warnf("No checks enabled for DockerImage, falling to scan only vuln")
+			sc = "vuln"
 		}
 		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
 
@@ -281,12 +281,13 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 
 		return processMisconfigs(results.Results, target, "", state)
+	}
 
-	} else if assetType == "GitRepository" {
+	if assetType == "GitRepository" {
 
 		sc := checksToParam(opt.GitChecks)
 		if sc == "" {
-			logger.Warnf("No checks enabled for DockerImage")
+			logger.Warnf("No checks enabled for GitRepository")
 			return nil
 		}
 		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
@@ -296,7 +297,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 		if err != nil {
-			return err
+			logger.Errorf("unable to clone repo: %+v", err)
+			return checkstate.ErrAssetUnreachable
 		}
 
 		results, err := execTrivy(opt, "fs", append(trivyArgs, repoPath))
@@ -348,6 +350,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 		return processMisconfigs(results.Results, target, branchName, state)
 	}
+
 	return fmt.Errorf("unknown assetType %s", assetType)
 }
 

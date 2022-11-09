@@ -6,4 +6,20 @@ AssetType = "DockerImage"
 # registry-1.docker.io/library/postgres:9.6
 
 # example Options
-# Options = '{"force_update_db": false, "ignore_unfixed": false, "severities":"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"}'
+# Options = """{
+#     "force_update_db": false, 
+#     "ignore_unfixed": false, 
+#     "severities":"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+#     "depth": 1,
+#     "branch":"",
+#     "git_checks": {
+#         "vuln": true,
+#         "secret": false,
+#         "config": false
+#     },
+#     "image_checks": {
+#         "vuln": true,
+#         "secret": false,
+#         "config": false
+#     }
+# }"""
