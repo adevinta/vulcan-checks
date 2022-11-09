@@ -19,8 +19,6 @@ github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk
 github.com/acomagu/bufpipe v1.0.3/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4 h1:QCg9Ahqhj+Xg+XmFHE30H+Syodr8LXQZfa+ZPOeifqc=
 github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4/go.mod h1:QljCYZvsmWhtbnOxlvqGC19JEQwx5gh5+rQDgtKPul4=
-github.com/adevinta/restuss v1.1.0-rc.4 h1:YMZ87FrzNdmDVHJexvdy2HQGraye6dkmW3BV+zsbhsM=
-github.com/adevinta/restuss v1.1.0-rc.4/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
 github.com/adevinta/restuss v1.1.0 h1:ufdZrDEaPfY43xNvkughifyybEJ31mN8X5qUvnZp32A=
 github.com/adevinta/restuss v1.1.0/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
 github.com/adevinta/vulcan-check-sdk v1.0.1 h1:Cfc84Lu3XEw3q66LV0PkchoA/2wxLfw8JiqFBzY47zM=
