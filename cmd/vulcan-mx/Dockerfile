@@ -1,5 +1,6 @@
 # Copyright 2019 Adevinta
 
 FROM scratch
-ADD vulcan-mx /vulcan-mx
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-mx /
 CMD ["/vulcan-mx"]

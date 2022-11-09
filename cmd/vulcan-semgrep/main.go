@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -19,9 +15,6 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	http "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 const (
@@ -90,56 +83,7 @@ func main() {
 
 		logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-		// We check if the target is not the public Github.
-		targetURL, err := url.Parse(target)
-		if err != nil {
-			return err
-		}
-
-		// TODO: Support multiple authenticated Github Enterprise instances.
-		githubURL, err := url.Parse(os.Getenv("GITHUB_ENTERPRISE_ENDPOINT"))
-		if err != nil {
-			return err
-		}
-
-		var auth *http.BasicAuth
-		if githubURL.Host != "" && targetURL.Host == githubURL.Host {
-			auth = &http.BasicAuth{
-				Username: "username", // Can be anything except blank.
-				Password: os.Getenv("GITHUB_ENTERPRISE_TOKEN"),
-			}
-			logger.Debug("using credentials for GitHub")
-		}
-
-		gitCreds := &helpers.GitCreds{}
-		if auth != nil {
-			gitCreds.User = auth.Username
-			gitCreds.Pass = auth.Password
-		}
-		isReachable, err := helpers.IsReachable(target, assetType, gitCreds)
-		if err != nil {
-			logger.WithError(err).Warn("can not check asset reachability")
-		}
-		if !isReachable {
-			return checkstate.ErrAssetUnreachable
-		}
-
-		repoPath := filepath.Join(os.TempDir(), "repo")
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return err
-		}
-
-		logger.WithFields(logrus.Fields{"repo_path": repoPath}).Debug("cloning repo")
-
-		co := git.CloneOptions{
-			URL:   target,
-			Auth:  auth,
-			Depth: opt.Depth,
-		}
-		if opt.Branch != "" {
-			co.ReferenceName = plumbing.ReferenceName(path.Join("refs/heads", opt.Branch))
-		}
-		_, err = git.PlainClone(repoPath, false, &co)
+		repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 		if err != nil {
 			return err
 		}
@@ -249,7 +193,17 @@ func vuln(result Result, filepath string, vulns map[string]report.Vulnerability)
 	summary := issue
 
 	var cweID int
-	if matches := CWERegex.FindStringSubmatch(result.Extra.Metadata.Cwe); len(matches) == 3 {
+
+	// Most of the times Cwe is an []string, in that case use the first one.
+	firstCwe := ""
+	if slice, ok := result.Extra.Metadata.Cwe.([]interface{}); ok {
+		if len(slice) > 0 {
+			firstCwe = fmt.Sprintf("%v", slice[0])
+		}
+	} else if s, ok := result.Extra.Metadata.Cwe.(string); ok {
+		firstCwe = s
+	}
+	if matches := CWERegex.FindStringSubmatch(firstCwe); len(matches) == 3 {
 		cweText := strings.TrimSpace(matches[2])
 
 		// Example:

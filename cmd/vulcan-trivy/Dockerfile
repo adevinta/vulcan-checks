@@ -1,6 +1,6 @@
 # Copyright 2020 Adevinta
 
-FROM aquasec/trivy:0.29.1 as dependency_builder
+FROM aquasec/trivy:0.33.0 as dependency_builder
 
 ENV TRIVY_CACHE_DIR=/trivy_cache
 
@@ -9,10 +9,13 @@ RUN mkdir $TRIVY_CACHE_DIR && \
     tar cvfz trivy_cache.tgz ${TRIVY_CACHE_DIR}
 
 FROM alpine
+
 # Required for scanning RHEL/CentOS images
 RUN apk add rpm
 WORKDIR /
 ENV TRIVY_CACHE_DIR=/trivy_cache
 COPY --from=dependency_builder /usr/local/bin/trivy trivy_cache.tgz /
-COPY ./vulcan-trivy entrypoint.sh /
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-trivy /
+COPY entrypoint.sh /
 CMD ["/entrypoint.sh"]

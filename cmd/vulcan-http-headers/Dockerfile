@@ -1,28 +1,24 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.6.4-slim-stretch
+FROM python:3.8-slim
 
-# Should be better to join these RUN's by using '&&' but, because a dirty error in the docker version of travis
-# this fails.
-RUN apt-get update
-RUN apt-get install -y --fix-missing git build-essential
-RUN apt-get autoremove
-RUN rm -rf /var/lib/apt/lists/*
+COPY setup.py /
 
-RUN mkdir -p /opt/vulcan-http-headers
-WORKDIR /opt/
-
-# Install the HTTP Observatory
-RUN git clone https://github.com/mozilla/http-observatory
 WORKDIR /opt/http-observatory
-RUN git reset --hard e3ef44d9ef3a0d6147b55934e81bd67fd7e2bd7e
-RUN pip3 install --upgrade .
-RUN pip3 install --upgrade -r requirements.txt
 
-ENV PYTHONPATH $PYTHONPATH:/opt/http-observatory
+RUN apt update && \
+    apt install -y --fix-missing build-essential git && \
+    git clone https://github.com/mozilla/http-observatory . && \
+    git reset --hard 6ac246ad72d691fd2d0ac24b8ca8549631d87f7b && \
+    mv /setup.py . && \
+    pip3 install --upgrade -r httpobs/requirements.txt -r httpobs/scanner/requirements.txt . && \
+    apt autoremove -y build-essential git && \
+    rm -rf ./build && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/vulcan-http-headers
+WORKDIR /
 
 # Install check
-COPY vulcan-http-headers /opt/vulcan-http-headers
-CMD ["/opt/vulcan-http-headers/vulcan-http-headers"]
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-http-headers /
+CMD ["/vulcan-http-headers"]

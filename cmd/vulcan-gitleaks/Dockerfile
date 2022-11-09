@@ -10,6 +10,7 @@ ENTRYPOINT ["/usr/bin/env"]
 
 
 # Install check
-COPY --chown=gitleaks vulcan-gitleaks /vulcan-gitleaks
+ARG TARGETOS TARGETARCH
+COPY --chown=gitleaks ${TARGETOS}/${TARGETARCH}/vulcan-gitleaks /
 
 CMD ["/vulcan-gitleaks"]
