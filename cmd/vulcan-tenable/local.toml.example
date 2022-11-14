@@ -1,0 +1,8 @@
+[Check]
+Target = "example.com"
+AssetType = "Hostname"
+Options = "{\"debug\":true,\"asset_tag\":\"provider:vulcan\",\"basic_auth\":false}"
+[RequiredVars]
+NESSUS_ENDPOINT = "https://cloud.tenable.com/"
+NESSUS_USERNAME = "MyTenableAccessKey"
+NESSUS_PASSWORD = "MyTenableSecretKey"

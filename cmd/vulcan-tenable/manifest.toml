@@ -1,0 +1,8 @@
+Description = "Retrieves findings from assets scanned by Tenable.io"
+Timeout = 300 # 5 min. Expressed in seconds as an integer.
+AssetTypes = ["Hostname", "IP", "IPRange"]
+RequiredVars = [
+  "NESSUS_ENDPOINT",
+  "NESSUS_USERNAME",
+  "NESSUS_PASSWORD",
+]
