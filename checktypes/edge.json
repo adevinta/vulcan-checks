@@ -492,6 +492,22 @@
 			]
 		},
 		{
+			"name": "vulcan-tenable",
+			"description": "Retrieves findings from assets scanned by Tenable.io",
+			"image": "vulcansec/vulcan-tenable:edge",
+			"timeout": 300,
+			"required_vars": [
+				"NESSUS_ENDPOINT",
+				"NESSUS_USERNAME",
+				"NESSUS_PASSWORD"
+			],
+			"assets": [
+				"Hostname",
+				"IP",
+				"IPRange"
+			]
+		},
+		{
 			"name": "vulcan-tls",
 			"description": "Analyzes TLS health of an asset using Mozilla Observatory",
 			"image": "vulcansec/vulcan-tls:edge",
