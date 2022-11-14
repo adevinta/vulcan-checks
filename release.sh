@@ -4,6 +4,8 @@
 
 # shellcheck disable=SC1091
 
+set -e
+
 trap "exit" INT
 
 # Load Libraries

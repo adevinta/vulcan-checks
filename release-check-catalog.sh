@@ -2,6 +2,8 @@
 
 # Copyright 2022 Adevinta
 
+set -e
+
 mkdir pages/checktypes
 
 go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}"
