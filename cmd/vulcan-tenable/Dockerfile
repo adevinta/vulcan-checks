@@ -2,5 +2,9 @@
 
 FROM alpine
 RUN apk add --no-cache ca-certificates
-ADD vulcan-tenable /vulcan-tenable
+
+# Install check
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-tenable /
+
 CMD ["/vulcan-tenable"]
