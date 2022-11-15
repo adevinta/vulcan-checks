@@ -53,10 +53,6 @@ type failure struct {
 	Issues []string
 }
 
-type analyzeRunner struct {
-	result *result
-}
-
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		logger := check.NewCheckLog(name)
@@ -99,6 +95,7 @@ func main() {
 			"python",
 			[]string{
 				analyzePath,
+				"-o", "/usr/bin/openssl",
 				"-l", "modern",
 				"-t", target,
 				"-j",
@@ -117,12 +114,12 @@ func main() {
 
 		// Classify failures by risk on TLS security and severity.
 		failures := []failure{
-			failure{
+			{
 				"minimally secure",
 				report.SeverityThresholdMedium,
 				res.Analysis.Failures.Vulnerable,
 			},
-			failure{
+			{
 				"highly secure",
 				report.SeverityThresholdLow,
 				res.Analysis.Failures.Modern,
