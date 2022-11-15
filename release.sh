@@ -4,6 +4,8 @@
 
 # shellcheck disable=SC1091
 
+set -e
+
 trap "exit" INT
 
 # Load Libraries
@@ -88,8 +90,15 @@ BUILDX_ARGS+=("--label" "org.opencontainers.image.ref=https://github.com/adevint
 # Iterate over all checks
 for check in "${CHECKS[@]}"; do
 
+    CHECK_PLATFORMS=$PLATFORMS
+    if [[ $check =~ $ARM64_EXCLUDE ]]; then
+        CHECK_PLATFORMS=${PLATFORMS// linux\/arm64/}
+    else
+        CHECK_PLATFORMS=$PLATFORMS
+    fi
+
     # Build the go app
-    for PLATFORM in $PLATFORMS; do
+    for PLATFORM in $CHECK_PLATFORMS; do
         OS=$(echo "$PLATFORM" | cut -f1 -d/)
         ARCH=$(echo "$PLATFORM" | cut -f2 -d/)
         CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags="-s -w" -o "cmd/$check/$OS/$ARCH/$check" "$PWD/cmd/$check"
@@ -112,7 +121,7 @@ for check in "${CHECKS[@]}"; do
         --cache-to "type=inline" \
         --label "org.opencontainers.image.title=$check" \
         --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-        --platform="${PLATFORMS// /,}" \
+        --platform="${CHECK_PLATFORMS// /,}" \
         "cmd/$check" --push
 
     log_msg "Builded image $check:[${IMAGE_TAGS[*]}]"
