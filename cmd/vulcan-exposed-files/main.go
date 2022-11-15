@@ -195,15 +195,25 @@ func scanTarget(ctx context.Context, target string, logger *logrus.Entry, state 
 						Labels:           []string{"issue"},
 						Summary:          "Sensitive file exposed on web server",
 						Score:            check.Score,
-						References:       []string{checkUrl},
 						Recommendations: []string{
 							"Follow the instructions for a production deployment of the application.",
-							"Add sensitive files to \".gitignore\" to avoid deploying them with the code.",
+							`Add sensitive files to ".gitignore" to avoid deploying them with the code.`,
 							"Remove development and backup files from the webserver.",
 						},
 						Description: "The server exposes sensitive information in paths that are accessible to actors outside of the intended control sphere.",
-						Details:     checkUrl + " is publicly available which contains sensitive information.",
 						CWEID:       538, // File and Directory Information Exposure
+						Resources: []report.ResourcesGroup{
+							report.ResourcesGroup{
+								Name:   "Exposed File",
+								Header: []string{"Type", "Path"},
+								Rows: []map[string]string{
+									map[string]string{
+										"Type": check.Name,
+										"Path": checkUrl,
+									},
+								},
+							},
+						},
 					})
 				}
 			}
