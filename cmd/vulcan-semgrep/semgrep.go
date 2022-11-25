@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	"github.com/sirupsen/logrus"
@@ -71,7 +72,8 @@ type Result struct {
 	} `json:"extra,omitempty"`
 }
 
-func runSemgrep(ctx context.Context, logger *logrus.Entry, ruleset, dir string) (*SemgrepOutput, error) {
+func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleset, dir string) (*SemgrepOutput, error) {
+	params[2] = strconv.Itoa(timeout)
 	params = append(params, ruleset, dir)
 
 	var report SemgrepOutput
