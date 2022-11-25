@@ -49,6 +49,7 @@ type options struct {
 	Branch  string `json:"branch"`
 	Ruleset string `json:"ruleset"`
 	Timeout int    `json:"timeout"`
+	Exclude string `json:"exclude"`
 }
 
 func main() {
@@ -89,7 +90,7 @@ func main() {
 			return err
 		}
 
-		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Ruleset, repoPath)
+		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Exclude, opt.Ruleset, repoPath)
 		if err != nil {
 			return err
 		}

@@ -43,7 +43,7 @@ const (
 	SemgrepStatusFailedLexical
 )
 
-var params = []string{"--json", "--timeout", "0", "-c"}
+var params = []string{"--json"}
 
 // SemgrepOutput and Result represent the output information from the semgrep
 // command.  Non-used fields have been intentionally ommitted.
@@ -72,9 +72,13 @@ type Result struct {
 	} `json:"extra,omitempty"`
 }
 
-func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleset, dir string) (*SemgrepOutput, error) {
-	params[2] = strconv.Itoa(timeout)
-	params = append(params, ruleset, dir)
+func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude, ruleset, dir string) (*SemgrepOutput, error) {
+	params = append(params, "--timeout", strconv.Itoa(timeout))
+	if len(exclude) > 0 {
+		params = append(params, "--exclude", exclude)
+	}
+	params = append(params, "-c", ruleset)
+	params = append(params, dir)
 
 	var report SemgrepOutput
 	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &report, Cmd, params...)
