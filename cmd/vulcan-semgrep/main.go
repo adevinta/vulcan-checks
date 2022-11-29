@@ -119,8 +119,8 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 
 		v := vuln(result, filepath, vulns)
 		match := result.Extra.Lines
-		if len(result.Extra.Lines) > 1000 {
-			match = fmt.Sprintf("%s...", result.Extra.Lines[:1000])
+		if len(result.Extra.Lines) > MaxMatchLenght {
+			match = result.Extra.Lines[:MaxMatchLenght] + "..."
 		}
 		row := map[string]string{
 			"Path":  path,
