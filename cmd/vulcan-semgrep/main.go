@@ -45,11 +45,11 @@ var (
 )
 
 type options struct {
-	Depth   int    `json:"depth"`
-	Branch  string `json:"branch"`
-	Ruleset string `json:"ruleset"`
-	Timeout int    `json:"timeout"`
-	Exclude string `json:"exclude"`
+	Depth   int      `json:"depth"`
+	Branch  string   `json:"branch"`
+	Ruleset string   `json:"ruleset"`
+	Timeout int      `json:"timeout"`
+	Exclude []string `json:"exclude"`
 }
 
 func main() {

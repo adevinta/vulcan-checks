@@ -44,6 +44,7 @@ const (
 )
 
 var params = []string{"--json"}
+var AlwaysExcluded = []string{"*swagger*.js"}
 
 // SemgrepOutput and Result represent the output information from the semgrep
 // command.  Non-used fields have been intentionally ommitted.
@@ -72,10 +73,11 @@ type Result struct {
 	} `json:"extra,omitempty"`
 }
 
-func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude, ruleset, dir string) (*SemgrepOutput, error) {
+func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude []string, ruleset, dir string) (*SemgrepOutput, error) {
 	params = append(params, "--timeout", strconv.Itoa(timeout))
-	if len(exclude) > 0 {
-		params = append(params, "--exclude", exclude)
+	exclusions := append(AlwaysExcluded, exclude...)
+	for _, e := range exclusions {
+		params = append(params, "--exclude", e)
 	}
 	params = append(params, "-c", ruleset)
 	params = append(params, dir)
