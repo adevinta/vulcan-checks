@@ -28,7 +28,8 @@ const (
 	// rules.
 	// Example:
 	//	CWE-1236: Improper Neutralization of Formula Elements in a CSV File
-	CWERegexStr = `CWE-(\d+)\s*:\s*([[:print:]]+)`
+	CWERegexStr    = `CWE-(\d+)\s*:\s*([[:print:]]+)`
+	MaxMatchLenght = 1000
 )
 
 var (
@@ -45,9 +46,11 @@ var (
 )
 
 type options struct {
-	Depth   int    `json:"depth"`
-	Branch  string `json:"branch"`
-	Ruleset string `json:"ruleset"`
+	Depth   int      `json:"depth"`
+	Branch  string   `json:"branch"`
+	Ruleset string   `json:"ruleset"`
+	Timeout int      `json:"timeout"`
+	Exclude []string `json:"exclude"`
 }
 
 func main() {
@@ -88,7 +91,7 @@ func main() {
 			return err
 		}
 
-		r, err := runSemgrep(ctx, logger, opt.Ruleset, repoPath)
+		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Exclude, opt.Ruleset, repoPath)
 		if err != nil {
 			return err
 		}
@@ -115,10 +118,13 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
 
 		v := vuln(result, filepath, vulns)
-
+		match := result.Extra.Lines
+		if len(result.Extra.Lines) > MaxMatchLenght {
+			match = result.Extra.Lines[:MaxMatchLenght] + "..."
+		}
 		row := map[string]string{
 			"Path":  path,
-			"Match": result.Extra.Lines,
+			"Match": match,
 			"Fix":   result.Extra.Fix,
 			// Message will be removed afterwards if it has the same value in
 			// all the rows.
