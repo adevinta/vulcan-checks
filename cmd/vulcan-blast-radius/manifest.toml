@@ -1,0 +1,9 @@
+Description = "Calculates the blast radius of an asset."
+AssetTypes = ["Hostname", "IP"]
+
+Timeout = 36000 # 1 hour.
+
+RequiredVars = [
+  "INTEL_API_URL",
+  "INTEL_API_INSECURE_SKIP_VERIFY"
+]
