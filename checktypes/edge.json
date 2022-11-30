@@ -452,7 +452,9 @@
 			"options": {
 				"branch": "",
 				"depth": 1,
-				"ruleset": "p/r2c-security-audit"
+				"exclude": [],
+				"ruleset": "p/r2c-security-audit",
+				"timeout": 0
 			},
 			"required_vars": [
 				"GITHUB_ENTERPRISE_ENDPOINT",
