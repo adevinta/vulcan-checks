@@ -3,7 +3,7 @@ git:
   depth: false
 language: go
 go:
-  - 1.18.x
+  - 1.19.x
 env:
   global:
   - PLATFORMS="linux/amd64 linux/arm64"

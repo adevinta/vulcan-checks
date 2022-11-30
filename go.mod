@@ -1,6 +1,6 @@
 module github.com/adevinta/vulcan-checks
 
-go 1.18
+go 1.19
 
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
