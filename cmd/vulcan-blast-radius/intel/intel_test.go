@@ -1,17 +1,19 @@
 /*
 Copyright 2022 Adevinta
 */
+
 // Package securitygraph provides a client to interact with the Intel API of the
 // Security Graph.
-package securitygraph
+package intel
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestIntelAPIClient_BlastRadius(t *testing.T) {
@@ -66,19 +68,6 @@ func TestIntelAPIClient_BlastRadius(t *testing.T) {
 			wantErr: ErrAssetDoesNotExist,
 		},
 		{
-			name: "Return ErrNotEnoughInfo",
-			req: BlastRadiusRequest{
-				AssetIdentifier: "example.com",
-				AssetType:       "Hostname",
-			},
-			intelAPI: func(t *testing.T) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusUnprocessableEntity)
-				}
-			},
-			wantErr: ErrNotEnoughInfo,
-		},
-		{
 			name: "Return HttpStatusError without message",
 			req:  BlastRadiusRequest{},
 			intelAPI: func(t *testing.T) http.HandlerFunc {
@@ -86,7 +75,7 @@ func TestIntelAPIClient_BlastRadius(t *testing.T) {
 					w.WriteHeader(http.StatusBadGateway)
 				}
 			},
-			wantErr: HttpStatusError{
+			wantErr: HTTPStatusError{
 				Status: http.StatusBadGateway,
 			},
 		},
@@ -105,7 +94,7 @@ func TestIntelAPIClient_BlastRadius(t *testing.T) {
 					}
 				}
 			},
-			wantErr: HttpStatusError{
+			wantErr: HTTPStatusError{
 				Status: http.StatusInternalServerError,
 				Msg:    "message",
 			},
@@ -117,8 +106,8 @@ func TestIntelAPIClient_BlastRadius(t *testing.T) {
 			server := httptest.NewServer(handler)
 			defer server.Close()
 			u, _ := url.Parse(server.URL)
-			i := &IntelAPIClient{
-				c:        *http.DefaultClient,
+			i := &Client{
+				httpcli:  *http.DefaultClient,
 				endpoint: u,
 			}
 			got, err := i.BlastRadius(tt.req)
@@ -132,8 +121,9 @@ func TestIntelAPIClient_BlastRadius(t *testing.T) {
 					return
 				}
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("IntelAPIClient.BlastRadius() = %v, want %v", got, tt.want)
+			diff := cmp.Diff(got, tt.want)
+			if diff != "" {
+				t.Errorf("got response != want response, diff: %v", diff)
 			}
 		})
 	}

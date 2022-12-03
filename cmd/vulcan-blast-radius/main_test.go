@@ -12,21 +12,20 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/adevinta/vulcan-checks/cmd/vulcan-blast-radius/securitygraph"
+	"github.com/adevinta/vulcan-checks/cmd/vulcan-blast-radius/intel"
 	report "github.com/adevinta/vulcan-report"
 )
 
 type intelAPIMock struct {
-	blastRadius func(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error)
+	blastRadius func(req intel.BlastRadiusRequest) (intel.BlastRadiusResponse, error)
 }
 
-func (i *intelAPIMock) BlastRadius(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error) {
+func (i *intelAPIMock) BlastRadius(req intel.BlastRadiusRequest) (intel.BlastRadiusResponse, error) {
 	return i.blastRadius(req)
 }
 
 func TestRun(t *testing.T) {
 	type args struct {
-		ctx            context.Context
 		target         string
 		assetType      string
 		optJSON        string
@@ -43,23 +42,22 @@ func TestRun(t *testing.T) {
 		{
 			name: "Happy Path",
 			args: args{
-				ctx:       context.Background(),
 				target:    "example.com",
 				assetType: "Hostname",
 				state: checkstate.State{
 					ResultData: &report.ResultData{},
 				},
 				intelAPIClient: &intelAPIMock{
-					blastRadius: func(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error) {
+					blastRadius: func(req intel.BlastRadiusRequest) (intel.BlastRadiusResponse, error) {
 						if req.AssetIdentifier != "example.com" {
 							err := fmt.Errorf("expected identifier: %s, got: %s", "example.com", req.AssetIdentifier)
-							return securitygraph.BlastRadiusResponse{}, err
+							return intel.BlastRadiusResponse{}, err
 						}
 						if req.AssetType != "Hostname" {
 							err := fmt.Errorf("expected asset type: %s, got: %s", "Hostname", req.AssetType)
-							return securitygraph.BlastRadiusResponse{}, err
+							return intel.BlastRadiusResponse{}, err
 						}
-						resp := securitygraph.BlastRadiusResponse{
+						resp := intel.BlastRadiusResponse{
 							Score:    1.0,
 							Metadata: "meta",
 						}
@@ -81,7 +79,6 @@ func TestRun(t *testing.T) {
 		{
 			name: "No Intel API specified",
 			args: args{
-				ctx:       context.Background(),
 				target:    "example.com",
 				assetType: "Hostname",
 				state: checkstate.State{
@@ -95,15 +92,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "Handles ErrAssetDoesNotExist",
 			args: args{
-				ctx:       context.Background(),
 				target:    "example.com",
 				assetType: "Hostname",
 				state: checkstate.State{
 					ResultData: &report.ResultData{},
 				},
 				intelAPIClient: &intelAPIMock{
-					blastRadius: func(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error) {
-						return securitygraph.BlastRadiusResponse{}, securitygraph.ErrAssetDoesNotExist
+					blastRadius: func(req intel.BlastRadiusRequest) (intel.BlastRadiusResponse, error) {
+						return intel.BlastRadiusResponse{}, intel.ErrAssetDoesNotExist
 					},
 				},
 			},
@@ -111,32 +107,7 @@ func TestRun(t *testing.T) {
 				{
 					Summary:         "Blast Radius Score: Unknown",
 					Description:     blastRadiusVuln.Description,
-					Details:         securitygraph.ErrAssetDoesNotExist.Error(),
-					Labels:          blastRadiusVuln.Labels,
-					Recommendations: blastRadiusVuln.Recommendations,
-				},
-			},
-		},
-		{
-			name: "Handles ErrAssetDoesNotExist",
-			args: args{
-				ctx:       context.Background(),
-				target:    "example.com",
-				assetType: "Hostname",
-				state: checkstate.State{
-					ResultData: &report.ResultData{},
-				},
-				intelAPIClient: &intelAPIMock{
-					blastRadius: func(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error) {
-						return securitygraph.BlastRadiusResponse{}, securitygraph.ErrNotEnoughInfo
-					},
-				},
-			},
-			wantVulns: []report.Vulnerability{
-				{
-					Summary:         "Blast Radius Score: Unknown",
-					Description:     blastRadiusVuln.Description,
-					Details:         securitygraph.ErrNotEnoughInfo.Error(),
+					Details:         intel.ErrAssetDoesNotExist.Error(),
 					Labels:          blastRadiusVuln.Labels,
 					Recommendations: blastRadiusVuln.Recommendations,
 				},
@@ -145,15 +116,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "Handles ErrHttpStatusError",
 			args: args{
-				ctx:       context.Background(),
 				target:    "example.com",
 				assetType: "Hostname",
 				state: checkstate.State{
 					ResultData: &report.ResultData{},
 				},
 				intelAPIClient: &intelAPIMock{
-					blastRadius: func(req securitygraph.BlastRadiusRequest) (securitygraph.BlastRadiusResponse, error) {
-						return securitygraph.BlastRadiusResponse{}, securitygraph.HttpStatusError{
+					blastRadius: func(req intel.BlastRadiusRequest) (intel.BlastRadiusResponse, error) {
+						return intel.BlastRadiusResponse{}, intel.HTTPStatusError{
 							Status: 500,
 							Msg:    "message",
 						}
@@ -177,7 +147,7 @@ func TestRun(t *testing.T) {
 				os.Setenv(k, v)
 				defer os.Setenv(k, "")
 			}
-			err := run(tt.args.ctx, tt.args.target, tt.args.assetType, tt.args.optJSON, tt.args.state, tt.args.intelAPIClient)
+			err := run(context.Background(), tt.args.target, tt.args.assetType, tt.args.optJSON, tt.args.state, tt.args.intelAPIClient)
 			if err != tt.wantErr {
 				t.Errorf("run() error = %v, wantErr %v", err, tt.wantErr)
 			}
