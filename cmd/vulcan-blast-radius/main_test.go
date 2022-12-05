@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -35,7 +34,6 @@ func TestRun(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		env       map[string]string
 		wantVulns []report.Vulnerability
 		wantErr   error
 	}{
@@ -86,7 +84,6 @@ func TestRun(t *testing.T) {
 				},
 				intelAPIClient: nil,
 			},
-			env:     map[string]string{},
 			wantErr: ErrNoIntelAPIBaseURL,
 		},
 		{
@@ -143,10 +140,6 @@ func TestRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for k, v := range tt.env {
-				os.Setenv(k, v)
-				defer os.Setenv(k, "")
-			}
 			err := run(context.Background(), tt.args.target, tt.args.assetType, tt.args.optJSON, tt.args.state, tt.args.intelAPIClient)
 			if err != tt.wantErr {
 				t.Errorf("run() error = %v, wantErr %v", err, tt.wantErr)
