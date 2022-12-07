@@ -1,6 +1,6 @@
 module github.com/adevinta/vulcan-checks
 
-go 1.18
+go 1.19
 
 require (
 	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
@@ -16,6 +16,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.32
 	github.com/cenkalti/backoff/v4 v4.1.2
+	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/lair-framework/go-nmap v0.0.0-20181105160706-3b9bafddefee
