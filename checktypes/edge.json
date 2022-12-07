@@ -30,6 +30,20 @@
 			]
 		},
 		{
+			"name": "vulcan-blast-radius",
+			"description": "Calculates the blast radius of an asset.",
+			"image": "vulcansec/vulcan-blast-radius:edge",
+			"timeout": 3600,
+			"required_vars": [
+				"INTEL_API_URL",
+				"INTEL_API_INSECURE_SKIP_VERIFY"
+			],
+			"assets": [
+				"Hostname",
+				"IP"
+			]
+		},
+		{
 			"name": "vulcan-burp",
 			"description": "Runs a Burp Suite Enterprise Edition scan.",
 			"image": "vulcansec/vulcan-burp:edge",
