@@ -31,7 +31,7 @@ var (
 		Score:       report.SeverityThresholdNone,
 		Recommendations: []string{
 			"The higher the score, the higher the number of resources an asset can potentially grant access to if compromised.",
-			"Try to minimize the number of accessible resources..",
+			"Try to minimize the number of accessible resources.",
 			"Pay extra attention to the security of the assets with high blast radius.",
 		},
 		Labels: []string{"blast-radius"},
