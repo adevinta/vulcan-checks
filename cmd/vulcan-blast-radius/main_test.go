@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"testing"
 
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
 	"github.com/google/go-cmp/cmp"
 
-	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-blast-radius/intel"
-	report "github.com/adevinta/vulcan-report"
 )
 
 type intelAPIMock struct {
@@ -65,9 +65,9 @@ func TestRun(t *testing.T) {
 			},
 			wantVulns: []report.Vulnerability{
 				{
-					Summary:         "Blast Radius Score: 1.00",
+					Summary:         "Blast Radius: Medium",
 					Description:     blastRadiusVuln.Description,
-					Details:         "meta",
+					Details:         "Calculated Blast Radius score: 1.00",
 					Labels:          blastRadiusVuln.Labels,
 					Recommendations: blastRadiusVuln.Recommendations,
 				},
@@ -102,9 +102,9 @@ func TestRun(t *testing.T) {
 			},
 			wantVulns: []report.Vulnerability{
 				{
-					Summary:         "Blast Radius Score: Unknown",
+					Summary:         "Blast Radius: Unknown",
 					Description:     blastRadiusVuln.Description,
-					Details:         intel.ErrAssetDoesNotExist.Error(),
+					Details:         "There was an error calculating the blast radius: asset does not exist in the Security Graph",
 					Labels:          blastRadiusVuln.Labels,
 					Recommendations: blastRadiusVuln.Recommendations,
 				},
@@ -129,7 +129,7 @@ func TestRun(t *testing.T) {
 			},
 			wantVulns: []report.Vulnerability{
 				{
-					Summary:         "Blast Radius Score: Unknown",
+					Summary:         "Blast Radius: Unknown",
 					Description:     blastRadiusVuln.Description,
 					Details:         "There was an error calculating the blast radius: invalid http status code received from the intel API: 500, details: message",
 					Labels:          blastRadiusVuln.Labels,
@@ -150,6 +150,42 @@ func TestRun(t *testing.T) {
 				t.Errorf("got vulns different to want vulns, diff: %s", diff)
 			}
 
+		})
+	}
+}
+
+func TestBrLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		score float64
+		want  string
+	}{
+		{
+			name:  "VeryHigh",
+			score: 100,
+			want:  "Very High",
+		},
+		{
+			name:  "High",
+			score: 10,
+			want:  "High",
+		},
+		{
+			name:  "Medium",
+			score: 1,
+			want:  "Medium",
+		},
+		{
+			name:  "Low",
+			score: 0.9,
+			want:  "Low",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := brLevel(tt.score); got != tt.want {
+				t.Errorf("brLevel() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

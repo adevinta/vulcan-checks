@@ -21,10 +21,15 @@ import (
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-blast-radius/intel"
 )
 
+const (
+	name           = "vulcan-blast-radius"
+	detailsTxtTemp = `Calculated Blast Radius score: {{ printf "%.2f" .}}`
+	summaryTxtTemp = `Blast Radius: {{if not . }}Unknown{{else}}{{.}}{{end}}`
+)
+
 var (
-	name            = "vulcan-blast-radius"
 	logger          = check.NewCheckLog(name)
-	summaryTxtTemp  = `Blast Radius Score: {{if not . }}Unknown{{else}}{{ printf "%.2f" .}}{{end}}`
+	detailsTemplate = template.Must(template.New("").Parse(detailsTxtTemp))
 	summaryTemplate = template.Must(template.New("").Parse(summaryTxtTemp))
 	blastRadiusVuln = report.Vulnerability{
 		Description: "Gives an idea of how many resources are in danger of being compromised if a given asset is compromised.",
@@ -86,14 +91,14 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	vuln := blastRadiusVuln
 	if errors.Is(err, intel.ErrAssetDoesNotExist) {
-		vuln.Summary = mustGetSummary(nil)
-		vuln.Details = err.Error()
+		vuln.Summary = mustTemplateExecute(summaryTemplate, nil)
+		vuln.Details = fmt.Sprintf("There was an error calculating the blast radius: %v", err)
 		state.AddVulnerabilities(vuln)
 		return nil
 	}
 	intelErr := intel.HTTPStatusError{}
 	if errors.As(err, &intelErr) && intelErr.Status == 500 {
-		vuln.Summary = mustGetSummary(nil)
+		vuln.Summary = mustTemplateExecute(summaryTemplate, nil)
 		vuln.Details = fmt.Sprintf("There was an error calculating the blast radius: %v", err)
 		state.AddVulnerabilities(vuln)
 		return nil
@@ -101,17 +106,31 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	if err != nil {
 		return err
 	}
-	vuln.Summary = mustGetSummary(resp.Score)
-	vuln.Details = resp.Metadata
+
+	vuln.Summary = mustTemplateExecute(summaryTemplate, brLevel(resp.Score))
+	vuln.Details = mustTemplateExecute(detailsTemplate, resp.Score)
 	state.AddVulnerabilities(vuln)
 	return nil
 }
 
-func mustGetSummary(data any) string {
-	var summary bytes.Buffer
-	err := summaryTemplate.Execute(&summary, data)
+func brLevel(score float64) string {
+	switch {
+	case score >= 100:
+		return "Very High"
+	case score >= 10:
+		return "High"
+	case score >= 1:
+		return "Medium"
+	default:
+		return "Low"
+	}
+}
+
+func mustTemplateExecute(tmpl *template.Template, data any) string {
+	var buf bytes.Buffer
+	err := tmpl.Execute(&buf, data)
 	if err != nil {
 		panic(nil)
 	}
-	return summary.String()
+	return buf.String()
 }
