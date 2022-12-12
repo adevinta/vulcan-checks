@@ -115,11 +115,11 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 func brLevel(score float64) string {
 	switch {
-	case score > 100:
+	case score >= 100:
 		return "Very High"
-	case score > 10:
+	case score >= 10:
 		return "High"
-	case score > 1:
+	case score >= 1:
 		return "Medium"
 	default:
 		return "Low"
