@@ -283,7 +283,6 @@ func buildNucleiScanCmdArgs(target string, severities []string) []string {
 		"-json",
 		"-silent",
 		"-no-meta",
-		"-no-timestamp",
 		"-H", userAgent,
 	}
 
