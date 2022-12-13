@@ -2,6 +2,8 @@
 
 Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
+Options = '{"template_inclusion_list": ["misconfiguration", "default-logins", "exposed-panels", "exposures", "dns", "takeovers"]}'
+
 # skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates
 #                        or not from source repository. Default is false.
 # template_inclusion_list: You can specify which nuclei templates will run against the target.
