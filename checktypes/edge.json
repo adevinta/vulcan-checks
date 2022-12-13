@@ -392,6 +392,16 @@
 			"description": "Scan web addresses with projectdiscovery/nuclei",
 			"image": "vulcansec/vulcan-nuclei:edge",
 			"timeout": 0,
+			"options": {
+				"template_inclusion_list": [
+					"misconfiguration",
+					"default-logins",
+					"exposed-panels",
+					"exposures",
+					"dns",
+					"takeovers"
+				]
+			},
 			"required_vars": null,
 			"assets": [
 				"WebAddress",
