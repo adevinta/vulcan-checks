@@ -7,14 +7,14 @@ package main
 import "time"
 
 type Info struct {
-	Name           string            `json:"name,omitempty"`
-	Description    string            `json:"description,omitempty"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
-	Reference      []string          `json:"reference,omitempty"`
-	Tags           []string          `json:"tags,omitempty"`
-	Remediation    string            `json:"remediation,omitempty"`
-	Severity       string            `json:"severity,omitempty"`
-	Classification Classification    `json:"classification,omitempty"`
+	Name           string                 `json:"name,omitempty"`
+	Description    string                 `json:"description,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	Reference      []string               `json:"reference,omitempty"`
+	Tags           []string               `json:"tags,omitempty"`
+	Remediation    string                 `json:"remediation,omitempty"`
+	Severity       string                 `json:"severity,omitempty"`
+	Classification Classification         `json:"classification,omitempty"`
 }
 
 type ResultEvent struct {
