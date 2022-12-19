@@ -2,8 +2,9 @@ FROM opensecurity/njsscan:0.3.4
 
 # Override entrypoint
 ENTRYPOINT ["/usr/bin/env"]
+WORKDIR /
 
 # Install check
-COPY vulcan-semgrep /vulcan-semgrep
+COPY vulcan-njsscan /vulcan-njsscan
 
-CMD ["/vulcan-semgrep"]
+CMD ["/vulcan-njsscan"]

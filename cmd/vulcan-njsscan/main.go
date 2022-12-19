@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
+	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -15,16 +19,12 @@ import (
 
 const (
 	DefaultDepth = 1
-	// DefaultRuleset has been chosen for being one of the most popular
-	// rulesets semgrep has. There are less noisy alternatives like the
-	// 'r2c-ci' that we might use instead.
-	// https://semgrep.dev/explore
-	DefaultRuleset = `p/r2c-security-audit`
-	// CWERegexStr defines a regex matching a CWE definition from Semgrep
+	// CWERegexStr defines a regex matching a CWE definition from Njsscan
 	// rules.
 	// Example:
-	//	CWE-1236: Improper Neutralization of Formula Elements in a CSV File
-	CWERegexStr = `CWE-(\d+)\s*:\s*([[:print:]]+)`
+	// 	CWE-327: Use of a Broken or Risky Cryptographic Algorithm
+	CWERegexStr    = `CWE-(\d+)\s*:\s*([[:print:]]+)`
+	MaxMatchLenght = 1000
 )
 
 var (
@@ -41,9 +41,11 @@ var (
 )
 
 type options struct {
-	Depth   int    `json:"depth"`
-	Branch  string `json:"branch"`
-	Ruleset string `json:"ruleset"`
+	Depth   int      `json:"depth"`
+	Branch  string   `json:"branch"`
+	Ruleset string   `json:"ruleset"`
+	Timeout int      `json:"timeout"`
+	Exclude []string `json:"exclude"`
 }
 
 func main() {
@@ -69,10 +71,6 @@ func main() {
 				return err
 			}
 		}
-		// Ensure not an empty ruleset is provided
-		if opt.Ruleset == "" {
-			opt.Ruleset = DefaultRuleset
-		}
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
@@ -84,12 +82,12 @@ func main() {
 			return err
 		}
 
-		_, err = runSemgrep(ctx, logger, opt.Ruleset, repoPath)
+		r, err := rumNjsscan(ctx, logger, opt.Timeout, opt.Exclude, opt.Ruleset, repoPath)
 		if err != nil {
 			return err
 		}
 
-		// addVulnsToState(state, r, repoPath, target)
+		addVulnsToState(state, r, repoPath, target)
 
 		return nil
 	}
@@ -98,144 +96,134 @@ func main() {
 	c.RunAndServe()
 }
 
-// func addVulnsToState(state checkstate.State, r *NjsscanOutput, repoPath, target string) {
-// 	if r == nil || len(r.Results) < 1 {
-// 		return
-// 	}
+func addVulnsToState(state checkstate.State, r *NjsscanOutput, repoPath, target string) {
+	if r == nil || len(r.Results) < 1 {
+		return
+	}
 
-// 	logger.WithFields(logrus.Fields{"num_results": len(r.Results)}).Info("processing results")
+	logger.WithFields(logrus.Fields{"num_results": len(r.Results)}).Info("processing results")
 
-// 	vulns := make(map[string]report.Vulnerability)
-// 	for _, result := range r.Results {
-// 		filepath := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
-// 		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
+	vulns := make(map[string]report.Vulnerability)
+	for ruleName, result := range r.Results {
+		for _, file := range result.Files {
+			filepath := strings.TrimPrefix(file.FilePath, fmt.Sprintf("%s/", repoPath))
+			path := fmt.Sprintf("%s:%d", filepath, file.MatchLines[0])
 
-// 		v := vuln(result, filepath, vulns)
+			v := vuln(ruleName, result, filepath, vulns)
+			match := file.MatchString
+			if len(file.MatchString) > MaxMatchLenght {
+				match = file.MatchString[:MaxMatchLenght] + "..."
+			}
+			row := map[string]string{
+				"Path":  path,
+				"Match": match,
+				"Fix":   "",
+				// Message will be removed afterwards if it has the same value in
+				// all the rows.
+				"Message": result.Metadata.Description,
+			}
 
-// 		row := map[string]string{
-// 			"Path":  path,
-// 			"Match": result.Extra.Lines,
-// 			"Fix":   result.Extra.Fix,
-// 			// Message will be removed afterwards if it has the same value in
-// 			// all the rows.
-// 			"Message": result.Extra.Message,
-// 		}
+			v.Resources[0].Rows = append(v.Resources[0].Rows, row)
 
-// 		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
+			key := fmt.Sprintf("%s - %s", v.Summary, filepath)
+			vulns[key] = v
+		}
+	}
 
-// 		key := fmt.Sprintf("%s - %s", v.Summary, filepath)
-// 		vulns[key] = v
-// 	}
+	for _, v := range vulns {
+		// Sort rows by alphabetical order of the path.
+		sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
+			return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
+		})
 
-// 	for _, v := range vulns {
-// 		// Sort rows by alphabetical order of the path.
-// 		sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
-// 			return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
-// 		})
+		// Compute vulnerability fingerprint based on Match, and check if all
+		// Messages are the same.
+		// In almost all cases the Message is the same for all the results of
+		// the same rule, but there are few cases where message differs. In
+		// those few cases we will be adding the alternative messages in the
+		// resources table. In case is the Message is the same for all entries,
+		// we will add the Message just to the Details and delete it from the
+		// rows to avoid storing unnecesary messages when are all the same.
+		// NOTE: We are not adding the Message to the Description as there
+		// might be corner cases where we may end having duplicated issues in
+		// the Vulnerability DB.
+		var matches []string
+		same := true
+		msg := ""
+		for i, row := range v.Resources[0].Rows {
+			matches = append(matches, row["Match"])
 
-// 		// Compute vulnerability fingerprint based on Match, and check if all
-// 		// Messages are the same.
-// 		// In almost all cases the Message is the same for all the results of
-// 		// the same rule, but there are few cases where message differs. In
-// 		// those few cases we will be adding the alternative messages in the
-// 		// resources table. In case is the Message is the same for all entries,
-// 		// we will add the Message just to the Details and delete it from the
-// 		// rows to avoid storing unnecesary messages when are all the same.
-// 		// NOTE: We are not adding the Message to the Description as there
-// 		// might be corner cases where we may end having duplicated issues in
-// 		// the Vulnerability DB.
-// 		var matches []string
-// 		same := true
-// 		msg := ""
-// 		for i, row := range v.Resources[0].Rows {
-// 			matches = append(matches, row["Match"])
+			if i == 0 {
+				msg = row["Message"]
+			}
+			if same && (row["Message"] != msg) {
+				same = false
+			}
+		}
+		if same {
+			if msg != "" {
+				v.Details = fmt.Sprintf("%s\n\n%s", msg, v.Details)
+			}
+			for _, row := range v.Resources[0].Rows {
+				delete(row, "Message")
+			}
+		} else {
+			v.Resources[0].Header = append(v.Resources[0].Header, "Message")
+			logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
+		}
 
-// 			if i == 0 {
-// 				msg = row["Message"]
-// 			}
-// 			if same && (row["Message"] != msg) {
-// 				same = false
-// 			}
-// 		}
-// 		if same {
-// 			if msg != "" {
-// 				v.Details = fmt.Sprintf("%s\n\n%s", msg, v.Details)
-// 			}
-// 			for _, row := range v.Resources[0].Rows {
-// 				delete(row, "Message")
-// 			}
-// 		} else {
-// 			v.Resources[0].Header = append(v.Resources[0].Header, "Message")
-// 			logger.WithFields(logrus.Fields{"vulnerability": v.Summary}).Info("vulnerability has alternative messages")
-// 		}
+		v.Fingerprint = helpers.ComputeFingerprint(matches)
 
-// 		v.Fingerprint = helpers.ComputeFingerprint(matches)
+		state.AddVulnerabilities(v)
+	}
+}
 
-// 		state.AddVulnerabilities(v)
-// 	}
-// }
+func vuln(checkName string, result NjsscanResult, filepath string, vulns map[string]report.Vulnerability) report.Vulnerability {
+	logger.WithFields(logrus.Fields{"check_id": checkName, "cwe": result.Metadata.Cwe}).Debug("processing result")
 
-// func vuln(result Result, filepath string, vulns map[string]report.Vulnerability) report.Vulnerability {
-// 	logger.WithFields(logrus.Fields{"check_id": result.CheckID, "cwe": result.Extra.Metadata.Cwe}).Debug("processing result")
+	summary := checkName
 
-// 	// Check ID example:
-// 	//	python.lang.security.unquoted-csv-writer.unquoted-csv-writer
-// 	checkIDParts := strings.Split(result.CheckID, ".")
+	var cweID int
 
-// 	issue := checkIDParts[len(checkIDParts)-1] // Example: unquoted-csv-writer
-// 	issue = strings.ReplaceAll(issue, "-", " ")
-// 	issue = strings.ReplaceAll(issue, "_", " ") // Example: unquoted csv writer
+	// Most of the times Cwe is an []string, in that case use the first one.
+	firstCwe := result.Metadata.Cwe
+	if matches := CWERegex.FindStringSubmatch(firstCwe); len(matches) == 3 {
+		cweText := strings.TrimSpace(matches[2])
 
-// 	summary := issue
+		// Example:
+		//	Improper Neutralization of Formula Elements in a CSV File - Unquoted Csv Writer
+		summary = fmt.Sprintf("%s - %s", cweText, summary)
 
-// 	var cweID int
+		cweID, _ = strconv.Atoi(matches[1])
+	}
 
-// 	// Most of the times Cwe is an []string, in that case use the first one.
-// 	firstCwe := ""
-// 	if slice, ok := result.Extra.Metadata.Cwe.([]interface{}); ok {
-// 		if len(slice) > 0 {
-// 			firstCwe = fmt.Sprintf("%v", slice[0])
-// 		}
-// 	} else if s, ok := result.Extra.Metadata.Cwe.(string); ok {
-// 		firstCwe = s
-// 	}
-// 	if matches := CWERegex.FindStringSubmatch(firstCwe); len(matches) == 3 {
-// 		cweText := strings.TrimSpace(matches[2])
+	summary = strings.Title(summary)
 
-// 		// Example:
-// 		//	Improper Neutralization of Formula Elements in a CSV File - Unquoted Csv Writer
-// 		summary = fmt.Sprintf("%s - %s", cweText, summary)
+	key := fmt.Sprintf("%s - %s", summary, filepath)
+	v, ok := vulns[key]
+	if ok {
+		return v
+	}
 
-// 		cweID, _ = strconv.Atoi(matches[1])
-// 	}
+	v.Summary = summary
+	v.Description = ""
+	v.Score = report.ScoreSeverity(severityMap[result.Metadata.Severity])
+	v.Details = fmt.Sprintf("Check ID: %s\n", checkName)
+	v.References = append(v.References, "https://github.com/ajinabraham/njsscan")
+	v.References = append(v.References, result.Metadata.OwaspWeb)
+	v.CWEID = uint32(cweID)
+	v.AffectedResource = filepath
+	v.Labels = []string{"potential", "code", "njsscan"}
+	v.Resources = []report.ResourcesGroup{
+		{
+			Name: "Found in",
+			Header: []string{
+				"Path",
+				"Match",
+				"Fix",
+			},
+		},
+	}
 
-// 	summary = strings.Title(summary)
-
-// 	key := fmt.Sprintf("%s - %s", summary, filepath)
-// 	v, ok := vulns[key]
-// 	if ok {
-// 		return v
-// 	}
-
-// 	v.Summary = summary
-// 	v.Description = ""
-// 	v.Score = report.ScoreSeverity(severityMap[result.Extra.Severity])
-// 	v.Details = fmt.Sprintf("Check ID: %s\n", result.CheckID)
-// 	v.References = append(v.References, "https://semgrep.dev/")
-// 	v.References = append(v.References, result.Extra.Metadata.References...)
-// 	v.CWEID = uint32(cweID)
-// 	v.AffectedResource = filepath
-// 	v.Labels = []string{"potential", "code", "semgrep"}
-// 	v.Resources = []report.ResourcesGroup{
-// 		{
-// 			Name: "Found in",
-// 			Header: []string{
-// 				"Path",
-// 				"Match",
-// 				"Fix",
-// 			},
-// 		},
-// 	}
-
-// 	return v
-// }
+	return v
+}

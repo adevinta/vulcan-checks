@@ -1,5 +1,5 @@
-# vulcan-semgrep
+# vulcan-njsscan
 
-Check for detect security issues in code.
+Check for detect security issues in javascript code.
 
-Based on [Semgrep](https://github.com/returntocorp/semgrep)
+Based on [Njsscan](https://github.com/ajinabraham/njsscan)

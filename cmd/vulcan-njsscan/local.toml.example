@@ -1,7 +1,7 @@
 [Check]
 Target = "https://github.com/adevinta/vulcan-checks.git"
 AssetType = "GitRepository"
-# Options = '{"depth": 1, "branch":"", "ruleset":"p/r2c-ci"}'
+# Options = '{"depth": 1, "branch":""}'
 
 #[RequiredVars]
 #GITHUB_ENTERPRISE_ENDPOINT = "THE_ENDPOINT"

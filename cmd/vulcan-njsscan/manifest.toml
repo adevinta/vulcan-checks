@@ -1,5 +1,5 @@
-Description = "Finds potential issues in source code from a Git repository using Semgrep"
+Description = "Finds potential issues in javascrip source code from a Git repository using Njsscan"
 Timeout = 7200 # 2 hours
 AssetTypes = ["GitRepository"]
 RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
-Options = '{"depth": 1, "branch":"", "ruleset":"p/r2c-security-audit"}'
+Options = '{"depth": 1, "branch":""}'
