@@ -36,6 +36,7 @@ query {
 			number: totalCount
 			pagination: pageInfo { endCursor hasNextPage }
 			details: nodes {
+				state
 				vulnerableManifestFilename
 				vulnerableManifestPath
 				vulnerableRequirements
@@ -68,30 +69,28 @@ type alertsData struct {
 
 // Details contains the details of a security vulnerability.
 type Details struct {
+	State                 string `json:"state"`
 	SecurityVulnerability struct {
-		Advisory ExtendedAdvisory `json:"advisory"`
+		Advisory Advisory `json:"advisory"`
 		Package  struct {
 			Name      string `json:"name"`
 			Ecosystem string `json:"ecosystem"`
 		} `json:"package"`
 		VulnerableVersionRange string `json:"vulnerableVersionRange"`
-		// NOTE: Github currently always returns the FirstPatchedVersion field empty.
-		FirstPatchedVersion string `json:"firstPatchedVersion"`
+		FirstPatchedVersion    struct {
+			Identifier string `json:"identifier"`
+		} `json:"firstPatchedVersion"`
 	} `json:"securityVulnerability"`
 }
 
-// ExtendedAdvisory adds the VulnerableVersionRange to the returned structure.
-type ExtendedAdvisory struct {
+type Advisory struct {
 	Summary     string `json:"summary"`
 	Description string `json:"description"`
 	Severity    string `json:"severity"`
 	References  []struct {
 		URL string `json:"url"`
 	} `json:"references"`
-	WithdrawnAt            string `json:"withdrawnAt"`
-	VulnerableVersionRange string
-	// NOTE: Github currently always returns the FirstPatchedVersion field empty.
-	FirstPatchedVersion string
+	WithdrawnAt string `json:"withdrawnAt"`
 }
 
 type dependencyData struct {
@@ -163,6 +162,11 @@ func main() {
 
 		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
+			// If the vulnerability no longer exists, we will ignore it.
+			if alert.State != "OPEN" {
+				continue
+			}
+
 			vuln := alert.SecurityVulnerability
 
 			// If the advisory has been withdrawn, we will ignore it.
@@ -170,8 +174,6 @@ func main() {
 				continue
 			}
 
-			vuln.Advisory.VulnerableVersionRange = vuln.VulnerableVersionRange
-			vuln.Advisory.FirstPatchedVersion = vuln.FirstPatchedVersion
 			advisoryScore := scoreSeverity(vuln.Advisory.Severity)
 
 			if dependencies[vuln.Package.Name] != nil {
@@ -188,21 +190,33 @@ func main() {
 				}
 			}
 
-			// NOTE: We should use the FirstPatchedVersion field whenever available.
-			// Currently, we are using the same method that the Github UI seems to be using.
-			// We determine the first fixed version if the advisory uses "<" for the upper bound.
-			// Otherwise, the first fixed version may not exist or be a minor or major release away.
-			splitRange := strings.Split(vuln.Advisory.VulnerableVersionRange, ", ")
-			if len(splitRange) > 0 {
-				lastVersion := splitRange[len(splitRange)-1]
-				// If the vulnerable range has a strict upper bound, then that version is fixed.
-				if strings.HasPrefix(lastVersion, "< ") {
-					fixedVersion, err := semver.NewVersion(strings.Split(lastVersion, " ")[1])
-					if err == nil {
-						// If another vulnerabilitu is fixed by a higher version, then that version
-						// is required in order to fix all of the vulnerabilities.
-						if fixedVersion.GreaterThan(dependencies[vuln.Package.Name].fixedVersion) {
-							dependencies[vuln.Package.Name].fixedVersion = fixedVersion
+			// We should use the FirstPatchedVersion field whenever available.
+			if vuln.FirstPatchedVersion.Identifier != "" {
+				fixedVersion, err := semver.NewVersion(vuln.FirstPatchedVersion.Identifier)
+				if err == nil {
+					// If another vulnerability is fixed by a higher version, then that version
+					// is required in order to fix all of the vulnerabilities.
+					if fixedVersion.GreaterThan(dependencies[vuln.Package.Name].fixedVersion) {
+						dependencies[vuln.Package.Name].fixedVersion = fixedVersion
+					}
+					dependencies[vuln.Package.Name].fixedVersion = fixedVersion
+				}
+			} else {
+				// If not available, we use the same method that the Github UI seems to be using.
+				// We determine the first fixed version if the advisory uses "<" for the upper bound.
+				// Otherwise, the first fixed version may not exist or be a minor or major release away.
+				splitRange := strings.Split(vuln.VulnerableVersionRange, ", ")
+				if len(splitRange) > 0 {
+					lastVersion := splitRange[len(splitRange)-1]
+					// If the vulnerable range has a strict upper bound, then that version is fixed.
+					if strings.HasPrefix(lastVersion, "< ") {
+						fixedVersion, err := semver.NewVersion(strings.Split(lastVersion, " ")[1])
+						if err == nil {
+							// If another vulnerability is fixed by a higher version, then that version
+							// is required in order to fix all of the vulnerabilities.
+							if fixedVersion.GreaterThan(dependencies[vuln.Package.Name].fixedVersion) {
+								dependencies[vuln.Package.Name].fixedVersion = fixedVersion
+							}
 						}
 					}
 				}
