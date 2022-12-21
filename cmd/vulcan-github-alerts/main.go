@@ -199,7 +199,6 @@ func main() {
 					if fixedVersion.GreaterThan(dependencies[vuln.Package.Name].fixedVersion) {
 						dependencies[vuln.Package.Name].fixedVersion = fixedVersion
 					}
-					dependencies[vuln.Package.Name].fixedVersion = fixedVersion
 				}
 			} else {
 				// If not available, we use the same method that the Github UI seems to be using.
