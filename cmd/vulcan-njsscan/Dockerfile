@@ -5,6 +5,7 @@ ENTRYPOINT ["/usr/bin/env"]
 WORKDIR /
 
 # Install check
-COPY vulcan-njsscan /vulcan-njsscan
+ARG TARGETOS TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/vulcan-njsscan /
 
 CMD ["/vulcan-njsscan"]
