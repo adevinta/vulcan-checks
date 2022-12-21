@@ -36,6 +36,7 @@ query {
 			number: totalCount
 			pagination: pageInfo { endCursor hasNextPage }
 			details: nodes {
+				state
 				vulnerableManifestFilename
 				vulnerableManifestPath
 				vulnerableRequirements
@@ -68,6 +69,7 @@ type alertsData struct {
 
 // Details contains the details of a security vulnerability.
 type Details struct {
+	State                 string `json:"state"`
 	SecurityVulnerability struct {
 		Advisory ExtendedAdvisory `json:"advisory"`
 		Package  struct {
@@ -163,6 +165,11 @@ func main() {
 
 		dependencies := map[string]*dependencyData{}
 		for _, alert := range alerts {
+			// If the vulnerability no longer exists, we will ignore it.
+			if alert.State != "OPEN" {
+				continue
+			}
+
 			vuln := alert.SecurityVulnerability
 
 			// If the advisory has been withdrawn, we will ignore it.
