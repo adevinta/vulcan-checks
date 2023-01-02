@@ -514,7 +514,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	if l == 0 {
 		return s
 	}
-	return s + fmt.Sprintf("#%d", l)
+	return s + fmt.Sprintf("#L%d", l)
 }
 
 func processVulns(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
