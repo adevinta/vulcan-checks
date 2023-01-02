@@ -60,6 +60,7 @@ var (
 			"StartColumn",
 			"EndLine",
 			"EndColumn",
+			"Link",
 		},
 	}
 )
@@ -142,7 +143,8 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 		h := sha256.New()
 		s := hex.EncodeToString(h.Sum([]byte(f.Secret)))[1:48]
 		v.AffectedResource = string(s)
-		v.AffectedResourceString = computeAffectedResource(target, branch, file, f.StartLine)
+		affectedResourceString := computeAffectedResource(target, branch, file, f.StartLine)
+		v.AffectedResourceString = affectedResourceString
 		v.Fingerprint = helpers.ComputeFingerprint()
 		v.Details = setDetails(target, f, s)
 		resource.Rows = []map[string]string{
@@ -153,6 +155,7 @@ func processVulns(results []Finding, opt options, repoPath string, branch string
 				"StartColumn": fmt.Sprint(f.StartColumn),
 				"EndLine":     fmt.Sprint(f.EndLine),
 				"EndColumn":   fmt.Sprint(f.EndColumn),
+				"Link":        fmt.Sprintf("[Link](%s)", affectedResourceString),
 			},
 		}
 		v.Resources = []report.ResourcesGroup{resource}
