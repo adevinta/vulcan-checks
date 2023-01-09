@@ -514,7 +514,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	if l == 0 {
 		return s
 	}
-	return s + fmt.Sprintf("#%d", l)
+	return s + fmt.Sprintf("#L%d", l)
 }
 
 func processVulns(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
@@ -661,7 +661,8 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, target, bra
 
 			vuln.Details = fmt.Sprintf("This secret was found by the trivy rule '%s'.", ts.RuleID)
 			vuln.AffectedResource = string(hex.EncodeToString(sha256.New().Sum([]byte(sbAll.String())))[1:48])
-			vuln.AffectedResourceString = computeAffectedResource(target, branch, tt.Target, ts.StartLine)
+			affectedResourceString := computeAffectedResource(target, branch, tt.Target, ts.StartLine)
+			vuln.AffectedResourceString = affectedResourceString
 			vuln.Fingerprint = helpers.ComputeFingerprint()
 			vuln.Resources = []report.ResourcesGroup{{
 				Name: "Secrets found",
@@ -671,6 +672,7 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, target, bra
 					"Cause",
 					"StartLine",
 					"EndLine",
+					"Link",
 				},
 				Rows: []map[string]string{
 					{
@@ -679,6 +681,7 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, target, bra
 						"Cause":     sbCause.String(),
 						"StartLine": fmt.Sprint(ts.StartLine),
 						"EndLine":   fmt.Sprint(ts.EndLine),
+						"Link":      fmt.Sprintf("[Link](%s)", affectedResourceString),
 					},
 				},
 			}}
