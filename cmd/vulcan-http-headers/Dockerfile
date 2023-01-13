@@ -1,6 +1,6 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.8-slim
+FROM python:3.11-slim
 
 COPY setup.py /
 
