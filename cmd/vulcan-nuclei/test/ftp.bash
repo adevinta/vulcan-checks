@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 Adevinta
+# Copyright 2023 Adevinta
 
 IMAGE_TAG=test_ftp_server_1abe865ab24f4f45babd845e2fee390a
 TEST_SERVER_DOCKERFILE=test_ftpd_dockerfile
