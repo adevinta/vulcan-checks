@@ -1,0 +1,31 @@
+id: varnish-detect
+
+info:
+  name: Varnish Detect
+  author: Adevinta
+  severity: info
+  description: The asset appears to be a Varnish Cache, as the X-Cache header is present and the varnish literal has been found in the response.
+  tags: network
+
+network:
+  - inputs:
+      - data: "GET /\r\nHost:{{Hostname}}\r\nCache-Control: no-cache\r\n\r\n"
+        read: 4096
+
+  - host:
+      - "{{Hostname}}"
+      - "{{Host}}:80"
+      - "{{Host}}:8080"
+      - "{{Host}}:7001"
+      - "{{Host}}:7002"
+      - "tls://{{Host}}:443"
+      - "tls://{{Host}}:8443"
+      - "tls://{{Host}}:7001"
+      - "tls://{{Host}}:7002"
+
+    matchers:
+      - type: regex
+        name: header
+        part: raw
+        regex:
+          - "(?i)varnish"
