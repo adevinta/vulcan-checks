@@ -1,0 +1,26 @@
+id: exposed-bgp
+
+info:
+  name: Exposed BGP Speaker
+  author: Adevinta
+  severity: high
+  description: A potentially exposed BGP port has been found open in the target. According to best practices, BGP ports should not be open to the public internet and access to them should be restricted only to participating BGP neighbours.
+  reference:
+    - https://tools.ietf.org/html/bcp194#section-4
+  tags: network
+
+network:
+  - inputs:
+      - data: ""
+        read: 1024
+
+  - host:
+      - "{{Hostname}}"
+      - "{{Host}}:179"
+
+    matchers:
+      - type: word
+        name: response
+        part: raw
+        words:
+          - ""
