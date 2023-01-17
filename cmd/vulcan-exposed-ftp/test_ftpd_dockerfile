@@ -1,9 +1,0 @@
-FROM stilliard/pure-ftpd
-
-RUN useradd -ms /bin/bash ftp
-
-# e.g. you could change the defult command run:
-# https://download.pureftpd.org/pub/pure-ftpd/doc/README
-#CMD /run.sh -c 30 -C 10 -l puredb:/etc/pure-ftpd/pureftpd.pdb -j -R -P $PUBLICHOST -p 30000:30059
-#CMD /run.sh -e -j -M -N -W -P $PUBLICHOST -p 30000:30059 -j -M -N -W -z
-CMD /run.sh -e -W

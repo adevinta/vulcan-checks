@@ -1,2 +1,0 @@
-Description = "Checks if an asset has FTP well known ports open and if they allow anonymous logins or if they are vulnerable to bounce attack"
-AssetTypes = ["Hostname", "IP"]

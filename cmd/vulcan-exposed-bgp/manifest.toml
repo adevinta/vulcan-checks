@@ -1,2 +1,0 @@
-Description = "Checks for exposed BGP port on Internet routers"
-AssetTypes = ["Hostname", "IP"]
