@@ -1,0 +1,52 @@
+id: exposed-hdfs
+
+info:
+  name: Exposed Hadoop Distributed File System
+  author: Adevinta
+  severity: critical
+  description: The ports are commonly used by Hadoop Distributed File System, and exposing them may allow external attackers to execute jobs. Restrict network access.
+  references:
+    - https://docs.cloudera.com/HDPDocuments/HDP3/HDP-3.1.0/administration/content/yarn-ports.html
+  tags: network
+
+network:
+  - inputs:
+      - data: "GET /\r\nHost:{{Hostname}}\r\n\r\n"
+        read: 4096
+
+  - host:
+      - "{{Hostname}}"
+      - "tls://{{Hostname}}"
+      # ResourceManager HTTP. When open we can kill YARN applications, run new applications, obtain information about the current status of a YARN cluster.
+      - "{{Host}}:8088"
+      # ResourceManager HTTPS. When open we can kill YARN applications, run new applications, obtain information about the current status of a YARN cluster. 
+      - "tls://{{Host}}:8090" 
+      # HttpFs. When open we can do whatever we want with HDFS files (read, write, list, delete).
+      - "{{Host}}:14000"
+      - "tls://{{Host}}:14000"
+      # Oozie Server. When open we can inject an oozie job (e.g. run a bash script).
+      - "{{Host}}:11000"
+      - "tls://{{Host}}:11000" 
+      # HDFS NameNode. When open we can delete, update permissions, change ownership of HDFS files.
+      - "{{Host}}:8020" 
+      - "tls://{{Host}}:8020"
+      # YARN User Interface.
+      - "{{Host}}:8032"
+      - "tls://{{Host}}:8032"
+      # HiveServer. When open we can connect to the HiveServer2 and run queries.
+      - "{{Host}}:10000"
+      - "tls://{{Host}}:10000"
+      # HDFS console.
+      - "{{Host}}:50070"
+      - "tls://{{Host}}:50070"
+
+    matchers:
+      - type: regex
+        name: response
+        part: raw
+        regex:
+          - "(?i)yarn"
+          - "(?i)httpfs"
+          - "(?i)oozie"
+          - "(?i)hadoop"
+        condition: or
