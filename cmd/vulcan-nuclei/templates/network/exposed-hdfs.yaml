@@ -5,7 +5,7 @@ info:
   author: Adevinta
   severity: critical
   description: The ports are commonly used by Hadoop Distributed File System, and exposing them may allow external attackers to execute jobs. Restrict network access.
-  references:
+  reference:
     - https://docs.cloudera.com/HDPDocuments/HDP3/HDP-3.1.0/administration/content/yarn-ports.html
   tags: network
 
