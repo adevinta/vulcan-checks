@@ -13,22 +13,12 @@ import (
 
 	gonmap "github.com/lair-framework/go-nmap"
 
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	"github.com/adevinta/vulcan-check-sdk/helpers/nmap"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
-
-type check struct {
-	Name              string
-	Ports             []string
-	NetCheck          func(host string, port string) (report.Vulnerability, error)
-	HTTPCheck         func(host string, port string, scheme string) (report.Vulnerability, error)
-	ReportCheck       func(nmapReport *gonmap.NmapRun) (report.Vulnerability, error)
-	NSEScripts        string
-	NSEArgs           string
-	BaseVulnerability report.Vulnerability
-}
 
 type options struct {
 	// Nmap timing parameter.
@@ -69,40 +59,6 @@ var (
 			"https://tools.ietf.org/html/rfc4778",
 		},
 		Labels: []string{"issue", "discovery"},
-	}
-
-	// Common attributes for all vulnerabilities.
-	cweID = 284
-
-	checks = []check{
-		check{
-			Name: "Exposed Databases",
-			Ports: []string{
-				"5432/tcp",                            // PostgreSQL
-				"1521/tcp",                            // Oracle
-				"1433/tcp",                            // SQL Server
-				"3306/tcp",                            // MySQL
-				"27017/tcp", "27018/tcp", "27019/tcp", // MongoDB
-				"6379/tcp", "16379/tcp", "26379/tcp", // Redis
-				"7000/tcp", "7001/tcp", "9042/tcp", // Cassandra
-				"9200/tcp", "9300/tcp", // Elasticsearch
-			},
-			BaseVulnerability: report.Vulnerability{
-				Summary:     "Exposed Database Ports",
-				Description: "A port likely belonging to a database is accessible from the public internet.",
-				Score:       report.SeverityThresholdMedium,
-				ImpactDetails: "An attacker may be able to remotely connect to the database service through the exposed port. " +
-					"If no authentication is implemented, it might be possible to access stored data and, even if authentication is implemented, " +
-					"it may be possible to perform brute force login attempts to access such data. An attacker can also attempt to remotely exploit " +
-					"any vulnerabilities present on the database service to obtain access to the server itself.",
-				Recommendations: []string{
-					"Restrict access to the database service port at the network level.",
-				},
-			},
-			ReportCheck: func(nmapReport *gonmap.NmapRun) (report.Vulnerability, error) {
-
-			},
-		},
 	}
 )
 
