@@ -134,16 +134,10 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 	vulnerabilities := []*report.Vulnerability{}
 	rv := make(map[string]*report.Vulnerability)
 	for _, v := range nucleiFindings {
-		// Create resources table row.
-		// Avoid store redundant information in the resources table.
-		matched := v.Matched
-		if matched == target {
-			matched = ""
-		}
 		findingRow := map[string]string{
 			"Template":    v.TemplateID,
 			"MatcherName": v.MatcherName,
-			"Matched":     matched,
+			"Matched":     v.Matched,
 		}
 		extractedResults := false
 		if len(v.ExtractedResults) > 0 {
@@ -167,7 +161,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 			}
 		}
 		var vuln = report.Vulnerability{
-			AffectedResource: target,
+			AffectedResource: v.Matched,
 			CWEID:            getCWEID(v.Info.Classification.CWEID),
 			Summary:          v.Info.Name,
 			Description:      v.Info.Description,

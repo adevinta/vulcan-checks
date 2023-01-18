@@ -1,10 +1,11 @@
 # Copyright 2022 Adevinta
 
-FROM projectdiscovery/nuclei:v2.8.3
+FROM projectdiscovery/nuclei:v2.8.6
 ENTRYPOINT []
 
 WORKDIR /
-RUN nuclei -update-templates
+RUN nuclei -v -update-templates
+COPY templates /root/nuclei-templates
 ARG TARGETOS TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-nuclei .
 CMD ["/vulcan-nuclei"]
