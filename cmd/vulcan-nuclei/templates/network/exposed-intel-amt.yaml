@@ -17,7 +17,12 @@ network:
 
   - host:
       - "{{Hostname}}"
+      - "{{Host}}:623"
+      - "{{Host}}:664"
       - "{{Host}}:16992"
+      - "{{Host}}:16993"
+      - "{{Host}}:16994"
+      - "{{Host}}:16995"
 
     matchers:
       - type: word
