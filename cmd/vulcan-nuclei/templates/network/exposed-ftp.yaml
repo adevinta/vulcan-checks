@@ -1,0 +1,31 @@
+id: exposed-ftp
+
+info:
+  name: Exposed FTP
+  author: Adevinta
+  severity: medium
+  description: |
+    An attacker may be able to use the exposed port to exploit a vulnerability in the service. Make sure that this FTP server needs to be exposed to the public and otherwise restrict network access to it.
+  tags: network,ftp
+
+network:
+  - inputs:
+      - data: "USER test\r\n"
+        read: 1024
+      - data: "PASS test\r\n"
+        read: 1024
+
+    host:
+      - "{{Hostname}}"
+      - "{{Host}}:20"
+      - "{{Host}}:21"
+      - "{{Host}}:69"
+      - "{{Host}}:989"
+      - "{{Host}}:990"
+
+    matchers:
+      - type: regex
+        name: response
+        part: raw
+        regex:
+          - "[Ff][Tt][Pp]"
