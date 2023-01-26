@@ -14,21 +14,23 @@ requests:
       - |
         POST /admin/scriptmanager?action=UPLOAD HTTP/1.1
         Host: {{Hostname}}
-        Content-Type: multipart/form-data; boundary=e64bdf16c554bbc109cecef6451c26a4
+        Content-Type: multipart/form-data; boundary=85db86a796d0665d56ef644009633dec
 
-        --e64bdf16c554bbc109cecef6451c26a4
+        --85db86a796d0665d56ef644009633dec
         Content-Disposition: form-data; name="upload"; filename="Emptyfile.groovy"
         
 
-        --e64bdf16c554bbc109cecef6451c26a4--
+        --85db86a796d0665d56ef644009633dec--
 
     matchers-condition: and
     matchers:
       - type: status
+        name: response-status
         status:
           - 400
 
       - type: word
         part: body
+        name: response-body
         words:
           - "Usage: /scriptManager?action=<ACTION_TYPE>&<ARGS>"
