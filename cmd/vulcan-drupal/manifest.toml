@@ -1,2 +1,0 @@
-Description = "Checks for some vulnerable versions of Drupal."
-AssetTypes = ["Hostname"]

@@ -1,3 +1,0 @@
-Description = "Gathers TLS Certificate information"
-Timeout = 60
-AssetTypes = ["Hostname"]
