@@ -320,10 +320,10 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 
 	// Include selected tags.
 	if len(opt.TagInclusionList) > 0 {
-		itags := strings.Join(opt.TagInclusionList, ",")
-		logger.Infof("included tags: %s", itags)
-		itagsArg := []string{"-itags", itags}
-		nucleiArgs = append(nucleiArgs, itagsArg...)
+		tags := strings.Join(opt.TagInclusionList, ",")
+		logger.Infof("included tags: %s", tags)
+		tagsArg := []string{"-tags", tags}
+		nucleiArgs = append(nucleiArgs, tagsArg...)
 	}
 
 	// Exclude selected tags.

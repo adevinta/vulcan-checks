@@ -6,14 +6,16 @@ Options = '{"tag_exclusion_list": ["intrusive", "dos", "fuzz"]}'
 
 # skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates
 #                        or not from source repository. Default is false.
-# template_inclusion_list: You can specify which Nuclei templates categories will run against the target.
-# template_exclusion_list: You can explicitly exclude Nuclei template categories.
-#                          If you leave it empty, all available templates will run except for those excluded by default.
+# template_inclusion_list: You can specify which Nuclei templates and template categories will run against the target.
+#                          If you leave both inclusion lists empty, all templates will run except for those excluded.
+# template_exclusion_list: You can explicitly exclude Nuclei templates and template categories.
+#                          If you leave it empty, some template categories will be excluded by default.
 #                          Template exclusion prevails over inclusion.
-# tag_exclusion_list: You can explicitly exclude Nuclei templates that have specific tags.
-#                     If you leave it empty, all available templates will run except for those excluded by default.
 # tag_inclusion_list: You can specify with which tags to filter which Nuclei templates will run against the target.
-#                     Tag inclusion prevails over tag exclusion as templates usually have multiple tags.
+#                     If you leave both inclusion lists empty, all templates will run except for those excluded.
+# tag_exclusion_list: You can explicitly exclude Nuclei templates that have specific tags.
+#                     If you leave it empty, some template tags will be excluded by default.
+#                     Tag exclusion prevails over tag inclusion.
 # severities: You can define which severities you want the check to report.
 #             Allowed values are: "high", "medium", "critical", "low" and "info".
 #
