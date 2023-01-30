@@ -387,7 +387,8 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			}
 			cinfo, ok := controls[control]
 			if !ok {
-				return nil, fmt.Errorf("no information for control %s", control)
+				fmt.Printf("warning: no information for control %s", control)
+				continue
 			}
 			row := map[string]string{
 				"Control":      control,
