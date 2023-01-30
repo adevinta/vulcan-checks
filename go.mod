@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4
 	github.com/adevinta/restuss v1.1.0
-	github.com/adevinta/vulcan-check-sdk v1.0.1
+	github.com/adevinta/vulcan-check-sdk v1.0.2
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.0.0
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
