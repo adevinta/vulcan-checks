@@ -373,7 +373,7 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			"CIS Severity",
 			"Region",
 			"Message",
-			"Remediation",
+			"References",
 		},
 	}
 
@@ -396,7 +396,7 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 				"CIS Severity": cinfo.SeverityLiteral,
 				"Region":       e.Region,
 				"Message":      e.Message,
-				"Remediation":  fmt.Sprintf("<a href=\"%s\">Reference</a>", cinfo.Remediation),
+				"References":   fmt.Sprintf("<a href=\"%s\">Reference</a>", cinfo.Remediation),
 			}
 			c := controlRow{row, control, cinfo.Severity}
 			rows = append(rows, c)
