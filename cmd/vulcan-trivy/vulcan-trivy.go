@@ -56,6 +56,7 @@ type checks struct {
 
 type options struct {
 	ForceUpdateDB bool   `json:"force_update_db"`
+	OfflineScan   bool   `json:"offline_scan"`
 	IgnoreUnfixed bool   `json:"ignore_unfixed"`
 	Severities    string `json:"severities"`
 	Depth         int    `json:"depth"`
@@ -180,6 +181,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
 		trivyArgs = append(trivyArgs, "--skip-update")
+	}
+	if opt.OfflineScan {
+		trivyArgs = append(trivyArgs, "--offline-scan")
 	}
 	// Show only vulnerabilities with fixes.
 	if opt.IgnoreUnfixed {
