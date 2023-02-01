@@ -26,6 +26,9 @@ type options struct {
 	// Return status updates on the progress of the check
 	ReportProgress bool `json:"report_progress"`
 
+	// Only report port if the product detected matches an expected regular expression.
+	MatchProduct bool `json:"match_product"`
+
 	/* Lists of whitelisted TCP and UDP ports.
 	 *
 	 * Do not raise open-port warnings for the whitelisted open ports.
@@ -33,9 +36,14 @@ type options struct {
 	 * E.g. When we scan a web server, the report shouldn't be concerned when TCP ports 80/443
 	 * are open. In such a case TCP port 80 and TCP port 443 should be whitelisted.
 	 */
-
 	WhitelistedTCPPorts []uint16 `json:"whitelisted_tcp_ports"`
 	WhitelistedUDPPorts []uint16 `json:"whitelisted_udp_ports"`
+}
+
+type productMatch struct {
+	regex    string
+	ports    []uint16
+	severity report.Severity
 }
 
 var (
@@ -43,6 +51,25 @@ var (
 	logger    = check.NewCheckLog(checkName)
 
 	defaultTiming = 3
+
+	portProductRegex = map[uint16]string{
+		5432:  "(?i)(SQL|Database|Postgre)",   // PostgreSQL
+		1521:  "(?i)(SQL|Database|Oracle)",    // Oracle
+		1433:  "(?i)(SQL|Database|Microsoft)", // SQL Server
+		3306:  "(?i)(SQL|Database|MySQL)",     // MySQL
+		27017: "(?i)(SQL|Database|Mongo)",     // MongoDB
+		27018: "(?i)(SQL|Database|Mongo)",     // MongoDB
+		27019: "(?i)(SQL|Database|Mongo)",     // MongoDB
+		6379:  "(?i)(SQL|Database|Redis)",     // Redis
+		16379: "(?i)(SQL|Database|Redis)",     // Redis
+		26379: "(?i)(SQL|Database|Redis)",     // Redis
+		7000:  "(?i)(SQL|Database|Cassandra)", // Cassandra
+		7001:  "(?i)(SQL|Database|Cassandra)", // Cassandra
+		9042:  "(?i)(SQL|Database|Cassandra)", // Cassandra
+		9200:  "(?i)(SQL|Database|Elastic)",   // Elasticsearch
+		9300:  "(?i)(SQL|Database|Elastic)",   // Elasticsearch
+		179:   ".*",                           // BGP Speaker
+	}
 
 	whitelistedTCPPorts = []uint16{}
 	whitelistedUDPPorts = []uint16{}
