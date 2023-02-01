@@ -103,6 +103,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 	}
 
+	// Update templates at runtime only if specified.
+	if opt.UpdateTemplates {
+		logger.Infof("updating templates to their latest version")
+		_, err := runNucleiCmd([]string{"-ut"})
+		if err != nil {
+			logger.Warnf("nuclei failed updating templates: %v", err)
+		}
+	}
+
 	// Create list of excluded templates.
 	if len(opt.TemplateExclusionList) == 0 {
 		logger.Info("no template exclusion list provided, applying default template exclusion list")
@@ -293,12 +302,6 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 		"-silent",
 		"-no-meta",
 		"-H", userAgent,
-	}
-
-	// Update templates at runtime only if specified.
-	if opt.UpdateTemplates {
-		logger.Infof("updating templates to their latest version")
-		nucleiArgs = append(nucleiArgs, []string{"-ut"}...)
 	}
 
 	// Include only selected severities.
