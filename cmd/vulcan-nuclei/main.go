@@ -50,7 +50,7 @@ var (
 type void struct{}
 
 type options struct {
-	SkipUpdateTemplates   bool     `json:"skip_update_templates"`
+	UpdateTemplates       bool     `json:"update_templates"`
 	Severities            []string `json:"severities"`
 	TemplateInclusionList []string `json:"template_inclusion_list"`
 	TemplateExclusionList []string `json:"template_exclusion_list"`
@@ -286,12 +286,19 @@ func runNuclei(nucleiArgs []string) ([]ResultEvent, error) {
 func buildNucleiScanCmdArgs(target string, opt options) []string {
 	// Build arguments.
 	nucleiArgs := []string{
+		"-duc", // Disable automatic updates.
 		"-target", target,
 		"-c", "20",
 		"-json",
 		"-silent",
 		"-no-meta",
 		"-H", userAgent,
+	}
+
+	// Include only selected severities.
+	if opt.UpdateTemplates {
+		logger.Infof("updating templates to latest version")
+		nucleiArgs = append(nucleiArgs, []string{"-ut"}...)
 	}
 
 	// Include only selected severities.

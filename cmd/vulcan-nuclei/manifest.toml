@@ -4,8 +4,7 @@ Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
 Options = '{"tag_exclusion_list": ["intrusive", "dos", "fuzz"]}'
 
-# skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates
-#                        or not from source repository. Default is false.
+# update_templates: Update templates from original repository every time the check runs. Default is false.
 # template_inclusion_list: You can specify which Nuclei templates and template categories will run against the target.
 #                          If you leave both inclusion lists empty, all templates will run except for those excluded.
 # template_exclusion_list: You can explicitly exclude Nuclei templates and template categories.
