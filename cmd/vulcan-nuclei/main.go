@@ -295,9 +295,9 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 		"-H", userAgent,
 	}
 
-	// Include only selected severities.
+	// Update templates at runtime only if specified.
 	if opt.UpdateTemplates {
-		logger.Infof("updating templates to latest version")
+		logger.Infof("updating templates to their latest version")
 		nucleiArgs = append(nucleiArgs, []string{"-ut"}...)
 	}
 
