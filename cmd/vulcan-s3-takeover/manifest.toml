@@ -1,2 +1,0 @@
-Description = "Checks if an asset is vulnerable to S3 subdomain takeover"
-AssetTypes = ["Hostname", "WebAddress"]

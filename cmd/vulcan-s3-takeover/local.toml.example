@@ -1,5 +1,0 @@
-[Check]
-Target = "example.com"
-AssetType = "Hostname"
-
-# To test use ${RANDOM_NAME}.s3-website-eu-west-1.amazonaws.com as target

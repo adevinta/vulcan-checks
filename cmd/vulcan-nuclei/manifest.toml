@@ -2,14 +2,20 @@
 
 Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
-Options = '{"template_inclusion_list": ["misconfiguration", "default-logins", "exposed-panels", "exposures", "dns", "takeovers"]}'
+Options = '{"tag_exclusion_list": ["intrusive", "dos", "fuzz"]}'
 
-# skip_update_templates: You can specify whether to skip updating vulcan-nuclei templates
-#                        or not from source repository. Default is false.
-# template_inclusion_list: You can specify which nuclei templates will run against the target.
-#                          If you leave the array empty ALL available templates will run.
-# template_exclusion_list: You can explicitly exclude nuclei templates.
-#                          Template exclusion prevails over template inclusion.
+# update_templates: Update templates from original repository every time the check runs. Default is false.
+# template_inclusion_list: You can specify which Nuclei templates and template categories will run against the target.
+#                          If you leave both inclusion lists empty, all templates will run except for those excluded.
+# template_exclusion_list: You can explicitly exclude Nuclei templates and template categories.
+#                          If you leave it empty, some template categories will be excluded by default.
+#                          Template exclusion prevails over inclusion.
+# tag_inclusion_list: You can specify with which tags to filter which Nuclei templates will run against the target.
+#                     If you leave both inclusion lists empty, all templates will run except for those excluded.
+# tag_exclusion_list: You can explicitly exclude Nuclei templates that have specific tags.
+#                     If you leave it empty, some template tags will be excluded by default.
+#                     Tag exclusion prevails over tag inclusion.
 # severities: You can define which severities you want the check to report.
 #             Allowed values are: "high", "medium", "critical", "low" and "info".
-#             For more info: https://github.com/projectdiscovery/nuclei#usage
+#
+# For more information about these options: https://github.com/projectdiscovery/nuclei#usage

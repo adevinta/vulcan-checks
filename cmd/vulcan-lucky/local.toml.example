@@ -1,3 +1,0 @@
-[Check]
-Target = "example.com:443"
-AssetType = "Hostname"

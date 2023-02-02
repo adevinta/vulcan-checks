@@ -6,9 +6,11 @@ AssetType = "WebAddress"
 # Available options example:
 # Options = """\
 #     {\
-#         "skip_update_templates": false,\
+#         "update_templates": false,\
 #         "template_inclusion_list": ["cves", "default-logins", "dns", "exposed-panels", "exposed-tokens", "exposures", "misconfiguration", "takeovers", "technologies", "vulnerabilities"],\
 #         "template_exclusion_list": ["fuzzing", "helpers", "miscellaneous", "workflows"],\
+#         "tag_exclusion_list": ["intrusive", "fuzz", "dos"],\
+#         "tag_inclusion_list": [],\
 #         "severities": ["critical", "high", "medium", "low", "info"]\
 #     }\
 # """
