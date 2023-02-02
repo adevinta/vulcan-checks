@@ -1,0 +1,36 @@
+id: zuul-filter-admin
+
+info:
+  name: Zuul Filter Admin Enabled RCE 
+  author: adevinta
+  severity: high
+  description: 'Zuul was configured with "zuul.filter.admin.enabled" set to "True", which can be used to upload filters via the default application port which may result in remote code execution. This option should be set to "False" in all public deployments'
+  reference:
+    - https://github.com/Netflix/security-bulletins/blob/master/advisories/nflx-2016-003.md
+  tags: misconfiguration,zuul,rce,fileupload
+
+requests:
+  - raw:
+      - |
+        POST /admin/scriptmanager?action=UPLOAD HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: multipart/form-data; boundary=85db86a796d0665d56ef644009633dec
+
+        --85db86a796d0665d56ef644009633dec
+        Content-Disposition: form-data; name="upload"; filename="Emptyfile.groovy"
+        
+
+        --85db86a796d0665d56ef644009633dec--
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        name: response-status
+        status:
+          - 400
+
+      - type: word
+        part: body
+        name: response-body
+        words:
+          - "Usage: /scriptManager?action=<ACTION_TYPE>&<ARGS>"
