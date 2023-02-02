@@ -1,2 +1,0 @@
-Description = "Checks if an asset has an Hadoop HDFS port exposed."
-AssetTypes = ["Hostname", "IP"]

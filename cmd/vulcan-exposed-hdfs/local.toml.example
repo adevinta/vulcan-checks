@@ -1,5 +1,0 @@
-[Check]
-Target = "localhost"
-AssetType = "Hostname"
-[Log]
-LogLevel = "DEBUG"
