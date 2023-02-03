@@ -4,6 +4,6 @@ AssetTypes = ["Hostname", "WebAddress"]
 Timeout = 3600 # 1 hour.
 
 RequiredVars = [
-  "SEC_GRAPH_INVENTORY_API_URL",
-  "SEC_GRAPH_INVENTORY_API_VERIFY"
+  "GRAPH_INVENTORY_API_URL",
+  "GRAPH_INVENTORY_API_INSECURE_SKIP_VERIFY"
 ]
