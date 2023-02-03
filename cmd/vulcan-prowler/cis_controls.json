@@ -47,6 +47,12 @@
         "severity_literal": "Medium",
         "remediation": "https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cis-controls.html#securityhub-cis-controls-1.2"
     },
+    "1.19": {
+        "id": "1.19",
+        "severity": 3.9,
+        "severity_literal": "Low",
+        "remediation": "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_server-certs.html#delete-server-certificate"
+    },
     "1.20": {
         "id": "1.20",
         "severity": 3.9,

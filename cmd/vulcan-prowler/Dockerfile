@@ -1,6 +1,6 @@
 # Copyright 2020 Adevinta
 
-FROM toniblyx/prowler
+FROM toniblyx/prowler:2.12.1
 
 # Override entrypoint
 ENTRYPOINT ["/usr/bin/env"]

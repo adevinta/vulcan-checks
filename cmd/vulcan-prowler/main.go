@@ -373,7 +373,7 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			"CIS Severity",
 			"Region",
 			"Message",
-			"Remediation",
+			"References",
 		},
 	}
 
@@ -387,7 +387,8 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 			}
 			cinfo, ok := controls[control]
 			if !ok {
-				return nil, fmt.Errorf("no information for control %s", control)
+				fmt.Printf("warning: no information for control %s", control)
+				continue
 			}
 			row := map[string]string{
 				"Control":      control,
@@ -395,7 +396,7 @@ func fillCISLevelVuln(v *report.Vulnerability, r *prowlerReport, alias string, s
 				"CIS Severity": cinfo.SeverityLiteral,
 				"Region":       e.Region,
 				"Message":      e.Message,
-				"Remediation":  fmt.Sprintf("<a href=\"%s\">Reference</a>", cinfo.Remediation),
+				"References":   fmt.Sprintf("<a href=\"%s\">Reference</a>", cinfo.Remediation),
 			}
 			c := controlRow{row, control, cinfo.Severity}
 			rows = append(rows, c)
