@@ -10,21 +10,15 @@ Currently there's no vendoring provided for this project.
 * **vulcan-burp** - Runs a PortSwigger [Burp Enterprise](https://portswigger.net/burp/enterprise) scan
 * **vulcan-dmarc** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DMARC
 * **vulcan-drupal** - Checks for vulnerabilities in Drupal CMS
-* **vulcan-exposed-amt** - Checks if an asset has the Intel AMT port exposed and whether is it vulnerable or not
 * **vulcan-exposed-bgp** - Checks for exposed BGP port on Internet routers
 * **vulcan-exposed-db** - Checks if an asset has open database well known ports
-* **vulcan-exposed-ftp** - Checks if an asset has open FTP well known ports and if they allow anonymous logins or vulnerable to bounce attack
-* **vulcan-exposed-hdfs** - Checks if an EMR cluster is exposed to the Internet
 * **vulcan-exposed-http** - Checks if an asset has open HTTP well known ports
 * **vulcan-exposed-memcached** - Checks if an asset has exposed a memcached server
-* **vulcan-exposed-rdp** - Checks if a Microsoft Remote Desktop service is exposed to the Internet
 * **vulcan-exposed-router-ports** - Checks if an asset has open router well known ports
 * **vulcan-exposed-services** - Checks if a host has any port opened by scanning the 1000 most common TCP and UDP ports
 * **vulcan-exposed-ssh** - Checks SSH server configuration for compliance with Mozilla OpenSSH guidelines
-* **vulcan-exposed-varnish** - Checks if an asset is a Web Cache, and also if it is a Varnish
 * **vulcan-github-alerts** - Retrieves existing vulnerability alerts for a Github repository
 * **vulcan-gitleaks** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
-* **vulcan-gozuul** - Checks if a Zuul Gateway is vulnerable to Remote Code Execution as specified in nflx-2016-003
 * **vulcan-heartbleed** - Checks if an asset is vulnerable to heartbleed vulnerability
 * **vulcan-host-discovery** - Performs a quick Nmap ping scan that identifies which hosts are up
 * **vulcan-http-headers** - Analyzes the security of a website based on its HTTP headers
@@ -51,8 +45,14 @@ Currently there's no vendoring provided for this project.
 For future reference, this section contains links to the last working commits of checks that were removed.
 
 * **[vulcan-certinfo](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-certinfo)** - Extracts information about SSL/TLS certificates
+* **[vulcan-exposed-amt](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-amt)** - Checks if an asset has the Intel AMT port exposed and whether is it vulnerable or not
 * **[vulcan-exposed-files](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-files)** - Check asset for sensitive files exposed on HTTP server
+* **[vulcan-exposed-ftp](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-ftp)** - Checks if an asset has open FTP well known ports and if they allow anonymous logins or vulnerable to bounce attack
+* **[vulcan-exposed-hdfs](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-hdfs)** - Checks if an EMR cluster is exposed to the Internet
 * **[vulcan-exposed-http-resources](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-http-resources)** - Checks if a web address exposes sensitive resources
+* **[vulcan-exposed-rdp](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-rdp)** - Checks if a Microsoft Remote Desktop service is exposed to the Internet
+* **[vulcan-exposed-varnish](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-varnish)** - Checks if an asset is a Web Cache, and also if it is a Varnish
+* **[vulcan-gozuul](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-gozuul)** - Checks if a Zuul Gateway is vulnerable to Remote Code Execution as specified in nflx-2016-003
 * **[vulcan-lucky](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-lucky)** - Checks if an TLS asset is vulnerable to LuckyMinus20 attack
 * **[vulcan-s3-takeover](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-s3-takeover)** - Checks for a vulnerability related to domain names pointing to a S3 static website when the S3 bucket has been deleted
 * **[vulcan-tls](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-tls)** - Analyzes TLS health of an asset
