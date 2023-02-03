@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	tagRecommendedAction   = `<b>Recommended Action</b>`
-	tagAdditionalResources = `<b>Additional Resources</b>`
+	tagRecommendedAction   = `<h4 class='headerBodyStyle'>Recommended Action</h4>`
+	tagAdditionalResources = `<h4 class='headerBodyStyle'>Additional Resources</h4>`
 )
 
 var (
