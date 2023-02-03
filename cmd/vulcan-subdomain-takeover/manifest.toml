@@ -1,0 +1,9 @@
+Description = "Checks if an asset is vulnerable to a subdomain takeover according to the data in the Security Graph."
+AssetTypes = ["Hostname", "WebAddress"]
+
+Timeout = 3600 # 1 hour.
+
+RequiredVars = [
+  "SEC_GRAPH_INVENTORY_API_URL",
+  "SEC_GRAPH_INVENTORY_API_VERIFY"
+]
