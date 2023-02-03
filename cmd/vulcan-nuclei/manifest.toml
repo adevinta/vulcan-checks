@@ -2,6 +2,7 @@
 
 Description = "Scan web addresses with projectdiscovery/nuclei"
 AssetTypes = ["WebAddress", "Hostname"]
+Timeout = 1800 # 30 minutes
 Options = '{"tag_exclusion_list": ["intrusive", "dos", "fuzz"]}'
 
 # update_templates: Update templates from original repository every time the check runs. Default is false.
