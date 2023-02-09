@@ -146,8 +146,8 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 func genInfoVulnFromIPs(secGraphIPs map[string]inventory.AssetResp,
 	notInSecGraphIPs []string) report.Vulnerability {
 	v := subdomainTakeoverInfo
-	secGraphRg := affectedResFromIPsInfo("IPsInSecGraph", secGraphIPs)
-	notSecGraphRg := affectedResFromIPs("IPsNotInSecGraph", notInSecGraphIPs)
+	secGraphRg := affectedResFromIPsInfo("IP's in the Security Graph", secGraphIPs)
+	notSecGraphRg := affectedResFromIPs("IP's not in the Security Graph", notInSecGraphIPs)
 	v.Resources = []report.ResourcesGroup{secGraphRg, notSecGraphRg}
 	return v
 }
@@ -158,7 +158,7 @@ func genVulnFromIPs(expiredIPs map[string]inventory.AssetResp,
 	// The affected resource which is used to calculate the fingerprint of the
 	// vuln is equal to the concatenation of the dangling IPs. The means that,
 	// if the list of IP's dangling changes, either because any disappears or
-	// new are added, then a possible false positive status of the
+	// new are added, a possible false positive status of the
 	// vulnerability would be removed.
 	var ips = make([]string, 0, len(expiredIPs))
 	for _, ip := range expiredIPs {
@@ -169,7 +169,7 @@ func genVulnFromIPs(expiredIPs map[string]inventory.AssetResp,
 	v.AffectedResourceString = strings.Join(ips, ",")
 	ownedRg := affectedResFromIPsInfo("Not Owned IPs", expiredIPs)
 	notOwnedRg := affectedResFromIPsInfo("Owned IPs", expiredIPs)
-	notSecGraphRg := affectedResFromIPs("IPsNotInSecGraph", notInSecGraphIPs)
+	notSecGraphRg := affectedResFromIPs("IPs not in the Security Graph", notInSecGraphIPs)
 	v.Resources = []report.ResourcesGroup{ownedRg, notOwnedRg, notSecGraphRg}
 	return v
 }
