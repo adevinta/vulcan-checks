@@ -9,6 +9,7 @@ env:
   - PLATFORMS="linux/amd64 linux/arm64"
   - ARM64_EXCLUDE="(prowler|semgrep|zap)"   # Regex with the check names to exclude from arm64 build
 go_import_path: github.com/adevinta/vulcan-checks
+before_deploy: _scripts/setup_buildx.sh
 deploy:
   - provider: script
     script: bash release.sh
