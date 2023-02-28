@@ -73,13 +73,18 @@ type Result struct {
 	} `json:"extra,omitempty"`
 }
 
-func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude []string, ruleset, dir string) (*SemgrepOutput, error) {
+func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude []string, exclude_rule []string, ruleset []string, dir string) (*SemgrepOutput, error) {
 	params = append(params, "--timeout", strconv.Itoa(timeout))
 	exclusions := append(AlwaysExcluded, exclude...)
 	for _, e := range exclusions {
 		params = append(params, "--exclude", e)
 	}
-	params = append(params, "-c", ruleset)
+	for _, e := range exclude_rule {
+		params = append(params, "--exclude-rule", e)
+	}
+	for _, e := range ruleset {
+		params = append(params, "-c", e)
+	}
 	params = append(params, dir)
 
 	var report SemgrepOutput
