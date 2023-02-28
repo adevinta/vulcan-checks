@@ -23,7 +23,6 @@ const (
 	// rulesets semgrep has. There are less noisy alternatives like the
 	// 'r2c-ci' that we might use instead.
 	// https://semgrep.dev/explore
-	DefaultRuleset = `p/r2c-security-audit`
 	// CWERegexStr defines a regex matching a CWE definition from Semgrep
 	// rules.
 	// Example:
@@ -33,10 +32,10 @@ const (
 )
 
 var (
-	checkName = "vulcan-semgrep"
-	logger    = check.NewCheckLog(checkName)
-
-	severityMap = map[string]report.SeverityRank{
+	checkName       = "vulcan-semgrep"
+	logger          = check.NewCheckLog(checkName)
+	DefaultRulesets = []string{"p/r2c-security-audit"}
+	severityMap     = map[string]report.SeverityRank{
 		"INFO":    report.SeverityNone,
 		"WARNING": report.SeverityLow,
 		"ERROR":   report.SeverityMedium,
@@ -46,11 +45,12 @@ var (
 )
 
 type options struct {
-	Depth   int      `json:"depth"`
-	Branch  string   `json:"branch"`
-	Ruleset string   `json:"ruleset"`
-	Timeout int      `json:"timeout"`
-	Exclude []string `json:"exclude"`
+	Depth       int         `json:"depth"`
+	Branch      string      `json:"branch"`
+	Ruleset     interface{} `json:"ruleset"`
+	Timeout     int         `json:"timeout"`
+	Exclude     []string    `json:"exclude"`
+	ExcludeRule []string    `json:"exclude_rule"`
 }
 
 func main() {
@@ -77,8 +77,20 @@ func main() {
 			}
 		}
 		// Ensure not an empty ruleset is provided
-		if opt.Ruleset == "" {
-			opt.Ruleset = DefaultRuleset
+		var RulesetArray []string
+		switch opt.Ruleset.(type) {
+		case string:
+			RulesetArray = []string{fmt.Sprintf("%v", opt.Ruleset)}
+		case []interface{}:
+			if len(opt.Ruleset.([]interface{})) == 0 {
+				RulesetArray = DefaultRulesets
+			} else {
+				for _, v := range opt.Ruleset.([]interface{}) {
+					RulesetArray = append(RulesetArray, v.(string))
+				}
+			}
+		case nil:
+			RulesetArray = DefaultRulesets
 		}
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
@@ -91,7 +103,7 @@ func main() {
 			return err
 		}
 
-		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Exclude, opt.Ruleset, repoPath)
+		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Exclude, opt.ExcludeRule, RulesetArray, repoPath)
 		if err != nil {
 			return err
 		}
