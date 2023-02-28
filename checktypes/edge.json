@@ -477,7 +477,10 @@
 				"branch": "",
 				"depth": 1,
 				"exclude": [],
-				"ruleset": "p/r2c-security-audit",
+				"exclude_rule": [],
+				"ruleset": [
+					"p/r2c-security-audit"
+				],
 				"timeout": 0
 			},
 			"required_vars": [
