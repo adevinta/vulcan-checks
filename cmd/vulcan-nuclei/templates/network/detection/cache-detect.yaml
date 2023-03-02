@@ -1,0 +1,31 @@
+id: cache-detect
+
+info:
+  name: Web Cache Detect
+  author: Adevinta
+  severity: info 
+  description: The asset appears to be a web cache, as the X-Cache HTTP header is present in the HTTP response.
+  tags: network
+
+network:
+  - inputs:
+      - data: "GET /index.htm\r\nHost:{{Hostname}}\r\nCache-Control: no-cache\r\n\r\n"
+        read: 4096
+
+  - host:
+      - "{{Hostname}}"
+      - "{{Host}}:80"
+      - "{{Host}}:8080"
+      - "{{Host}}:7001"
+      - "{{Host}}:7002"
+      - "tls://{{Host}}:443"
+      - "tls://{{Host}}:8443"
+      - "tls://{{Host}}:7001"
+      - "tls://{{Host}}:7002"
+
+    matchers:
+      - type: word
+        name: header
+        part: raw
+        words:
+          - "X-Cache"

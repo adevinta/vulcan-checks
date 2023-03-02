@@ -1,0 +1,7 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+X-Cache: MISS
+X-Varnish-IP: 127.0.0.1
+
+<!doctype html>
+<html><body><h1>A webpage served by netcat</h1></body></html>

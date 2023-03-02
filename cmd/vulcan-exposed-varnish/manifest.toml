@@ -1,2 +1,0 @@
-Description = "Checks if an asset is a Varnish Cache"
-AssetTypes = ["Hostname", "IP"]

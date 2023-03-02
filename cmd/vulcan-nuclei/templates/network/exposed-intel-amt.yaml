@@ -1,0 +1,32 @@
+id: exposed-intel-amt
+
+info:
+  name: Exposed Intel AMT
+  author: Adevinta
+  severity: high
+  description: The port is comonly used by Intel AMT, which allows remote computer management from the network. If Intel AMT is enabled and exposed to a network, an attacker from that network can exploit it to gain complete access to a vulnerable machine. In some cases, an attacker might be able to gain access without a vulnerability being present by bruteforcing administrative credentials or using default ones. Restrict network access to it.
+  reference:
+    - https://www.ssh.com/vulnerability/intel-amt/
+    - https://nvd.nist.gov/vuln/detail/CVE-2017-5689
+  tags: network
+
+network:
+  - inputs:
+      - data: "GET /index.htm\r\nHost:{{Hostname}}\r\n\r\n"
+        read: 1024
+
+  - host:
+      - "{{Hostname}}"
+      - "{{Host}}:623"
+      - "{{Host}}:664"
+      - "{{Host}}:16992"
+      - "{{Host}}:16993"
+      - "{{Host}}:16994"
+      - "{{Host}}:16995"
+
+    matchers:
+      - type: word
+        name: header
+        part: raw
+        words:
+          - "server: Intel(R) Active Management Technology"
