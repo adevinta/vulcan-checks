@@ -59,16 +59,6 @@
 			]
 		},
 		{
-			"name": "vulcan-certinfo",
-			"description": "Gathers TLS Certificate information",
-			"image": "vulcansec/vulcan-certinfo:edge",
-			"timeout": 60,
-			"required_vars": null,
-			"assets": [
-				"Hostname"
-			]
-		},
-		{
 			"name": "vulcan-dmarc",
 			"description": "Checks if a domain have valid DNS configuration for DMARC",
 			"image": "vulcansec/vulcan-dmarc:edge",
@@ -86,17 +76,6 @@
 			"required_vars": null,
 			"assets": [
 				"Hostname"
-			]
-		},
-		{
-			"name": "vulcan-exposed-amt",
-			"description": "Checks if an asset has the Intel AMT port exposed.",
-			"image": "vulcansec/vulcan-exposed-amt:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
 			]
 		},
 		{
@@ -122,38 +101,6 @@
 			]
 		},
 		{
-			"name": "vulcan-exposed-files",
-			"description": "Checks web servers for exposed sensitive files",
-			"image": "vulcansec/vulcan-exposed-files:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname"
-			]
-		},
-		{
-			"name": "vulcan-exposed-ftp",
-			"description": "Checks if an asset has FTP well known ports open and if they allow anonymous logins or if they are vulnerable to bounce attack",
-			"image": "vulcansec/vulcan-exposed-ftp:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
-			]
-		},
-		{
-			"name": "vulcan-exposed-hdfs",
-			"description": "Checks if an asset has an Hadoop HDFS port exposed.",
-			"image": "vulcansec/vulcan-exposed-hdfs:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
-			]
-		},
-		{
 			"name": "vulcan-exposed-http",
 			"description": "Checks if an asset has HTTP well known ports open",
 			"image": "vulcansec/vulcan-exposed-http:edge",
@@ -165,17 +112,6 @@
 			]
 		},
 		{
-			"name": "vulcan-exposed-http-resources",
-			"description": "This checks looks for a well known or custom list of exposed resources in an HTTP address",
-			"image": "vulcansec/vulcan-exposed-http-resources:edge",
-			"timeout": 240,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"WebAddress"
-			]
-		},
-		{
 			"name": "vulcan-exposed-memcached",
 			"description": "Checks if the asset contains an exposed Memcached server",
 			"image": "vulcansec/vulcan-exposed-memcached:edge",
@@ -183,17 +119,6 @@
 			"options": {
 				"port": 11211
 			},
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
-			]
-		},
-		{
-			"name": "vulcan-exposed-rdp",
-			"description": "Checks if an asset has a RDP port exposed.",
-			"image": "vulcansec/vulcan-exposed-rdp:edge",
-			"timeout": 0,
 			"required_vars": null,
 			"assets": [
 				"Hostname",
@@ -237,17 +162,6 @@
 			]
 		},
 		{
-			"name": "vulcan-exposed-varnish",
-			"description": "Checks if an asset is a Varnish Cache",
-			"image": "vulcansec/vulcan-exposed-varnish:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
-			]
-		},
-		{
 			"name": "vulcan-github-alerts",
 			"description": "Retrieves existing vulnerability alerts for a Github repository",
 			"image": "vulcansec/vulcan-github-alerts:edge",
@@ -275,25 +189,6 @@
 			],
 			"assets": [
 				"GitRepository"
-			]
-		},
-		{
-			"name": "vulcan-gozuul",
-			"description": "Checks if an asset is vulnerable to Remote Code Execution as specified in nflx-2016-003",
-			"image": "vulcansec/vulcan-gozuul:edge",
-			"timeout": 0,
-			"options": {
-				"ports": [
-					80,
-					443,
-					8080
-				]
-			},
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP",
-				"WebAddress"
 			]
 		},
 		{
@@ -335,17 +230,6 @@
 			"required_vars": null,
 			"assets": [
 				"Hostname"
-			]
-		},
-		{
-			"name": "vulcan-lucky",
-			"description": "Checks if an asset is vulnerable to LuckyMinus20 attack",
-			"image": "vulcansec/vulcan-lucky:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"IP"
 			]
 		},
 		{
@@ -391,15 +275,12 @@
 			"name": "vulcan-nuclei",
 			"description": "Scan web addresses with projectdiscovery/nuclei",
 			"image": "vulcansec/vulcan-nuclei:edge",
-			"timeout": 0,
+			"timeout": 1800,
 			"options": {
-				"template_inclusion_list": [
-					"misconfiguration",
-					"default-logins",
-					"exposed-panels",
-					"exposures",
-					"dns",
-					"takeovers"
+				"tag_exclusion_list": [
+					"intrusive",
+					"dos",
+					"fuzz"
 				]
 			},
 			"required_vars": null,
@@ -433,17 +314,6 @@
 			"name": "vulcan-retirejs",
 			"description": "Check web pages for vulnerable JavaScript libraries",
 			"image": "vulcansec/vulcan-retirejs:edge",
-			"timeout": 0,
-			"required_vars": null,
-			"assets": [
-				"Hostname",
-				"WebAddress"
-			]
-		},
-		{
-			"name": "vulcan-s3-takeover",
-			"description": "Checks if an asset is vulnerable to S3 subdomain takeover",
-			"image": "vulcansec/vulcan-s3-takeover:edge",
 			"timeout": 0,
 			"required_vars": null,
 			"assets": [
