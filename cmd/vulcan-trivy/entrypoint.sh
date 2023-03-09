@@ -5,7 +5,8 @@
 set -e
 
 # untar trivy cache file
-tar xf trivy_cache.tgz
+tar xvf /root/cache.tgz -C /root
+rm /root/cache.tgz
 
 # run check
 ./vulcan-trivy "$@"
