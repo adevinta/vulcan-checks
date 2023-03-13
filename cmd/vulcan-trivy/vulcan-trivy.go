@@ -182,7 +182,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	trivyArgs := []string{}
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
-		trivyArgs = append(trivyArgs, "--skip-db-update", "--skip-java-db-update")
+		trivyArgs = append(trivyArgs, "--skip-db-update") // "--skip-java-db-update"
 	}
 	if opt.OfflineScan {
 		trivyArgs = append(trivyArgs, "--offline-scan")

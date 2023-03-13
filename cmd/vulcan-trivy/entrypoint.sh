@@ -4,9 +4,7 @@
 
 set -e
 
-# untar trivy cache file
-tar xvf /root/cache.tgz -C /root
-rm /root/cache.tgz
+find /root/.cache/ -name "*.gz" -exec gunzip {} \;
 
 # run check
 ./vulcan-trivy "$@"

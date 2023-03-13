@@ -6,9 +6,8 @@ FROM aquasec/trivy:0.38.1
 RUN apk add rpm
 
 RUN trivy --quiet image --download-db-only && \
-    trivy --quiet image --download-java-db-only && \
-    tar cvzf /root/cache.tgz -C /root .cache && \
-    rm -rf /root/.cache
+#    trivy --quiet image --download-java-db-only && \
+    find /root/.cache -name "*.db" -print -exec gzip {} \;
 
 WORKDIR /
 
