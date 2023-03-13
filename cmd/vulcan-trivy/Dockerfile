@@ -1,12 +1,12 @@
 # Copyright 2020 Adevinta
 
-FROM aquasec/trivy:0.38.1
+FROM aquasec/trivy:0.38.2
 
 # Required for scanning RHEL/CentOS images
 RUN apk add rpm
 
 RUN trivy --quiet image --download-db-only && \
-#    trivy --quiet image --download-java-db-only && \
+    trivy --quiet image --download-java-db-only && \
     find /root/.cache -name "*.db" -print -exec gzip {} \;
 
 WORKDIR /
