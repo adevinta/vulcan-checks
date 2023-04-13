@@ -3,12 +3,10 @@ module github.com/adevinta/vulcan-checks
 go 1.19
 
 require (
-	github.com/FiloSottile/CVE-2016-2107 v0.0.0-20160513191821-17e9b6082f41
 	github.com/FiloSottile/Heartbleed v0.2.1-0.20150408030656-4a3332ca1dc0
 	github.com/Masterminds/semver/v3 v3.1.0
-	github.com/adevinta/gozuul v0.0.0-20210319091150-d32db4978cf4
 	github.com/adevinta/restuss v1.1.0
-	github.com/adevinta/vulcan-check-sdk v1.0.2
+	github.com/adevinta/vulcan-check-sdk v1.0.3
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.0.0
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
@@ -26,7 +24,6 @@ require (
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
 	golang.org/x/net v0.6.0
-	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -44,7 +41,6 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
