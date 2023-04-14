@@ -23,7 +23,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
-	golang.org/x/net v0.6.0
+	golang.org/x/net v0.7.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0
 )
