@@ -31,6 +31,7 @@ log_msg() {
 
 PLATFORMS=${PLATFORMS:-"linux/arm64 linux/amd64"}
 BRANCH=${TRAVIS_BRANCH:-$(git_branch .)}
+BRANCH=${BRANCH//\//-}   # Replace / with - for branch names such as dependabot generated ones
 
 IMAGE_TAGS=()
 CACHE_TAGS=(edge)
