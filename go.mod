@@ -8,11 +8,11 @@ require (
 	github.com/adevinta/restuss v1.1.0
 	github.com/adevinta/vulcan-check-sdk v1.0.4
 	github.com/adevinta/vulcan-report v1.0.0
-	github.com/adevinta/vulcan-types v1.0.0
+	github.com/adevinta/vulcan-types v1.0.1
 	github.com/apuigsech/seekret v0.0.0-20191114110023-80f5fc8b8678
 	github.com/apuigsech/seekret-source-dir v0.0.0-20161101151956-464d81254a35
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.44.243
+	github.com/aws/aws-sdk-go v1.44.244
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-version v1.2.0
