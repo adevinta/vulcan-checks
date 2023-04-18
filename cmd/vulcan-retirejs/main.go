@@ -40,7 +40,6 @@ var (
 	retireArgs = []string{
 		"retire",
 		"--exitwith", "0",
-		"--js",
 		"--outputformat", "json",
 		"--jspath", jsPath,
 		"--jsrepo", "jsrepository.json",
