@@ -2,7 +2,7 @@
 
 FROM node:alpine
 RUN apk add --no-cache ca-certificates
-RUN yarn global add retire
+RUN npm install -g retire
 
 # Execute in /app to prevent retire to walk trough / and fail.
 WORKDIR /app   
