@@ -40,7 +40,6 @@ var (
 	retireArgs = []string{
 		"retire",
 		"--exitwith", "0",
-		"--js",
 		"--outputformat", "json",
 		"--jspath", jsPath,
 		"--jsrepo", "jsrepository.json",
@@ -104,12 +103,14 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 }
 
 func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, error) {
-	if args == nil || len(args) == 0 {
+	if len(args) == 0 {
 		args = retireArgs
 	}
 	var report RetireJsReport
 	_, err := command.ExecuteAndParseJSON(ctx, logger, &report, args[0], args[1:]...)
-
+	if perr, ok := (err).(*command.ParseError); ok {
+		logger.Errorf("errOutput:%s", perr.ProcessErrOutput)
+	}
 	return report.Data, err
 }
 
@@ -124,7 +125,7 @@ func addVulnsToState(state checkstate.State, r []RetireJsFileResult) {
 				Description: "Vulnerabilities in dependencies may impact in the security of your program. For that reason " +
 					"it's important to check for issues not only in your code but in the 3rd party code you are using as a dependency.",
 				Recommendations: []string{
-					fmt.Sprintf("Check if there is an update available for the affected resource."),
+					"Check if there is an update available for the affected resource.",
 					"Additional vulnerability information can be found in the links in the resources table.",
 				},
 				References:       []string{"https://portswigger.net/kb/issues/00500080_vulnerable-javascript-dependency"},
