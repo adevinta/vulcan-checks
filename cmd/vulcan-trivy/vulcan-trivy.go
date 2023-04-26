@@ -200,7 +200,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Warnf("No checks enabled for DockerImage, falling to scan only vuln")
 			sc = "vuln"
 		}
-		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
+		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
 
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
@@ -294,7 +294,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Warnf("No checks enabled for GitRepository")
 			return nil
 		}
-		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
+		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
 
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
@@ -338,7 +338,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				CWEID:         540,
 				Score:         8.9,
 				ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
-				Labels:        []string{"issue"},
+				Labels:        []string{"issue", "secret"},
 				Recommendations: []string{
 					"Completely remove the secrets from the repository as explained in the references.",
 					"Encrypt the secrets using a tool like AWS Secrets Manager or Vault.",
