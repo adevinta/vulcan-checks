@@ -296,6 +296,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
 
+		// Increase default (5m) trivy command timeout.
+		trivyArgs = append(trivyArgs, []string{"--timeout", "10m"}...)
+
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
