@@ -1,6 +1,6 @@
 # Copyright 2020 Adevinta
 
-FROM aquasec/trivy:0.38.2
+FROM aquasec/trivy:0.40.0
 
 # Required for scanning RHEL/CentOS images
 RUN apk add rpm
