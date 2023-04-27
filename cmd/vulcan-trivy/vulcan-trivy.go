@@ -63,6 +63,8 @@ type options struct {
 	Branch        string `json:"branch"`
 	GitChecks     checks `json:"git_checks"`
 	ImageChecks   checks `json:"image_checks"`
+
+	DisableCustomSecretConfig bool `json:"disable_custom_secret_config"`
 }
 
 // TODO: Replace with "github.com/aquasecurity/trivy/pkg/types"
@@ -295,6 +297,11 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return nil
 		}
 		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
+
+		// Define custom secret config when scanning secrets.
+		if opt.GitChecks.Secret && !opt.DisableCustomSecretConfig {
+			trivyArgs = append(trivyArgs, []string{"--secret-config", "secret.yaml"}...)
+		}
 
 		// Increase default (5m) trivy command timeout.
 		trivyArgs = append(trivyArgs, []string{"--timeout", "10m"}...)

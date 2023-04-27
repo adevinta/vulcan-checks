@@ -18,4 +18,5 @@ COPY --from=dependency_builder /usr/local/bin/trivy trivy_cache.tgz /
 ARG TARGETOS TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-trivy /
 COPY entrypoint.sh /
+COPY config/secret.yaml /
 CMD ["/entrypoint.sh"]
