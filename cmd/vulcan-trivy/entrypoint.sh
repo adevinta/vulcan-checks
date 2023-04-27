@@ -4,7 +4,9 @@
 
 set -e
 
-find /root/.cache/ -name "*.gz" -exec gunzip {} \;
+if [ -d /root/.cache ]; then
+    find /root/.cache/ -name "*.gz" -exec gunzip {} \;
+fi
 
 # run check
 ./vulcan-trivy "$@"
