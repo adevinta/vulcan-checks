@@ -343,15 +343,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			}
 
 			vuln = report.Vulnerability{
-				Summary:       "Secret Leaked in Git Repository",
+				Summary:       "Secret leaked in Git Repository",
 				Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 				CWEID:         540,
 				Score:         8.9,
 				ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
-				Labels:        []string{"issue"},
+				Labels:        []string{"issue", "secret"},
 				Recommendations: []string{
 					"Completely remove the secrets from the repository as explained in the references.",
-					"Encrypt the secrets using a tool like AWS Secrets Manager or Vault.",
+					"It is recommended to utilize a tool such as AWS Secrets Manager or Vault, or follow the guidance provided by your CI/CD provider, to securely store confidential information.",
 				},
 				References: []string{
 					"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
