@@ -343,7 +343,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			}
 
 			vuln = report.Vulnerability{
-				Summary:       "Secret leaked in Git Repository",
+				Summary:       "Secret Leaked In Git Repository",
 				Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 				CWEID:         540,
 				Score:         8.9,
