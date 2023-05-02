@@ -5,15 +5,20 @@ Copyright 2020 Adevinta
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -52,6 +57,7 @@ type checks struct {
 	Vuln   bool `json:"vuln"`
 	Secret bool `json:"secret"`
 	Config bool `json:"config"`
+	SBOM   bool `json:"SBOM"`
 }
 
 type options struct {
@@ -194,6 +200,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		trivyArgs = append(trivyArgs, []string{"--file-patterns", fmt.Sprintf(`"%s"`, p)}...)
 	}
 
+	deptrackUrl := os.Getenv("DEPTRACK_URL")
+	deptrackApiKey := os.Getenv("DEPTRACK_APIKEY")
+
 	if strings.Contains(assetType, "DockerImage") {
 		sc := checksToParam(opt.ImageChecks)
 		if sc == "" {
@@ -284,7 +293,30 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Errorf("processing image secret results: %+v", err)
 		}
 
-		return processMisconfigs(results.Results, target, "", state)
+		if err := processMisconfigs(results.Results, target, "", state); err != nil {
+			logger.Errorf("processing image configs results: %+v", err)
+		}
+
+		if opt.ImageChecks.SBOM {
+
+			if deptrackUrl == "" || deptrackApiKey == "" {
+				return nil
+			}
+
+			fileName, err := execTrivyCycloneDX(opt, "image", append(trivyArgs, target))
+			if err != nil {
+				return err
+			}
+
+			arr := strings.Split(target, ":")
+			tag := ""
+			if len(arr) == 2 {
+				tag = arr[1]
+			}
+			return uploadSBOM(deptrackUrl, deptrackApiKey, fileName, arr[0], tag)
+		}
+		return nil
+
 	}
 
 	if assetType == "GitRepository" {
@@ -351,8 +383,25 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				logger.Errorf("processing fs results: %+v", err)
 			}
 		}
+		if err := processMisconfigs(results.Results, target, branchName, state); err != nil {
+			logger.Errorf("processing fs misconfigs: %+v", err)
+		}
 
-		return processMisconfigs(results.Results, target, branchName, state)
+		if opt.GitChecks.SBOM {
+
+			if deptrackUrl == "" || deptrackApiKey == "" {
+				return nil
+			}
+
+			fileName, err := execTrivyCycloneDX(opt, "fs", append(trivyArgs, repoPath))
+			if err != nil {
+				return err
+			}
+
+			return uploadSBOM(deptrackUrl, deptrackApiKey, fileName, target, branchName)
+		}
+
+		return nil
 	}
 
 	return fmt.Errorf("unknown assetType %s", assetType)
@@ -723,4 +772,83 @@ func cve2num(cve string) int {
 		return year*1000000 + id
 	}
 	return 0
+}
+
+func uploadSBOM(baseUrl string, apiKey string, fileName string, project, version string) error {
+	file, _ := os.Open(fileName)
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, _ := writer.CreateFormFile("bom", filepath.Base(file.Name()))
+	io.Copy(part, file)
+	part, _ = writer.CreateFormField("projectName")
+	part.Write([]byte(project))
+	part, _ = writer.CreateFormField("projectVersion")
+	part.Write([]byte(version))
+	part, _ = writer.CreateFormField("autoCreate")
+	part.Write([]byte("true"))
+	writer.Close()
+
+	url := fmt.Sprintf("%s/api/v1/bom", baseUrl)
+	r, _ := http.NewRequest("POST", url, body)
+	r.Header.Add("Content-Type", writer.FormDataContentType())
+	r.Header.Add("X-API-Key", apiKey)
+	client := &http.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		logger.Errorf("deptrack url:%s status:%d", url, resp.StatusCode)
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error(err)
+	}
+	logger.Infof("deptrack resp: %s", string(b))
+	return nil
+}
+
+func execTrivyCycloneDX(opt options, action string, actionArgs []string) (string, error) {
+	// Build trivy command with arguments.
+	trivyCmd := "./trivy"
+	trivyArgs := []string{
+		action,
+		"-f", "cyclonedx",
+		"-o", reportOutputFile,
+	}
+	// Append the custom params.
+	trivyArgs = append(trivyArgs, actionArgs...)
+
+	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
+
+	err := retry.Do(
+		func() error {
+			cmd := exec.Command(trivyCmd, trivyArgs...)
+			cmdOutput, err := cmd.CombinedOutput()
+			if err != nil {
+				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
+				return errors.New("trivy command execution failed")
+			}
+			logger.Infof("trivy command execution completed successfully")
+			return nil
+		},
+		retry.Attempts(3),
+		retry.DelayType(retry.RandomDelay),
+		retry.MaxJitter(5*time.Second),
+	)
+	if err != nil {
+		logger.Errorf("retry exec.Command() failed with error: %s\n", err)
+		return "", errors.New("trivy command execution failed")
+	}
+
+	_, err = os.ReadFile(reportOutputFile)
+	if err != nil {
+		logger.Errorf("trivy report output file read failed with error: %s\n", err)
+		return "", errors.New("trivy report output file read failed")
+	}
+
+	return reportOutputFile, nil
 }
