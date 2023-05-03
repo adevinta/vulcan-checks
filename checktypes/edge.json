@@ -420,14 +420,15 @@
 			"name": "vulcan-trivy",
 			"description": "Scan docker images and Git repositories using aquasec/trivy",
 			"image": "vulcansec/vulcan-trivy:edge",
-			"timeout": 300,
+			"timeout": 900,
 			"options": {
 				"branch": "",
 				"depth": 1,
+				"disable_custom_secret_config": false,
 				"git_checks": {
 					"config": false,
-					"secret": false,
-					"vuln": true
+					"secret": true,
+					"vuln": false
 				},
 				"image_checks": {
 					"config": false,
@@ -438,10 +439,13 @@
 			"required_vars": [
 				"REGISTRY_DOMAIN",
 				"REGISTRY_USERNAME",
-				"REGISTRY_PASSWORD"
+				"REGISTRY_PASSWORD",
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
 			],
 			"assets": [
-				"DockerImage"
+				"DockerImage",
+				"GitRepository"
 			]
 		},
 		{
