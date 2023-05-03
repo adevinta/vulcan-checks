@@ -1,23 +1,24 @@
 Description = "Scan docker images and Git repositories using aquasec/trivy"
-Timeout = 300
+Timeout = 900
 AssetTypes = ["DockerImage", 
-    # "GitRepository"
+    "GitRepository"
 ]
 RequiredVars = [
     "REGISTRY_DOMAIN", "REGISTRY_USERNAME", "REGISTRY_PASSWORD", 
-    # "GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"
+    "GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"
 ]
 Options = """{
     "depth": 1,
     "branch":"",
     "git_checks": {
-        "vuln": true,
-        "secret": false,
+        "vuln": false,
+        "secret": true,
         "config": false
     },
     "image_checks": {
         "vuln": true,
         "secret": false,
         "config": false
-    }
+    },
+    "disable_custom_secret_config": false
 }"""

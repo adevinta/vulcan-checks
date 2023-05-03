@@ -21,5 +21,6 @@ AssetType = "DockerImage"
 #         "vuln": true,
 #         "secret": false,
 #         "config": false
-#     }
+#     },
+#     "disable_custom_secret_config": false
 # }"""
