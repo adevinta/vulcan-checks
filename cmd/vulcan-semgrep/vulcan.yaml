@@ -1,0 +1,4 @@
+checks:
+  - type: vulcan-semgrep
+    assetType: GitRepository
+    target: .

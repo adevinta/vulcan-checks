@@ -9,7 +9,10 @@ env:
   - PLATFORMS="linux/amd64 linux/arm64"
   - ARM64_EXCLUDE="(prowler|semgrep|zap)"   # Regex with the check names to exclude from arm64 build
 go_import_path: github.com/adevinta/vulcan-checks
-before_deploy: _scripts/setup_buildx.sh
+before_deploy:
+  - _scripts/setup_buildx.sh
+  - go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}"
+  - go install github.com/adevinta/vulcan-local@latest
 deploy:
   - provider: script
     script: bash release.sh

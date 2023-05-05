@@ -1,0 +1,7 @@
+checks:
+  - type: vulcan-trivy
+    assetType: DockerImage
+    target: docker.io/alpine:latest
+  - type: vulcan-trivy
+    assetType: GitRepository
+    target: .

@@ -84,6 +84,11 @@ docker run --rm -it --privileged multiarch/qemu-user-static --reset -p yes
 docker buildx create --name multiarch --driver docker-container --use --bootstrap
 log_msg "Created buildx"
 
+# Generate a checktypes for the current tag.
+vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag "${IMAGE_TAGS[0]}" -output checktypes.json cmd/
+log_msg "Generated checktypes.json file."
+jq < checktypes.json '.checktypes[].image' -r
+
 BUILDX_ARGS=()
 BUILDX_ARGS+=("--label" "org.opencontainers.image.revision=$(git rev-parse --short HEAD)")
 BUILDX_ARGS+=("--label" "org.opencontainers.image.ref=https://github.com/adevinta/vulcan-checks")
@@ -126,6 +131,25 @@ for check in "${CHECKS[@]}"; do
         "cmd/$check" --push
 
     log_msg "Builded image $check:[${IMAGE_TAGS[*]}]"
+
+    if [ -f "cmd/$check/vulcan.yaml" ]; then
+        log_msg "Testing image $check"
+        vulcan-local -i "$check" -c "cmd/$check/vulcan.yaml" -s CRITICAL -checktypes checktypes.json -l DEBUG -r - 2> error.log 1> r.json || true
+        STATUS=$(jq < r.json -r '.[].status' | sort | uniq)
+        if [[ $STATUS != "FINISHED" ]]; then
+            log_msg "Testing results $check $STATUS"
+            log_msg "Report:"
+            jq < r.json
+            log_msg "Errors:"
+            cat error.log
+            log_msg "Config:"
+            cat "cmd/$check/vulcan.yaml"
+            log_msg "Checktype definition:"
+            jq < checktypes.json '.checktypes[] | select(.name == "'"$check"'")'
+            exit 1
+        fi
+    fi
+
 done
 
 docker buildx rm multiarch
