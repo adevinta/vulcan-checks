@@ -374,7 +374,7 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 	trivyArgs := []string{
 		action,
 		"-f", "json",
-		"-oo", reportOutputFile,
+		"-o", reportOutputFile,
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
