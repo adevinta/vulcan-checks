@@ -1,0 +1,9 @@
+checks:
+  - type: vulcan-nuclei
+    assetType: Hostname
+    target: example.com
+    options:
+      tag_inclusion_list:
+        - smtp
+      severities:
+        - critical
