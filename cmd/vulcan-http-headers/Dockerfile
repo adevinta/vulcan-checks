@@ -1,20 +1,18 @@
 # Copyright 2019 Adevinta
 
-FROM python:3.11-slim
+FROM python:3.9-alpine
 
 COPY setup.py /
 
 WORKDIR /opt/http-observatory
 
-RUN apt update && \
-    apt install -y --fix-missing build-essential git && \
+RUN apk --no-cache add --virtual mydeps git build-base linux-headers && \
     git clone https://github.com/mozilla/http-observatory . && \
     git reset --hard 6ac246ad72d691fd2d0ac24b8ca8549631d87f7b && \
     mv /setup.py . && \
-    pip3 install --upgrade -r httpobs/requirements.txt -r httpobs/scanner/requirements.txt . && \
-    apt autoremove -y build-essential git && \
+    pip3 install --no-cache-dir -r httpobs/requirements.txt -r httpobs/scanner/requirements.txt . && \
     rm -rf ./build && \
-    rm -rf /var/lib/apt/lists/*
+    apk del mydeps
 
 WORKDIR /
 
