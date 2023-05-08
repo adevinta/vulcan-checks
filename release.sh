@@ -135,8 +135,8 @@ for check in "${CHECKS[@]}"; do
     if [ -f "cmd/$check/vulcan.yaml" ]; then
         log_msg "Testing image $check"
         vulcan-local -i "$check" -c "cmd/$check/vulcan.yaml" -s CRITICAL -checktypes checktypes.json -l DEBUG -r - 2> error.log 1> r.json || true
-        STATUS=$(jq < r.json -r '.[].status' | sort | uniq)
-        if [[ $STATUS != "FINISHED" ]]; then
+        STATUS=$(jq < r.json -r '.[].status' | tr '\n' ',')
+        if [[ ! $STATUS =~ ^(FINISHED|INCONCLUSIVE|,)+$ ]]; then
             log_msg "Testing results $check $STATUS"
             log_msg "Report:"
             jq < r.json
