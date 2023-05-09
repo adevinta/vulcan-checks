@@ -322,23 +322,6 @@
 			]
 		},
 		{
-			"name": "vulcan-seekret",
-			"description": "Finds leaked secrets in a Git repository using Seekret",
-			"image": "vulcansec/vulcan-seekret:edge",
-			"timeout": 600,
-			"options": {
-				"branch": "",
-				"depth": 1
-			},
-			"required_vars": [
-				"GITHUB_ENTERPRISE_ENDPOINT",
-				"GITHUB_ENTERPRISE_TOKEN"
-			],
-			"assets": [
-				"GitRepository"
-			]
-		},
-		{
 			"name": "vulcan-semgrep",
 			"description": "Finds potential issues in source code from a Git repository using Semgrep",
 			"image": "vulcansec/vulcan-semgrep:edge",
