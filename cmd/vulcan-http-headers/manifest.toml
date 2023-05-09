@@ -1,3 +1,0 @@
-Description = "Analyzes the HTTP headers using Mozilla Observatory"
-Timeout = 700 # Expressed in seconds as an integer.
-AssetTypes = ["Hostname"]
