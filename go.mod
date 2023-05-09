@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.244
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/google/go-cmp v0.5.9
-	github.com/hashicorp/go-version v1.2.0
+	github.com/hashicorp/go-version v1.6.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
