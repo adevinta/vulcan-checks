@@ -1,6 +1,0 @@
-Description = "Finds leaked secrets in a Git repository using Seekret"
-Timeout = 600
-AssetTypes = ["GitRepository"]
-RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
-# if branch is empty it will use the reference served by the git server (usually master/main)
-Options = '{"depth": 1, "branch": ""}'
