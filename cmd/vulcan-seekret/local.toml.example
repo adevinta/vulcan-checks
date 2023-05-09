@@ -1,3 +1,0 @@
-[Check]
-Target = "https://github.com/adevinta/vulcan-checks"
-AssetType = "GitRepository"

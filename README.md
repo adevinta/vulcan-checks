@@ -30,7 +30,6 @@ Currently there's no vendoring provided for this project.
 * **vulcan-prowler** - Checks compliance against CIS AWS Foundations Benchmark
 * **vulcan-results-load-test** - Internal testing check, not for production
 * **vulcan-retirejs** - Checks for vulnerabilities in JS frontend dependencies
-* **vulcan-seekret** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
 * **vulcan-semgrep** - Runs [Semgrep](https://github.com/returntocorp/semgrep) scanner tool for detect security issues in code
 * **vulcan-sleep** - Internal testing check, not for production
 * **vulcan-smtp-open-relay** - Checks for exposed SMTP, and if they are open relay
