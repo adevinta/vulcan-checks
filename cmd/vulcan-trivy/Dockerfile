@@ -5,8 +5,10 @@ FROM aquasec/trivy:0.41.0
 # Required for scanning RHEL/CentOS images
 RUN apk add --no-cache rpm && \
     trivy --quiet image --download-db-only && \
-    trivy --quiet image --download-java-db-only && \
-    find /root/.cache -name "NOTHING*.db" -print -exec gzip {} \;
+    trivy --quiet image --download-java-db-only
+
+# Skip as it's time consuming to unzip and increases the size of the container (not the image)
+# RUN find /root/.cache -name "*.db" -print -exec gzip {} \;
 
 WORKDIR /
 
