@@ -5,8 +5,8 @@
 set -e
 
 if [ -d /root/.cache ]; then
-    find /root/.cache/ -name "*.gz" -exec gunzip {} \;
+    time find /root/.cache/ -name "*.gz" -print -exec gunzip {} \;
 fi
 
 # run check
-./vulcan-trivy "$@"
+exec ./vulcan-trivy "$@"
