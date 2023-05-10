@@ -182,7 +182,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	trivyArgs := []string{}
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
-		trivyArgs = append(trivyArgs, "--skip-update")
+		trivyArgs = append(trivyArgs, "--skip-db-update", "--skip-java-db-update")
 	}
 	if opt.OfflineScan {
 		trivyArgs = append(trivyArgs, "--offline-scan")
@@ -202,7 +202,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Warnf("No checks enabled for DockerImage, falling to scan only vuln")
 			sc = "vuln"
 		}
-		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
+		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
 
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
@@ -296,7 +296,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Warnf("No checks enabled for GitRepository")
 			return nil
 		}
-		trivyArgs = append(trivyArgs, []string{"--security-checks", sc}...)
+		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
 
 		// Define custom secret config when scanning secrets.
 		if opt.GitChecks.Secret && !opt.DisableCustomSecretConfig {
@@ -370,7 +370,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 func execTrivy(opt options, action string, actionArgs []string) (*results, error) {
 	// Build trivy command with arguments.
-	trivyCmd := "./trivy"
+	trivyCmd := "trivy"
 	trivyArgs := []string{
 		action,
 		"-f", "json",
