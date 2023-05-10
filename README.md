@@ -1,10 +1,13 @@
 # Vulcan Checks
+
 This repository holds the code for each Vulcan check's main binary.
 
 ## Vendoring
+
 Currently there's no vendoring provided for this project.
 
 ## Current list of [Checks](https://github.com/adevinta/vulcan-checks/tree/master/cmd)
+
 * **vulcan-aws-alerts** - Warns about CA issues in AWS RDS
 * **vulcan-aws-trusted-advisor** - Checks AWS Trusted Advisor for security findings
 * **vulcan-burp** - Runs a PortSwigger [Burp Enterprise](https://portswigger.net/burp/enterprise) scan
@@ -36,11 +39,12 @@ Currently there's no vendoring provided for this project.
 * **vulcan-spf** - Checks if a domain (asset with a SOA record) have valid DNS configuration for SPF
 * **vulcan-trivy** - Checks if a Docker image uses vulnerable packages or dependencies using Trivy
 * **vulcan-unclassified** - Example vulnerability to test the monitoring of unclassified vulnerabilities - not for production
-* **vulcan-vulners** - Runs https://vulners.com/api/v3/burp/software/
+* **vulcan-vulners** - Runs <https://vulners.com/api/v3/burp/software/>
 * **vulcan-wpscan** - Checks Wordpress sites for vulnerabilities using the open source wpscan utility
 * **vulcan-zap** - Checks for vulnerabilities in web applications using OWASP ZAP
 
 ## Removed Checks
+
 For future reference, this section contains links to the last working commits of checks that were removed.
 
 * **[vulcan-certinfo](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-certinfo)** - Extracts information about SSL/TLS certificates
@@ -54,7 +58,7 @@ For future reference, this section contains links to the last working commits of
 * **[vulcan-gozuul](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-gozuul)** - Checks if a Zuul Gateway is vulnerable to Remote Code Execution as specified in nflx-2016-003
 * **[vulcan-lucky](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-lucky)** - Checks if an TLS asset is vulnerable to LuckyMinus20 attack
 * **[vulcan-s3-takeover](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-s3-takeover)** - Checks for a vulnerability related to domain names pointing to a S3 static website when the S3 bucket has been deleted
-* **[vulcan-tls](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-tls)** - Analyzes TLS health of an asset
+* **[vulcan-tls](https://github.com/adevinta/vulcan-checks/tree/3dd31166286bfc876070b43c4dc5b443b4ddd94c/cmd/vulcan-tls)** - Analyzes TLS health of an asset
 
 ## Building and testing
 
@@ -71,7 +75,8 @@ The checks that are not self-contained, and instead rely on external binaries, c
 run it, feeding the check with the input from local.toml.
 
 Full example to build and test run one check:
-```
+
+```sh
 cd cmd/vulcan-drupal
 go build
 cp local.toml.example local.toml
@@ -79,7 +84,8 @@ cp local.toml.example local.toml
 ```
 
 If you are running go version 1.17 or later, you can easily use the build system project with `go run`:
-```
+
+```sh
 cd cmd/vulcan-drupal
 go run github.com/adevinta/vulcan-checks-bsys/cmd/vulcan-build-images@master -r ../vulcan-drupal
 ```

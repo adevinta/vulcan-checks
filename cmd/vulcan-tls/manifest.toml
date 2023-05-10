@@ -1,3 +1,0 @@
-Description = "Analyzes TLS health of an asset using Mozilla Observatory"
-Timeout= 700 # Expressed in milliseconds as an integer.
-AssetTypes = ["Hostname"]
