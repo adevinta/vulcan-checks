@@ -79,15 +79,20 @@ log_msg "Downloaded go mod"
 # Login into registry (authenticated pulls)
 dkr_login > /dev/null
 
-# see https://github.com/docker/buildx/issues/495#issuecomment-761562905
-docker run --rm -it --privileged multiarch/qemu-user-static --reset -p yes
-docker buildx create --name multiarch --driver docker-container --use --bootstrap
-log_msg "Created buildx"
+if ! docker buildx inspect multiarch; then
+    # see https://github.com/docker/buildx/issues/495#issuecomment-761562905
+    docker run --rm -it --privileged multiarch/qemu-user-static --reset -p yes
+    docker buildx create --name multiarch --driver docker-container --use --bootstrap
+    log_msg "Created buildx"
+fi
 
 # Generate a checktypes for the current tag.
-vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag "${IMAGE_TAGS[0]}" -output checktypes.json cmd/
-log_msg "Generated checktypes.json file."
-jq < checktypes.json '.checktypes[].image' -r
+TEST_TAG="${IMAGE_TAGS[0]}"
+
+# Generate a checktypes.json that could be used later on for testint with vulcan-local.
+vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag "$TEST_TAG" -output checktypes.json cmd/
+log_msg "Generated checktypes.json file with tags $TEST_TAG"
+export VULCAN_CHECKTYPES=./checktypes.json
 
 BUILDX_ARGS=()
 BUILDX_ARGS+=("--label" "org.opencontainers.image.revision=$(git rev-parse --short HEAD)")
@@ -112,16 +117,29 @@ for check in "${CHECKS[@]}"; do
     done
 
     BUILDX_CHECK_ARGS=()
+    for tag in "${CACHE_TAGS[@]}"; do
+        BUILDX_CHECK_ARGS+=("--cache-from" "type=registry,ref=$DKR_USERNAME/$check:$tag")
+    done
+
+    if [ -x "cmd/$check/test.sh" ]; then
+        log_msg "Builded test image $DKR_USERNAME/$check:$TEST_TAG"
+
+        # Build the image without pushing
+        docker buildx build "${BUILDX_CHECK_ARGS[@]}" \
+            --tag "$DKR_USERNAME/$check:$TEST_TAG" \
+            --platform="linux/amd64" \
+            "cmd/$check" --load
+
+        log_msg "Testingest image $DKR_USERNAME/$check:$TEST_TAG"
+        . "cmd/$check/test.sh" "$check"
+    fi
+
     for tag in "${IMAGE_TAGS[@]}"; do
         BUILDX_CHECK_ARGS+=("--tag" "$DKR_USERNAME/$check:$tag")
     done
     if [[ $ADD_TAG_CHECK == "true" ]]; then
         BUILDX_CHECK_ARGS+=("--tag" "$DKR_USERNAME/$check:$(get_tag_check "cmd/$check")")
     fi
-
-    for tag in "${CACHE_TAGS[@]}"; do
-        BUILDX_CHECK_ARGS+=("--cache-from" "type=registry,ref=$DKR_USERNAME/$check:$tag")
-    done
 
     docker buildx build "${BUILDX_ARGS[@]}" "${BUILDX_CHECK_ARGS[@]}" \
         --cache-to "type=inline" \
@@ -130,26 +148,7 @@ for check in "${CHECKS[@]}"; do
         --platform="${CHECK_PLATFORMS// /,}" \
         "cmd/$check" --push
 
-    log_msg "Builded image $check:[${IMAGE_TAGS[*]}]"
-
-    if [ -f "cmd/$check/vulcan.yaml" ]; then
-        log_msg "Testing image $check"
-        vulcan-local -i "$check" -c "cmd/$check/vulcan.yaml" -s CRITICAL -checktypes checktypes.json -l DEBUG -r - 2> error.log 1> r.json || true
-        STATUS=$(jq < r.json -r '.[].status' | tr '\n' ',')
-        if [[ ! $STATUS =~ ^(FINISHED|INCONCLUSIVE|,)+$ ]]; then
-            log_msg "Testing results $check $STATUS"
-            log_msg "Report:"
-            jq < r.json
-            log_msg "Errors:"
-            cat error.log
-            log_msg "Config:"
-            cat "cmd/$check/vulcan.yaml"
-            log_msg "Checktype definition:"
-            jq < checktypes.json '.checktypes[] | select(.name == "'"$check"'")'
-            exit 1
-        fi
-    fi
-
+    log_msg "Pushed image $check:[${IMAGE_TAGS[*]}]"
 done
 
 docker buildx rm multiarch

@@ -1,4 +1,0 @@
-checks:
-  - type: vulcan-retirejs
-    assetType: Hostname
-    target: example.com
