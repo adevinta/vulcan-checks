@@ -130,7 +130,7 @@ for check in "${CHECKS[@]}"; do
             --platform="linux/amd64" \
             "cmd/$check" --load
 
-        log_msg "Testingest image $DKR_USERNAME/$check:$TEST_TAG"
+        log_msg "Testing image $DKR_USERNAME/$check:$TEST_TAG"
         . "cmd/$check/test.sh" "$check"
     fi
 
