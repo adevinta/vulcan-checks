@@ -3,7 +3,7 @@
 # Copyright 2023 Adevinta
 
 ########################
-# Executes vulcan-local with the provided parameters and 
+# Executes vulcan-local with the provided parameters
 # Arguments: vulcan-local params except -r that it's managed internally
 # Exists 1 if not all check end with FINISHED status.
 vulcan_local_test() {
