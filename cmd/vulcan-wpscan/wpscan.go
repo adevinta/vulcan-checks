@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ const (
 	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
 	TargetResponding403  = "The target is responding with a 403"
 	TargetRedirectsTo    = "The URL supplied redirects to"
+
+	WPScanAPIStatusEndpoint = "https://wpscan.com/api/v3/status"
 )
 
 var (
@@ -34,7 +37,6 @@ var (
 	wpscanBaseParams  = []string{"-f", "json", "--disable-tls-checks", "--url"}
 	wpscanForceParams = []string{"--force", "--wp-content-dir", "wp-content"}
 	wpscanScopeParams = []string{"--scope"}
-	wpscanTokenParams = []string{"--api-token"}
 	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
 
 	// --ignore-main-redirect string matching list.
@@ -164,6 +166,33 @@ type Vulnerability struct {
 	} `json:"references"`
 }
 
+func logAPITokenStatus(token string, l *logrus.Entry) {
+	req, err := http.NewRequest("GET", WPScanAPIStatusEndpoint, nil)
+	if err != nil {
+		l.Warnf("unable to create the HTTP request")
+		return
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Token token="+token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		l.Warnf("unable to perform the HTTP request")
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		l.Warnf("unable to read the HTTP response body")
+		return
+	}
+
+	l.Infof("API status: %s", string(body))
+}
+
 // RunWpScan runs wpscan an returns a report with the result of the scan.
 func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (*WpScanReport, error) {
 	params := []string{rubyArgs, wpscanFile}
@@ -176,9 +205,6 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 	wpscanScopeParams = append(wpscanScopeParams, fmt.Sprintf("*.%s", target))
 	params = append(params, wpscanScopeParams...)
 
-	wpscanTokenParams = append(wpscanTokenParams, token)
-	params = append(params, wpscanTokenParams...)
-
 	wpscanBaseParams = append(wpscanBaseParams, url)
 	params = append(params, wpscanBaseParams...)
 
@@ -187,6 +213,7 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 	// Print the wpscan version used.
 	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
 	logger.Infof("wpscan version: %s", output)
+	logAPITokenStatus(token, logger)
 
 	return runWpScanCmd(ctx, logger, pathToRuby, params)
 }

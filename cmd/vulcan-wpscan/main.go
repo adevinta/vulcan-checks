@@ -47,6 +47,10 @@ func main() {
 		if token == "" {
 			return fmt.Errorf("missing Wordpress Vulnerability Database API token")
 		}
+		err = os.Setenv("WPSCAN_API_TOKEN", token)
+		if err != nil {
+			return fmt.Errorf("unable to set WPSCAN_API_TOKEN environment var")
+		}
 
 		url, ok := resolveTarget(target)
 		if !ok {
