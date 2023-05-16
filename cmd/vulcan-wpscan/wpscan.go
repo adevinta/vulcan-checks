@@ -20,6 +20,8 @@ import (
 
 const (
 	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
+	TargetResponding403  = "The target is responding with a 403"
+	TargetRedirectsTo    = "The URL supplied redirects to"
 )
 
 var (
@@ -220,7 +222,7 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	case 1, 2, 3:
 		return &WpScanReport{}, errors.New(report.Aborted)
 	case 4:
-		if strings.HasPrefix(report.Aborted, "The URL supplied redirects to") {
+		if strings.HasPrefix(report.Aborted, TargetRedirectsTo) {
 			addIgnoreMainRedirectParam := false
 			for _, s := range ignoreMainRedirect {
 				if strings.Contains(report.Aborted, s) {

@@ -55,12 +55,20 @@ func main() {
 		}
 
 		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
-		// If the target is not a WordPress site finish the check gracefully.
-		if err != nil && err.Error() == NotAWordPressMessage {
-			logger.Infof("%s", err)
-			return nil
-		}
 		if err != nil {
+			// If the target is not a WordPress site finish the check gracefully.
+			if strings.HasPrefix(err.Error(), NotAWordPressMessage) {
+				return nil
+			}
+			// Inconclusive scan due to WAF protection or authentication required.
+			if strings.HasPrefix(err.Error(), TargetResponding403) {
+				return checkstate.ErrAssetUnreachable
+			}
+			// Inconclusive scan due to target redirect.
+			if strings.HasPrefix(err.Error(), TargetRedirectsTo) {
+				return checkstate.ErrAssetUnreachable
+			}
+			// In any other case return the error and finish as failed.
 			return err
 		}
 
