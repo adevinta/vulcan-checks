@@ -43,8 +43,8 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		_, present := os.LookupEnv("WPVULNDB_API_TOKEN")
-		if !present {
+		token := os.Getenv("WPVULNDB_API_TOKEN")
+		if token == "" {
 			return fmt.Errorf("missing Wordpress Vulnerability Database API token")
 		}
 
@@ -54,7 +54,7 @@ func main() {
 			return nil
 		}
 
-		wpScanReport, err := RunWpScan(ctx, logger, target, url)
+		wpScanReport, err := RunWpScan(ctx, logger, target, url, token)
 		if err != nil {
 			// If the target is not a WordPress site finish the check gracefully.
 			if strings.HasPrefix(err.Error(), NotAWordPressMessage) {
