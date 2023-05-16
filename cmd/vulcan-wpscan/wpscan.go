@@ -34,7 +34,6 @@ var (
 	wpscanBaseParams  = []string{"-f", "json", "--disable-tls-checks", "--url"}
 	wpscanForceParams = []string{"--force", "--wp-content-dir", "wp-content"}
 	wpscanScopeParams = []string{"--scope"}
-	wpscanTokenParams = []string{"--api-token"}
 	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
 
 	// --ignore-main-redirect string matching list.
@@ -167,7 +166,7 @@ type Vulnerability struct {
 type RemoveSensitiveContentFormatter struct{}
 
 // RunWpScan runs wpscan an returns a report with the result of the scan.
-func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (*WpScanReport, error) {
+func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (*WpScanReport, error) {
 	params := []string{rubyArgs, wpscanFile}
 
 	resp, err := http.Get(url + "wp-content")
@@ -177,9 +176,6 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 
 	wpscanScopeParams = append(wpscanScopeParams, fmt.Sprintf("*.%s", target))
 	params = append(params, wpscanScopeParams...)
-
-	wpscanTokenParams = append(wpscanTokenParams, token)
-	params = append(params, wpscanTokenParams...)
 
 	wpscanBaseParams = append(wpscanBaseParams, url)
 	params = append(params, wpscanBaseParams...)
@@ -205,7 +201,6 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	// VULNERABLE       = 5 # The target has at least one vulnerability
 
 	report := &WpScanReport{}
-	logger.Logger.SetFormatter(new(RemoveSensitiveContentFormatter))
 	stdOut, exitCode, err := command.Execute(ctx, logger, pathToRuby, params...)
 	if err != nil {
 		logger.Errorf("unable to run the commad with the provided params: %s", err)
@@ -243,21 +238,4 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	default:
 		return &WpScanReport{}, errors.New("unexpected wpscan command exit code")
 	}
-}
-
-func (f *RemoveSensitiveContentFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	clone := entry.WithFields(logrus.Fields{})
-	val, ok := entry.Data["params"]
-	if ok {
-		params := val.([]string)
-		for i, k := range params {
-			if k == "--api-token" && len(params) > i+1 {
-				params[i+1] = "<redacted>"
-				clone.Data["params"] = params
-				break
-			}
-		}
-	}
-	formatter := &logrus.TextFormatter{}
-	return formatter.Format(clone)
 }
