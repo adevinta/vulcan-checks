@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -20,11 +19,9 @@ import (
 )
 
 const (
-	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
-	TargetResponding403  = "The target is responding with a 403"
-	TargetRedirectsTo    = "The URL supplied redirects to"
-
-	WPScanAPIStatusEndpoint = "https://wpscan.com/api/v3/status"
+	urlRedirects              = "The URL supplied redirects to"
+	targetResponding403       = "The target is responding with a 403"
+	remoteWebsiteNotWordPress = "The remote website is up, but does not seem to be running WordPress"
 )
 
 var (
@@ -166,35 +163,8 @@ type Vulnerability struct {
 	} `json:"references"`
 }
 
-func logAPITokenStatus(token string, l *logrus.Entry) {
-	req, err := http.NewRequest("GET", WPScanAPIStatusEndpoint, nil)
-	if err != nil {
-		l.Warnf("unable to create the HTTP request")
-		return
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Token token="+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		l.Warnf("unable to perform the HTTP request")
-		return
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		l.Warnf("unable to read the HTTP response body")
-		return
-	}
-
-	l.Infof("API status: %s", string(body))
-}
-
 // RunWpScan runs wpscan an returns a report with the result of the scan.
-func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (*WpScanReport, error) {
+func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (*WpScanReport, error) {
 	params := []string{rubyArgs, wpscanFile}
 
 	resp, err := http.Get(url + "wp-content")
@@ -213,7 +183,6 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 	// Print the wpscan version used.
 	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
 	logger.Infof("wpscan version: %s", output)
-	logAPITokenStatus(token, logger)
 
 	return runWpScanCmd(ctx, logger, pathToRuby, params)
 }
@@ -246,7 +215,7 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	case 1, 2, 3:
 		return &WpScanReport{}, errors.New(report.Aborted)
 	case 4:
-		if strings.HasPrefix(report.Aborted, TargetRedirectsTo) {
+		if strings.HasPrefix(report.Aborted, urlRedirects) {
 			addIgnoreMainRedirectParam := false
 			for _, s := range ignoreMainRedirect {
 				if strings.Contains(report.Aborted, s) {
