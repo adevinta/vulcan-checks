@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	NotAWordPressMessage = "The remote website is up, but does not seem to be running WordPress."
+	urlRedirects              = "The URL supplied redirects to"
+	targetResponding403       = "The target is responding with a 403"
+	remoteWebsiteNotWordPress = "The remote website is up, but does not seem to be running WordPress"
 )
 
 var (
@@ -32,7 +34,6 @@ var (
 	wpscanBaseParams  = []string{"-f", "json", "--disable-tls-checks", "--url"}
 	wpscanForceParams = []string{"--force", "--wp-content-dir", "wp-content"}
 	wpscanScopeParams = []string{"--scope"}
-	wpscanTokenParams = []string{"--api-token"}
 	wpscanUserAgent   = []string{"--user-agent", "Vulcan"}
 
 	// --ignore-main-redirect string matching list.
@@ -163,7 +164,7 @@ type Vulnerability struct {
 }
 
 // RunWpScan runs wpscan an returns a report with the result of the scan.
-func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token string) (*WpScanReport, error) {
+func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (*WpScanReport, error) {
 	params := []string{rubyArgs, wpscanFile}
 
 	resp, err := http.Get(url + "wp-content")
@@ -173,9 +174,6 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url, token str
 
 	wpscanScopeParams = append(wpscanScopeParams, fmt.Sprintf("*.%s", target))
 	params = append(params, wpscanScopeParams...)
-
-	wpscanTokenParams = append(wpscanTokenParams, token)
-	params = append(params, wpscanTokenParams...)
 
 	wpscanBaseParams = append(wpscanBaseParams, url)
 	params = append(params, wpscanBaseParams...)
@@ -217,7 +215,7 @@ func runWpScanCmd(ctx context.Context, logger *logrus.Entry, pathToRuby string, 
 	case 1, 2, 3:
 		return &WpScanReport{}, errors.New(report.Aborted)
 	case 4:
-		if strings.HasPrefix(report.Aborted, "The URL supplied redirects to") {
+		if strings.HasPrefix(report.Aborted, urlRedirects) {
 			addIgnoreMainRedirectParam := false
 			for _, s := range ignoreMainRedirect {
 				if strings.Contains(report.Aborted, s) {
