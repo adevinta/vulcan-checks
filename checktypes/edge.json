@@ -213,6 +213,16 @@
 			]
 		},
 		{
+			"name": "vulcan-http-headers",
+			"description": "Analyzes the HTTP headers using Mozilla Observatory",
+			"image": "vulcansec/vulcan-http-headers:edge",
+			"timeout": 700,
+			"required_vars": null,
+			"assets": [
+				"Hostname"
+			]
+		},
+		{
 			"name": "vulcan-ipv6",
 			"description": "Checks for IPv6 presence",
 			"image": "vulcansec/vulcan-ipv6:edge",
