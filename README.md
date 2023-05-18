@@ -24,6 +24,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-gitleaks** - Checks if a Git repository contains secrets like passwords, API tokens or private keys
 * **vulcan-heartbleed** - Checks if an asset is vulnerable to heartbleed vulnerability
 * **vulcan-host-discovery** - Performs a quick Nmap ping scan that identifies which hosts are up
+* **vulcan-http-headers** - Analyzes the security of a website based on its HTTP headers
 * **vulcan-ipv6** - Checks for IPv6 presence
 * **vulcan-masscan** - Checks if a host has any port opened by scanning the whole TCP port range using masscan
 * **vulcan-mx** - Looks for MX DNS Records on a given domain
@@ -55,7 +56,6 @@ For future reference, this section contains links to the last working commits of
 * **[vulcan-exposed-rdp](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-rdp)** - Checks if a Microsoft Remote Desktop service is exposed to the Internet
 * **[vulcan-exposed-varnish](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-exposed-varnish)** - Checks if an asset is a Web Cache, and also if it is a Varnish
 * **[vulcan-gozuul](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-gozuul)** - Checks if a Zuul Gateway is vulnerable to Remote Code Execution as specified in nflx-2016-003
-* **[vulcan-http-headers](https://github.com/adevinta/vulcan-checks/tree/bf74fb6a989d0de2882b33eff51fa231cdcc393d/cmd/vulcan-http-headers)** - Analyzes the security of a website based on its HTTP headers
 * **[vulcan-lucky](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-lucky)** - Checks if an TLS asset is vulnerable to LuckyMinus20 attack
 * **[vulcan-s3-takeover](https://github.com/adevinta/vulcan-checks/tree/3fb95a67d121a2993bd5db5eb4f7da0e57e31920/cmd/vulcan-s3-takeover)** - Checks for a vulnerability related to domain names pointing to a S3 static website when the S3 bucket has been deleted
 * **[vulcan-tls](https://github.com/adevinta/vulcan-checks/tree/3dd31166286bfc876070b43c4dc5b443b4ddd94c/cmd/vulcan-tls)** - Analyzes TLS health of an asset
