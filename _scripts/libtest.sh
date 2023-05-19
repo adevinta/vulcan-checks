@@ -5,7 +5,7 @@
 ########################
 # Executes vulcan-local with the provided parameters
 # Arguments: vulcan-local params except -r that it's managed internally
-# Exists 1 if not all check end with FINISHED status.
+# Exits 1 if not all check end with FINISHED status.
 vulcan_local_test() {
     echo "Testing with vulcan-local $*"
     local tmp
