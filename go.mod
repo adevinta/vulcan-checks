@@ -18,7 +18,7 @@ require (
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
 	github.com/satori/go.uuid v1.2.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
 	golang.org/x/net v0.9.0
