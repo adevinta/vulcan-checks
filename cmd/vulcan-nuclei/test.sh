@@ -11,4 +11,4 @@ function finish {
     docker rm -f "$CONTAINERID" || true
 }
 
-vulcan_local_test -i "$1" -t http://localhost -o '{"tag_inclusion_list":["ftp"]}'
+vulcan_local_test -i "$1" -t localhost -a Hostname -o '{"tag_inclusion_list":["ftp"]}'
