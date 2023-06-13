@@ -298,7 +298,7 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 		"-duc", // Disable automatic updates.
 		"-target", target,
 		"-c", "20",
-		"-json",
+		"-j",
 		"-silent",
 		"-no-meta",
 		"-H", userAgent,
