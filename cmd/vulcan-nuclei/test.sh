@@ -5,7 +5,7 @@ set -eu
 . _scripts/libtest.sh
 
 
-CONTAINERID=$(docker run -p 21:21 -d delfer/alpine-ftp-server)
+CONTAINERID=$(docker run -p 21:21 -d garethflowers/ftp-server:0.6.0)
 trap finish EXIT
 function finish {
     docker rm -f "$CONTAINERID" || true
