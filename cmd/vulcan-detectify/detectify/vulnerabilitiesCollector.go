@@ -86,8 +86,7 @@ func (detectifyClient *detectifyCheckAgent) listAssetVulnerabilities() ([]Vulner
 // Prepare reported Vulnerabilities schema to match Vulcan schema
 func (detectifyClient *detectifyCheckAgent) reportVulnerabilities(vulnerabilities []Vulnerability) error {
 	utils.PrintLogs(fmt.Sprintf("[reportVulnerabilities] Adding %s's Vulnerabilities [%d] ", detectifyClient.vulcanTarget, len(vulnerabilities)))
-	// @TODO : Needs to be filled with real data
-	defaultRecommendation := "This is a place holder for recommendation."
+	defaultRecommendation := ""
 
 	for _, vuln := range vulnerabilities {
 		vulnDetailsTextValue := ""
