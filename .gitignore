@@ -7,3 +7,4 @@ vulcan-checks.iml
 .vscode/
 build/
 linux/
+*~
