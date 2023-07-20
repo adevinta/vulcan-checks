@@ -44,6 +44,7 @@ var (
 		"--jspath", jsPath,
 		"--jsrepo", "jsrepository.json",
 	}
+	client *http.Client
 )
 
 func main() {
@@ -69,6 +70,15 @@ func main() {
 }
 
 func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client = &http.Client{
+		Transport: tr,
+		Timeout:   timeout,
+	}
+
 	target, err := resolveTarget(target, assetType)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
@@ -283,7 +293,7 @@ func findScriptFiles(target string) (int, error) {
 }
 
 func getTargetHTML(target string) (*html.Node, error) {
-	resp, err := http.Get(target)
+	resp, err := client.Get(target)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +376,7 @@ func writeFile(fileName string, contents string) error {
 func downloadFromUrl(url string) error {
 	filePath := getFilePath(url)
 	logger.Infof("Downloading %s to %s", url, filePath)
-	response, err := http.Get(url)
+	response, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("error downloading from url %s: %v", url, err)
 	}
@@ -387,14 +397,6 @@ func getFilePath(url string) string {
 
 // Follow redirects and return final URL.
 func resolveTarget(target, assetType string) (string, error) {
-	timeout := 5 * time.Second
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   timeout,
-	}
 	switch assetType {
 	case "WebAddress":
 		resp, err := client.Get(target)
