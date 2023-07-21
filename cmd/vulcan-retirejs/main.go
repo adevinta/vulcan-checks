@@ -376,13 +376,13 @@ func writeFile(fileName string, contents string) error {
 }
 
 func downloadFromUrl(URL string) error {
-	filename := ""
 	u, err := url.ParseRequestURI(URL)
-	if err == nil {
-		path := u.EscapedPath()
-		tokens := strings.Split(strings.Trim(path, "/"), "/")
-		filename = tokens[len(tokens)-1]
+	if err != nil {
+		return fmt.Errorf("error invalid url %s: %w", URL, err)
 	}
+	tokens := strings.Split(strings.Trim(u.EscapedPath(), "/"), "/")
+	filename := tokens[len(tokens)-1]
+
 	// NOTE: a random UUID is appended to avoid file path clashing with other
 	// previously downloaded scripts (e.g. '/a/jquery.min.js' and
 	// '/b/jquery.min.js').
