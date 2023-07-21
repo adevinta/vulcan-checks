@@ -47,6 +47,17 @@ var (
 	client *http.Client
 )
 
+func init() {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client = &http.Client{
+		Transport: tr,
+		Timeout:   timeout,
+	}
+}
+
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		if target == "" {
@@ -70,15 +81,6 @@ func main() {
 }
 
 func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
-	timeout := 5 * time.Second
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client = &http.Client{
-		Transport: tr,
-		Timeout:   timeout,
-	}
-
 	target, err := resolveTarget(target, assetType)
 	if err != nil {
 		// Don't fail the check if the target can not be accessed.
