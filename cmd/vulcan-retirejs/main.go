@@ -373,26 +373,27 @@ func writeFile(fileName string, contents string) error {
 	return nil
 }
 
-func downloadFromUrl(url string) error {
-	filePath := getFilePath(url)
-	logger.Infof("Downloading %s to %s", url, filePath)
-	response, err := client.Get(url)
+func downloadFromUrl(URL string) error {
+	filename := ""
+	u, err := url.ParseRequestURI(URL)
+	if err == nil {
+		path := u.EscapedPath()
+		tokens := strings.Split(strings.Trim(path, "/"), "/")
+		filename = tokens[len(tokens)-1]
+	}
+	// NOTE: a random UUID is appended to avoid file path clashing with other
+	// previously downloaded scripts (e.g. '/a/jquery.min.js' and
+	// '/b/jquery.min.js').
+	filePath := fmt.Sprintf("%s/%s_%s.js", jsPath, filename, uuid.NewV4().String())
+
+	logger.Infof("Downloading %s to %s", URL, filePath)
+	response, err := client.Get(URL)
 	if err != nil {
-		return fmt.Errorf("error downloading from url %s: %v", url, err)
+		return fmt.Errorf("error downloading from url %s: %v", URL, err)
 	}
 	defer response.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(response.Body)
 	return writeFile(filePath, string(bodyBytes))
-}
-
-func getFilePath(url string) string {
-	tokens := strings.Split(url, "/")
-	fileName := tokens[len(tokens)-1]
-	if fileName == "" {
-		uuid := uuid.NewV4()
-		fileName = uuid.String() + ".js"
-	}
-	return fmt.Sprint(jsPath, "/", fileName)
 }
 
 // Follow redirects and return final URL.
