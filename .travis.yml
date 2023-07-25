@@ -7,7 +7,7 @@ go:
 env:
   global:
   - PLATFORMS="linux/amd64 linux/arm64"
-  - ARM64_EXCLUDE="(prowler|semgrep|zap)"   # Regex with the check names to exclude from arm64 build
+  - ARM64_EXCLUDE="(prowler|zap)"   # Regex with the check names to exclude from arm64 build
 go_import_path: github.com/adevinta/vulcan-checks
 before_deploy:
   - _scripts/setup_buildx.sh
