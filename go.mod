@@ -21,7 +21,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/yhat/scrape v0.0.0-20161128144610-24b7890b0945
 	github.com/zaproxy/zap-api-go v0.0.0-20200806070313-98cebd2f39ae
-	golang.org/x/net v0.12.0
+	golang.org/x/net v0.13.0
 )
 
 require (
