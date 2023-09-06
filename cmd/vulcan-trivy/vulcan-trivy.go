@@ -208,8 +208,14 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			sc = "vuln"
 		}
 		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
-		if strings.Contains(sc, "secret") && opt.ScanImageMetadata {
-			trivyArgs = append(trivyArgs, []string{"--image-config-scanners", "secret"}...)
+
+		if opt.ImageChecks.Secret {
+			if !opt.DisableCustomSecretConfig {
+				trivyArgs = append(trivyArgs, []string{"--secret-config", "secret.yaml"}...)
+			}
+			if opt.ScanImageMetadata {
+				trivyArgs = append(trivyArgs, []string{"--image-config-scanners", "secret"}...)
+			}
 		}
 
 		// Load required env vars for docker registry authentication.
