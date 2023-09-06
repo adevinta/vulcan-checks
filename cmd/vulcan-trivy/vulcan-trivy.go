@@ -65,6 +65,11 @@ type options struct {
 	ImageChecks   checks `json:"image_checks"`
 
 	DisableCustomSecretConfig bool `json:"disable_custom_secret_config"`
+
+	// ScanImageMetadata enables scanning for secrets in the container image
+	// metadata. For further information check
+	// https://aquasecurity.github.io/trivy/v0.45/docs/target/container_image/
+	ScanImageMetadata bool `json:"scan_image_metadata"`
 }
 
 // TODO: Replace with "github.com/aquasecurity/trivy/pkg/types"
@@ -203,6 +208,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			sc = "vuln"
 		}
 		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
+		if strings.Contains(sc, "secret") && opt.ScanImageMetadata {
+			trivyArgs = append(trivyArgs, []string{"--image-config-scanners", "secret"}...)
+		}
 
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
