@@ -17,8 +17,9 @@ Options = """{
     },
     "image_checks": {
         "vuln": true,
-        "secret": false,
+        "secret": true,
         "config": false
     },
-    "disable_custom_secret_config": false
+    "disable_custom_secret_config": false,
+	"scan_image_metadata": true,
 }"""
