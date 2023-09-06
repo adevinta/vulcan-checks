@@ -41,7 +41,7 @@ var (
 	reportOutputFile = "report.json"
 	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
-	FilePatters = []string{
+	FilePatterns = []string{
 		// trivy only detect requirements.txt files
 		`pip:/requirements/[^/]+\.txt`,    // All the .txt files in a requirements directory.
 		`pip:[^/]*requirements[^/]*\.txt`, // All the files .txt that contains requirements
@@ -192,7 +192,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
 
-	for _, p := range FilePatters {
+	for _, p := range FilePatterns {
 		trivyArgs = append(trivyArgs, []string{"--file-patterns", fmt.Sprintf(`"%s"`, p)}...)
 	}
 
