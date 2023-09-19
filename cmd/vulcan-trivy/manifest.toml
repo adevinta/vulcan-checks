@@ -1,5 +1,5 @@
 Description = "Scan docker images and Git repositories using aquasec/trivy"
-Timeout = 900
+Timeout = 3600 # 1 hour
 AssetTypes = ["DockerImage",
     "GitRepository"
 ]
