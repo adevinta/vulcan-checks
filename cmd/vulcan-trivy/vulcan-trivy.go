@@ -33,6 +33,11 @@ import (
 const (
 	vulnCVETruncateLimit = 10
 	DefaultDepth         = 1
+	// trivyTimeout defines the value that will be passed to the trivy CLI via
+	// the `--timeout` flag. The value should be bigger than the check timeout
+	// defined in the manifest, to ensure the check will have a `TIMEOUT`
+	// status when the execution takes longer than expected.
+	trivyTimeout = `2h`
 )
 
 var (
@@ -185,6 +190,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	trivyArgs := []string{}
+
+	// Increase the default (5m) trivy command timeout.
+	trivyArgs = append(trivyArgs, []string{"--timeout", trivyTimeout}...)
+
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
 		trivyArgs = append(trivyArgs, "--skip-db-update", "--skip-java-db-update")
@@ -304,7 +313,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	if assetType == "GitRepository" {
-
 		sc := checksToParam(opt.GitChecks)
 		if sc == "" {
 			logger.Warnf("No checks enabled for GitRepository")
@@ -316,9 +324,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if opt.GitChecks.Secret && !opt.DisableCustomSecretConfig {
 			trivyArgs = append(trivyArgs, []string{"--secret-config", "secret.yaml"}...)
 		}
-
-		// Increase default (5m) trivy command timeout.
-		trivyArgs = append(trivyArgs, []string{"--timeout", "10m"}...)
 
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
