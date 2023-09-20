@@ -34,8 +34,8 @@ const (
 	vulnCVETruncateLimit = 10
 	DefaultDepth         = 1
 	// trivyTimeout defines the value that will be passed to the trivy CLI via
-	// the `--timeout` flag. The value should be bigger than the check timeout
-	// defined in the manifest, to ensure the check will have a `TIMEOUT`
+	// the '--timeout' flag. The value should be bigger than the check timeout
+	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
 	// status when the execution takes longer than expected.
 	trivyTimeout = "2h"
 )
