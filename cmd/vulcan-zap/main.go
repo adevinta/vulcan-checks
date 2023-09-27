@@ -82,6 +82,7 @@ func main() {
 				"/zap/zap.sh",
 				"-daemon", "-host", "127.0.0.1", "-port", "8080",
 				"-config", "api.disablekey=true",
+				"-config", "database.recoverylog=false", // Reduce disk usage
 			).Output()
 			logger.Debugf("Error executing ZAP daemon: %v", err)
 			logger.Debugf("Output of the ZAP daemon: %s", string(out))
