@@ -50,6 +50,7 @@ type options struct {
 	MaxSpiderDuration          int      `json:"max_spider_duration"`
 	MaxScanDuration            int      `json:"max_scan_duration"`
 	MaxRuleDuration            int      `json:"max_rule_duration"`
+	MaxAlertsPerRule           int      `json:"max_alerts_per_rule"`
 	OpenapiUrl                 string   `json:"openapi_url"`
 	OpenapiHost                string   `json:"openapi_host"`
 }
@@ -178,6 +179,16 @@ func main() {
 		_, err = client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
 		if err != nil {
 			return fmt.Errorf("error setting spider max duration: %w", err)
+		}
+
+		// Apply zap_tune optimizations.
+		_, err = client.Pscan().SetMaxAlertsPerRule(strconv.Itoa(opt.MaxAlertsPerRule))
+		if err != nil {
+			return fmt.Errorf("error setting max alerts per rule: %w", err)
+		}
+		_, err = client.Pscan().DisableAllTags()
+		if err != nil {
+			return fmt.Errorf("error disabling all tags: %w", err)
 		}
 
 		logger.Printf("Running spider %v levels deep, max duration %v, ...", opt.Depth, opt.MaxSpiderDuration)
