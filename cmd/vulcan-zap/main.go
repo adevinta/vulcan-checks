@@ -45,8 +45,8 @@ type options struct {
 	DisabledScanners           []string `json:"disabled_scanners"`
 	IgnoredFingerprintScanners []string `json:"ignored_fingerprint_scanners"`
 	MaxSpiderDuration          int      `json:"max_spider_duration"`
-	MaxScanDuration            int      `json:"max_scan_duration"`
-	MaxRuleDuration            int      `json:"max_rule_duration"`
+	MaxScanDuration            int      `json:"max_scan_duration"` // In minutes
+	MaxRuleDuration            int      `json:"max_rule_duration"` // In minutes
 	MaxAlertsPerRule           int      `json:"max_alerts_per_rule"`
 	OpenapiUrl                 string   `json:"openapi_url"`
 	OpenapiHost                string   `json:"openapi_host"`
