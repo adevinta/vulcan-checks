@@ -394,6 +394,9 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 		action,
 		"-f", "json",
 		"-o", reportOutputFile,
+		// Indicate Trivy CLI to output just errors to have a cleaner
+		// 'check.Report.Error'.
+		"--quiet",
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
@@ -405,13 +408,16 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
+	var inErr error
 	err := retry.Do(
 		func() error {
 			cmd := exec.Command(trivyCmd, trivyArgs...)
 			cmdOutput, err := cmd.CombinedOutput()
 			if err != nil {
-				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
-				return errors.New("trivy command execution failed")
+				// Each retry error is logged individually.
+				inErr = fmt.Errorf("exec.Command() failed with %w. Command output: %s\n", err, string(cmdOutput))
+				logger.WithError(errors.New("trivy command execution failed")).Error(inErr)
+				return inErr
 			}
 			logger.Infof("trivy command execution completed successfully")
 			return nil
@@ -421,20 +427,28 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 		retry.MaxJitter(5*time.Second),
 	)
 	if err != nil {
-		logger.Errorf("retry exec.Command() failed with error: %s\n", err)
-		return nil, errors.New("trivy command execution failed")
+		// To have a cleaner check.Report.Error value, if retry attempts are
+		// exceeded return just the last one.
+		if inErr != nil {
+			err = inErr
+		}
+		logger.WithError(errors.New("retry trivy command execution failed")).Error(err)
+		return nil, err
 	}
 
 	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
-		logger.Errorf("trivy report output file read failed with error: %s\n", err)
-		return nil, errors.New("trivy report output file read failed")
+		inErr := fmt.Errorf("trivy report output file read failed with error: %w", err)
+		logger.WithError(errors.New("trivy report output file read failed")).Error(err)
+		return nil, inErr
 	}
 
 	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
-		return nil, errors.New("unmarshal trivy output failed")
+		inErr := fmt.Errorf("unmarshal trivy output failed with error: %w", err)
+		logger.WithError(errors.New("unmarshal trivy output failed")).Error(err)
+		return nil, inErr
 	}
 	return &results, nil
 }
