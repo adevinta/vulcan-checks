@@ -1,7 +1,7 @@
 # Copyright 2022 Adevinta
 
 Description = "Scan web addresses with projectdiscovery/nuclei"
-AssetTypes = ["WebAddress", "Hostname"]
+AssetTypes = ["WebAddress", "Hostname", "IP"]
 Timeout = 1800 # 30 minutes
 Options = '{"tag_exclusion_list": ["intrusive", "dos", "fuzz"]}'
 
