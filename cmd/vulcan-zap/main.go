@@ -232,7 +232,7 @@ func main() {
 				v, ok := resp["status"]
 				if !ok {
 					// In this case if we can not get the status let's fail.
-					return fmt.Errorf("can not retrieve the status of the spider %v", resp)
+					return fmt.Errorf("cannot retrieve the status of the spider: %v", resp)
 				}
 				status, ok := v.(string)
 				if !ok {
@@ -509,11 +509,11 @@ func isPluginIgnoredForFingerprint(opt options, pluginID string) bool {
 func getStringAttribute(m map[string]any, name string) (string, error) {
 	v, ok := m[name]
 	if !ok {
-		return "", fmt.Errorf("error %s not found", name)
+		return "", fmt.Errorf("%s not found", name)
 	}
 	str, ok := v.(string)
 	if !ok {
-		return "", fmt.Errorf("error %s value [%v] is not a string", name, v)
+		return "", fmt.Errorf("%s value [%v] is not a string", name, v)
 	}
 	return str, nil
 }
