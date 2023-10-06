@@ -9,6 +9,7 @@ import "time"
 type Info struct {
 	Name           string                 `json:"name,omitempty"`
 	Description    string                 `json:"description,omitempty"`
+	Impact         string                 `json:"impact,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 	Reference      []string               `json:"reference,omitempty"`
 	Tags           []string               `json:"tags,omitempty"`

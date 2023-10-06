@@ -194,6 +194,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 			Summary:          v.Info.Name,
 			Description:      v.Info.Description,
 			Details:          generateDetails(target, v.Template),
+			ImpactDetails:    v.Info.Impact,
 			Score:            getScore(v.Info.Severity),
 			References:       v.Info.Reference,
 			Recommendations:  recommendations,
