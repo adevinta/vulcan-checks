@@ -18,7 +18,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	report "github.com/adevinta/vulcan-report"
 	"github.com/mcuadros/go-version"
@@ -26,8 +25,6 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
-
-	"github.com/avast/retry-go"
 )
 
 const (
@@ -408,33 +405,14 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
-	var inErr error
-	err := retry.Do(
-		func() error {
-			cmd := exec.Command(trivyCmd, trivyArgs...)
-			cmdOutput, err := cmd.CombinedOutput()
-			if err != nil {
-				// Each retry error is logged individually.
-				inErr = fmt.Errorf("exec.Command() failed with %w. Command output: %s\n", err, string(cmdOutput))
-				logger.WithError(errors.New("trivy command execution failed")).Error(inErr)
-				return inErr
-			}
-			logger.Infof("trivy command execution completed successfully")
-			return nil
-		},
-		retry.Attempts(3),
-		retry.DelayType(retry.RandomDelay),
-		retry.MaxJitter(5*time.Second),
-	)
+	cmd := exec.Command(trivyCmd, trivyArgs...)
+	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		// To have a cleaner check.Report.Error value, if retry attempts are
-		// exceeded return just the last one.
-		if inErr != nil {
-			err = inErr
-		}
-		logger.WithError(errors.New("retry trivy command execution failed")).Error(err)
-		return nil, err
+		inErr := fmt.Errorf("exec.Command() failed with %w. Command output: %s\n", err, string(cmdOutput))
+		logger.WithError(errors.New("trivy command execution failed")).Error(inErr)
+		return nil, inErr
 	}
+	logger.Infof("trivy command execution completed successfully")
 
 	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
