@@ -340,7 +340,7 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 	// Exclude selected tags.
 	if len(opt.TagExclusionList) > 0 {
 		etags := strings.Join(opt.TagExclusionList, ",")
-		logger.Infof("included tags: %s", etags)
+		logger.Infof("excluded tags: %s", etags)
 		etagsArg := []string{"-etags", etags}
 		nucleiArgs = append(nucleiArgs, etagsArg...)
 	}
