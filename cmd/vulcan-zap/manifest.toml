@@ -19,7 +19,6 @@ Options = """{
     "max_spider_duration": 0,
     "max_scan_duration": 540,
     "max_rule_duration": 0,
-    "max_alerts_per_rule": 10,
     "openapi_url": "",
     "openapi_host": ""
     }"""
