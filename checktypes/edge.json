@@ -470,7 +470,7 @@
 					"40018"
 				],
 				"max_rule_duration": 0,
-				"max_scan_duration": 0,
+				"max_scan_duration": 540,
 				"max_spider_duration": 0,
 				"min_score": 0,
 				"openapi_host": "",
