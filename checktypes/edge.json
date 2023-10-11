@@ -285,8 +285,9 @@
 			},
 			"required_vars": null,
 			"assets": [
-				"WebAddress",
-				"Hostname"
+				"Hostname",
+				"IP",
+				"WebAddress"
 			]
 		},
 		{
