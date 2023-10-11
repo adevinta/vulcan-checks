@@ -2,7 +2,7 @@
 
 [Check]
 Target = "https://example.com"
-AssetTypes = ["Hostname", "IP", "WebAddress"]
+AssetType = "WebAddress"
 # Available options example:
 # Options = """\
 #     {\
