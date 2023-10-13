@@ -1,0 +1,32 @@
+id: mysql-detect
+
+info:
+  name: Exposed MySQL database
+  author: adevinta
+  severity: medium
+  description: |
+    MySQL instance was detected and accessible from the public internet.
+  impact: |
+    An attacker may be able to remotely connect to the database service through the exposed port.
+    If no authentication is implemented, it might be possible to access stored data and, even if authentication is implemented, it may be possible to perform brute force login attempts to access such data.
+    An attacker can also attempt to remotely exploit any vulnerabilities present on the database service to obtain access to the server itself.
+  remediation: |
+    Restrict access to the database service port at the network level.
+  classification:
+    cwe-id: CWE-284
+  tags: network,mysql,db,detect
+
+tcp:
+  - inputs:
+      - data: "\n"
+
+    host:
+      - "{{Hostname}}"
+      - "{{Host}}:3306"
+
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "mysql"
+        case-insensitive: true
