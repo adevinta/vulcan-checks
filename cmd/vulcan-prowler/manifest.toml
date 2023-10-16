@@ -1,4 +1,4 @@
 Description = "Runs Prowler against an AWS account"
 AssetTypes = ["AWSAccount"]
-RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME"]
+RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME", "AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY"]
 Timeout = 3600 # 1 hour

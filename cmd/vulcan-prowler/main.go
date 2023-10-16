@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -220,24 +221,32 @@ func main() {
 		}
 
 		endpoint := os.Getenv(envEndpoint)
-		if endpoint == "" {
-			return fmt.Errorf("%s env var must have a non-empty value", envEndpoint)
-		}
-		role := os.Getenv(envRole)
+		if endpoint != "" {
+			role := os.Getenv(envRole)
 
-		logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
+			logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
 
-		isReachable, err := helpers.IsReachable(target, assetType,
-			helpers.NewAWSCreds(endpoint, role))
-		if err != nil {
-			logger.Warnf("Can not check asset reachability: %v", err)
-		}
-		if !isReachable {
-			return checkstate.ErrAssetUnreachable
-		}
+			isReachable, err := helpers.IsReachable(target, assetType,
+				helpers.NewAWSCreds(endpoint, role))
+			if err != nil {
+				logger.Warnf("Can not check asset reachability: %v", err)
+			}
+			if !isReachable {
+				return checkstate.ErrAssetUnreachable
+			}
 
-		if err := loadCredentials(endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
-			return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)
+			if err := loadCredentials(endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
+				return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)
+			}
+		} else {
+			logger.Infof("%s env var is empty - trying with provided credentials", envEndpoint)
+			name, err := accountInfo(credentials.NewEnvCredentials())
+			if err != nil {
+				return fmt.Errorf("unable to get account info using provided credentials: %w", err)
+			}
+			if !strings.Contains(target, name) {
+				return fmt.Errorf("provided credentials account mismatch %s vs %s", target, name)
+			}
 		}
 
 		alias, err := accountAlias(credentials.NewEnvCredentials())
@@ -505,7 +514,8 @@ func loadCredentials(url string, accountID, role string, sessionDuration int) er
 // accountAlias gets one of the current aliases for the account that the
 // credentials passed belong to.
 func accountAlias(creds *credentials.Credentials) (string, error) {
-	svc := iam.New(session.New(&aws.Config{Credentials: creds}))
+	sess, _ := session.NewSession(&aws.Config{Credentials: creds})
+	svc := iam.New(sess)
 	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
 	if err != nil {
 		return "", err
@@ -519,4 +529,16 @@ func accountAlias(creds *credentials.Credentials) (string, error) {
 		return "", errors.New("unexpected nil getting aliases for aws account")
 	}
 	return *a, nil
+}
+
+// accountAlias gets one of the current aliases for the account that the
+// credentials passed belong to.
+func accountInfo(creds *credentials.Credentials) (string, error) {
+	sess, _ := session.NewSession(&aws.Config{Credentials: creds})
+	sts := sts.New(sess)
+	ci, err := sts.GetCallerIdentity(nil)
+	if err != nil {
+		return "", err
+	}
+	return *ci.Account, nil
 }
