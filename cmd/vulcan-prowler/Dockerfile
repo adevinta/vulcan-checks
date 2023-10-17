@@ -1,12 +1,9 @@
 # Copyright 2020 Adevinta
 
-FROM toniblyx/prowler:2.12.1
+FROM toniblyx/prowler:3.10.0
 
 # Override entrypoint
 ENTRYPOINT ["/usr/bin/env"]
-
-# Copy CIS controls info file
-COPY cis_controls.json cis_controls.json
 
 # Install check
 ARG TARGETOS TARGETARCH
