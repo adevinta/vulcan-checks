@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -408,25 +407,19 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 	cmd := exec.Command(trivyCmd, trivyArgs...)
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		inErr := fmt.Errorf("exec.Command() failed with %w. Command output: %s\n", err, string(cmdOutput))
-		logger.WithError(errors.New("trivy command execution failed")).Error(inErr)
-		return nil, inErr
+		return nil, fmt.Errorf("trivy command execution failed: %w. Command output: %s", err, string(cmdOutput))
 	}
 	logger.Infof("trivy command execution completed successfully")
 
 	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
-		inErr := fmt.Errorf("trivy report output file read failed with error: %w", err)
-		logger.WithError(errors.New("trivy report output file read failed")).Error(err)
-		return nil, inErr
+		return nil, fmt.Errorf("trivy report output file read failed with error: %w", err)
 	}
 
 	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
-		inErr := fmt.Errorf("unmarshal trivy output failed with error: %w", err)
-		logger.WithError(errors.New("unmarshal trivy output failed")).Error(err)
-		return nil, inErr
+		return nil, fmt.Errorf("unmarshal trivy output failed with error: %w", err)
 	}
 	return &results, nil
 }
