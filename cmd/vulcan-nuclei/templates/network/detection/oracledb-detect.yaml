@@ -1,0 +1,32 @@
+id: oracledb-detect
+
+info:
+  name: Exposed OracleDB database
+  author: adevinta
+  severity: medium
+  description: |
+    OracleDB instance was detected and accessible from the public internet.
+  impact: |
+    An attacker may be able to remotely connect to the database service through the exposed port.
+    If no authentication is implemented, it might be possible to access stored data and, even if authentication is implemented, it may be possible to perform brute force login attempts to access such data.
+    An attacker can also attempt to remotely exploit any vulnerabilities present on the database service to obtain access to the server itself.
+  remediation: |
+    Restrict access to the database service port at the network level.
+  classification:
+    cwe-id: CWE-284
+  tags: network,oracledb,db,detect
+
+tcp:
+  - inputs:
+      # Source: https://github.com/praetorian-inc/fingerprintx/blob/main/pkg/plugins/services/oracledb/oracle.go#L191
+      - data: "00db000001000000013c012c000080007fff7f080000000100a1003a000004000000000000000000000000000000000000000000000000000000284445534352495054494f4e3d28434f4e4e4543545f444154413d28534552564943455f4e414d453d76756c63616e2d6e75636c656929284349443d2850524f4752414d3d76756c63616e2d6e75636c65692928484f53543d76756c63616e2d6e75636c65692928555345523d29292928414444524553533d2850524f544f434f4c3d7463702928484f53543d7461726765742928504f52543d31353231292929"
+        type: hex
+
+    host:
+      - "{{Hostname}}"
+    port: 1521
+
+    matchers:
+      - type: word
+        words:
+          - "(DESCRIPTION=(TMP=)(VSNNUM="

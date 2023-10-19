@@ -1,0 +1,63 @@
+id: mongodb-detect
+
+info:
+  name: Exposed MongoDB database
+  author: adevinta
+  severity: medium
+  description: |
+    MongoDB instance was detected and accessible from the public internet.
+  impact: |
+    An attacker may be able to remotely connect to the database service through the exposed port.
+    If no authentication is implemented, it might be possible to access stored data and, even if authentication is implemented, it may be possible to perform brute force login attempts to access such data.
+    An attacker can also attempt to remotely exploit any vulnerabilities present on the database service to obtain access to the server itself.
+  remediation: |
+    Restrict access to the database service port at the network level.
+  classification:
+    cwe-id: CWE-284
+  tags: network,mongodb,db,detect
+
+tcp:
+  - inputs:
+      - data: 3a000000a741000000000000d40700000000000061646d696e2e24636d640000000000ffffffff130000001069736d6173746572000100000000
+        type: hex
+
+    host:
+      - "{{Hostname}}"
+    port: 27017
+    read-size: 2048
+
+    matchers:
+      - type: word
+        words:
+          - "logicalSessionTimeout"
+          - "localTime"
+
+  - inputs:
+      - data: 3a000000a741000000000000d40700000000000061646d696e2e24636d640000000000ffffffff130000001069736d6173746572000100000000
+        type: hex
+
+    host:
+      - "{{Hostname}}"
+    port: 27018
+    read-size: 2048
+
+    matchers:
+      - type: word
+        words:
+          - "logicalSessionTimeout"
+          - "localTime"
+
+  - inputs:
+      - data: 3a000000a741000000000000d40700000000000061646d696e2e24636d640000000000ffffffff130000001069736d6173746572000100000000
+        type: hex
+
+    host:
+      - "{{Hostname}}"
+    port: 27019
+    read-size: 2048
+
+    matchers:
+      - type: word
+        words:
+          - "logicalSessionTimeout"
+          - "localTime"

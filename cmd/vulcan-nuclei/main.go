@@ -194,6 +194,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 			Summary:          v.Info.Name,
 			Description:      v.Info.Description,
 			Details:          generateDetails(target, v.Template),
+			ImpactDetails:    v.Info.Impact,
 			Score:            getScore(v.Info.Severity),
 			References:       v.Info.Reference,
 			Recommendations:  recommendations,
@@ -339,7 +340,7 @@ func buildNucleiScanCmdArgs(target string, opt options) []string {
 	// Exclude selected tags.
 	if len(opt.TagExclusionList) > 0 {
 		etags := strings.Join(opt.TagExclusionList, ",")
-		logger.Infof("included tags: %s", etags)
+		logger.Infof("excluded tags: %s", etags)
 		etagsArg := []string{"-etags", etags}
 		nucleiArgs = append(nucleiArgs, etagsArg...)
 	}
