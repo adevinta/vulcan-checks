@@ -1,10 +1,12 @@
 version: 2
 updates:
-- package-ecosystem: gomod
+- package-ecosystem: "gomod"
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: "daily"
+  ignore:
+  - dependency-name: "github.com/aws/aws-sdk-go"
+    update-types: ["version-update:semver-patch"]
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
@@ -27,6 +29,12 @@ updates:
     - "dependencies"
 - package-ecosystem: "docker"
   directory: cmd/vulcan-zap
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "github-actions"
+  directory: "/"
   schedule:
     interval: "weekly"
   labels:

@@ -1,0 +1,9 @@
+name: Approve dependabot PR
+
+on: pull_request
+
+jobs:
+  approve:
+    uses: adevinta/vulcan-cicd/.github/workflows/reusable-approve-dependabot-pr.yml@v1
+    secrets:
+      PAT: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN }}
