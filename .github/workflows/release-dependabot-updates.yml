@@ -1,0 +1,18 @@
+name: Release dependabot updates
+
+on:
+
+  # To generate a release on every update
+  # push:
+  #  branches: master
+
+  # To group dependabot updates in the same release
+  schedule:
+    - cron: '30 5 * * *'
+
+  # To allow manual execution
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: adevinta/vulcan-cicd/.github/workflows/reusable-release-dependabot-updates.yml@v1

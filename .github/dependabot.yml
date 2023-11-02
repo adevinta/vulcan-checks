@@ -1,32 +1,232 @@
 version: 2
 updates:
-- package-ecosystem: gomod
+- package-ecosystem: "gomod"
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: "daily"
+  ignore:
+  - dependency-name: "github.com/aws/aws-sdk-go"
+    update-types: ["version-update:semver-patch"]
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
-  directory: cmd/vulcan-nuclei
+  directory: "/cmd/vulcan-aws-alerts/"
   schedule:
     interval: "weekly"
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
-  directory: cmd/vulcan-semgrep
+  directory: "/cmd/vulcan-aws-trusted-advisor/"
   schedule:
     interval: "weekly"
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
-  directory: cmd/vulcan-trivy
+  directory: "/cmd/vulcan-blast-radius/"
   schedule:
     interval: "weekly"
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
-  directory: cmd/vulcan-zap
+  directory: "/cmd/vulcan-burp/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-dmarc/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-drupal/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-bgp/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-db/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-http/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-memcached/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-router-ports/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-services/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-exposed-ssh/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-github-alerts/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-gitleaks/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-heartbleed/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-host-discovery/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-http-headers/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-ipv6/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-masscan/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-mx/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-nessus/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-nuclei/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-prowler/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-results-load-test/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-retirejs/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-semgrep/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-sleep/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-smtp-open-relay/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-spf/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-tenable/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-trivy/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-unclassified/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-vulners/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-wpscan/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/cmd/vulcan-zap/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "github-actions"
+  directory: "/"
   schedule:
     interval: "weekly"
   labels:
