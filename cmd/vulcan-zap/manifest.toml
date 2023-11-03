@@ -7,6 +7,7 @@ Timeout = 36000 # 10 hours. Expressed in seconds as an integer.
 # 10108 - Reverse Tabnabbing - Not relevant for modern browser versions.
 # Ignored scanners for fingerprint:
 # 40018 - SQL Injection - Too many false positive results with variable resources.
+# 40024 - SQL Injection SQLite - Too many false positive results with variable resources.
 # Source: https://www.zaproxy.org/docs/alerts/
 # max_scan_duration and max_rule_duration are expressed minutes
 # max_scan_duration 9h to allow get results before the 36000 seconds 10h check timeout.
@@ -15,7 +16,7 @@ Options = """{
     "active": true, 
     "min_score": 0, 
     "disabled_scanners": ["10062", "10003", "10108"],
-    "ignored_fingerprint_scanners": ["40018"],
+    "ignored_fingerprint_scanners": ["40018", "40024"],
     "max_spider_duration": 0,
     "max_scan_duration": 540,
     "max_rule_duration": 0,
