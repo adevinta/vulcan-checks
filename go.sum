@@ -14,8 +14,8 @@ github.com/acomagu/bufpipe v1.0.4 h1:e3H4WUzM3npvo5uv95QuJM3cQspFNtFBzvJ2oNjKIDQ
 github.com/acomagu/bufpipe v1.0.4/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/adevinta/restuss v1.1.0 h1:ufdZrDEaPfY43xNvkughifyybEJ31mN8X5qUvnZp32A=
 github.com/adevinta/restuss v1.1.0/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
-github.com/adevinta/vulcan-check-sdk v1.2.0 h1:iqRHQs7RXgirM9Cu9MQHCnM3qwVKfmunlkLI9GFHmPs=
-github.com/adevinta/vulcan-check-sdk v1.2.0/go.mod h1:gGaCUnW6lCBYMYGn42fZSa0kmVRX/2Uo74C3vyDAG2I=
+github.com/adevinta/vulcan-check-sdk v1.2.1 h1:0X7WQp7m15BqffSZfoj5vncRwqk3QjSPbLby+r7t3T4=
+github.com/adevinta/vulcan-check-sdk v1.2.1/go.mod h1:gGaCUnW6lCBYMYGn42fZSa0kmVRX/2Uo74C3vyDAG2I=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
 github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
 github.com/adevinta/vulcan-types v1.2.5 h1:gYJI1OsQ+MQAX1tXBH3vMrBuDNmwMlAlRGX0zdXph+A=
