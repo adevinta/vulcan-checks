@@ -468,7 +468,8 @@
 					"10108"
 				],
 				"ignored_fingerprint_scanners": [
-					"40018"
+					"40018",
+					"40024"
 				],
 				"max_rule_duration": 0,
 				"max_scan_duration": 540,
