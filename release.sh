@@ -97,6 +97,8 @@ export VULCAN_CHECKTYPES=./checktypes.json
 BUILDX_ARGS=()
 BUILDX_ARGS+=("--label" "org.opencontainers.image.revision=$(git rev-parse --short HEAD)")
 BUILDX_ARGS+=("--label" "org.opencontainers.image.ref=https://github.com/adevinta/vulcan-checks")
+# See https://stackoverflow.com/questions/76499510/why-i-can-not-pull-the-docker-image-that-is-public-in-dockerhub
+BUILDX_ARGS+=("--provenance=false")
 
 # Iterate over all checks
 for check in "${CHECKS[@]}"; do
