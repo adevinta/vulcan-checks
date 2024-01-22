@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -112,7 +111,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	// Read the results file
-	byteValue, err := ioutil.ReadFile(reportOutputFile)
+	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
 		logger.Errorf("gitleaks report output file read failed with error: %s\n", err)
 		return errors.New("gitleaks report output file read failed")
