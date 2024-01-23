@@ -8,7 +8,7 @@ require (
 	github.com/adevinta/restuss v1.1.0
 	github.com/adevinta/vulcan-check-sdk v1.2.1
 	github.com/adevinta/vulcan-report v1.0.0
-	github.com/adevinta/vulcan-types v1.2.9
+	github.com/adevinta/vulcan-types v1.2.10
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.50.0
 	github.com/cenkalti/backoff/v4 v4.2.1
