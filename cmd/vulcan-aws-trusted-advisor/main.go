@@ -1,7 +1,6 @@
 /*
 Copyright 2019 Adevinta
 */
-
 package main
 
 import (
@@ -254,7 +253,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				continue
 			}
 
-			if summary.HasFlaggedResources != nil && *summary.HasFlaggedResources == false {
+			if summary.HasFlaggedResources != nil && !*summary.HasFlaggedResources {
 				continue
 			}
 
