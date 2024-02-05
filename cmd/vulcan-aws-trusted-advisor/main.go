@@ -403,7 +403,13 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 		m["role"] = role
 	}
 	jsonBody, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal assume role request body for account %s: %w", accountID, err)
+	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create request for the assume role service: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -411,12 +417,12 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 		logger.Errorf("cannot do request: %s", err.Error())
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint
 
 	assumeRoleResponse := AssumeRoleResponse{}
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Errorf("Cannot read request body %s", err.Error())
+		logger.Errorf("can not read request body %s", err.Error())
 		return nil, err
 	}
 
