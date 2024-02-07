@@ -16,20 +16,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/support"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
-	"github.com/aws/aws-sdk-go/aws/arn"
 )
 
 const (
@@ -107,13 +106,6 @@ func extractLinesFromHTML(htmlText string) []string {
 }
 
 func scanAccount(opt options, target, assetType string, logger *logrus.Entry, state checkstate.State) error {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1"),
-	})
-	if err != nil {
-		return err
-	}
-
 	assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
 	role := os.Getenv("ROLE_NAME")
 
@@ -134,11 +126,19 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 	if err != nil {
 		return err
 	}
+	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	cfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion("us-east-1"),
+		config.WithCredentialsProvider(credsProvider),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create AWS config: %w", err)
+	}
 
-	s := support.New(sess, &aws.Config{Credentials: creds})
-
+	s := support.NewFromConfig(cfg)
 	// Retrieve checks list
 	checks, err := s.DescribeTrustedAdvisorChecks(
+		context.TODO(),
 		&support.DescribeTrustedAdvisorChecksInput{
 			Language: aws.String("en"),
 		})
@@ -160,16 +160,18 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 			continue
 		}
 		checkIds = append(checkIds, check.Id)
-		refreshed, err := s.RefreshTrustedAdvisorCheck(&support.RefreshTrustedAdvisorCheckInput{CheckId: check.Id})
+		refreshed, err := s.RefreshTrustedAdvisorCheck(context.Background(), &support.RefreshTrustedAdvisorCheckInput{CheckId: check.Id})
 		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() == "InvalidParameterValueException" {
-					logger.Printf("check '%s' is not refreshable\n", *check.Name)
-					continue
-				}
+			// Haven't found a more elegant way to check for an
+			// InvalidParameterValueException. This error type is not defined in the
+			// support/types package as it is for other services.
+			if strings.Contains(err.Error(), "InvalidParameterValueException") {
+				logger.Printf("check '%s' is not refreshable\n", *check.Name)
+				continue
 			}
 			return err
 		}
+
 		logger.Printf("check '%s' is refreshed with status: '%s'\n", *check.Name, *refreshed.Status.Status)
 		if *refreshed.Status.Status == "enqueued" {
 			enqueued++
@@ -189,16 +191,18 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				break LOOP
 			default:
 				checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
+					context.Background(),
 					&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
 						CheckIds: checkIds,
 					},
 				)
-				if err != nil {
-					if awsErr, ok := err.(awserr.Error); ok {
-						if awsErr.Code() != "InvalidParameterValueException" {
-							return err
-						}
-					}
+				// Haven't found a more elegant way to check for an
+				// InvalidParameterValueException. This error type is not
+				// defined in the support/types package as it is for other
+				// services.
+				if err != nil && !strings.Contains(err.Error(), "InvalidParameterValueException") {
+					return fmt.Errorf("unable to check the refresh statuses: %w", err)
+
 				}
 				var pending bool
 				for _, cs := range checkStatus.Statuses {
@@ -241,19 +245,15 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 
 		var checkSummaries *support.DescribeTrustedAdvisorCheckSummariesOutput
 		checkSummaries, err = s.DescribeTrustedAdvisorCheckSummaries(
-			&support.DescribeTrustedAdvisorCheckSummariesInput{
+			context.Background(), &support.DescribeTrustedAdvisorCheckSummariesInput{
 				CheckIds: []*string{v.Id}})
 		if err != nil {
 			return err
 		}
 
 		for _, summary := range checkSummaries.Summaries {
-			// Only process summaries that has flagged resources
-			if summary.HasFlaggedResources == nil {
-				continue
-			}
-
-			if summary.HasFlaggedResources != nil && !*summary.HasFlaggedResources {
+			// Only process summaries that has flagged resources.
+			if !summary.HasFlaggedResources {
 				continue
 			}
 
@@ -288,20 +288,14 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 			}
 
 			var checkResults *support.DescribeTrustedAdvisorCheckResultOutput
-			checkResults, err = s.DescribeTrustedAdvisorCheckResult(&support.DescribeTrustedAdvisorCheckResultInput{CheckId: v.Id})
+			checkResults, err = s.DescribeTrustedAdvisorCheckResult(context.Background(), &support.DescribeTrustedAdvisorCheckResultInput{CheckId: v.Id})
 			if err != nil {
 				return err
 			}
 
 			for _, fr := range checkResults.Result.FlaggedResources {
-				// Unable to retrieve flagged resource information
-				if fr == nil {
-					logger.Warnf("result with CheckID: %s does not contain flagged resource information", *checkResults.Result.CheckId)
-					continue
-				}
-				// PTVUL-860
-				// Ignore resources that have been marked as supressed/excluded
-				if *fr.IsSuppressed {
+				// Ignore resources that have been marked as suppressed/excluded
+				if fr.IsSuppressed {
 					logger.Debugf("resource with ResourceID: %s have been marked as excluded", *fr.ResourceId)
 					continue
 				}
@@ -360,7 +354,10 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				if v.Name != nil {
 					summary = "AWS " + *v.Name
 				}
-
+				resourceID := ""
+				if fr.ResourceId != nil {
+					resourceID = *fr.ResourceId
+				}
 				vuln := report.Vulnerability{
 					Summary:     summary,
 					Description: action,
@@ -372,7 +369,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 					// therefore we are using a set of the metadata values
 					// provided by their checks in the AffectedResourceString
 					// attribute.
-					AffectedResource:       aws.StringValue(fr.ResourceId),
+					AffectedResource:       resourceID,
 					AffectedResourceString: affectedResourceStr,
 					Labels:                 []string{"issue", "aws"},
 					Resources:              []report.ResourcesGroup{occurrences},
@@ -398,7 +395,7 @@ type AssumeRoleResponse struct {
 	SessionToken    string `json:"session_token"`
 }
 
-func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*credentials.Credentials, error) {
+func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*aws.Credentials, error) {
 	m := map[string]string{"account_id": accountID}
 	if role != "" {
 		m["role"] = role
@@ -433,22 +430,27 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 		logger.Errorf("RequestBody: %s", string(buf))
 		return nil, err
 	}
-
-	return credentials.NewStaticCredentials(
-		assumeRoleResponse.AccessKey,
-		assumeRoleResponse.SecretAccessKey,
-		assumeRoleResponse.SessionToken), nil
+	creds := aws.Credentials{
+		AccessKeyID:     assumeRoleResponse.AccessKey,
+		SecretAccessKey: assumeRoleResponse.SecretAccessKey,
+		SessionToken:    assumeRoleResponse.SessionToken,
+	}
+	return &creds, nil
 }
 
 // accountAlias gets one of the current aliases of the account that the
 // credentials passed belong to.
-func accountAlias(creds *credentials.Credentials) (string, error) {
-	session, err := session.NewSession((&aws.Config{Credentials: creds}))
+func accountAlias(creds *aws.Credentials) (string, error) {
+	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	cfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion("us-east-1"),
+		config.WithCredentialsProvider(credsProvider),
+	)
 	if err != nil {
-		return "", fmt.Errorf("unable to create a session %w", err)
+		return "", fmt.Errorf("unable to create aws session: %w", err)
 	}
-	svc := iam.New(session)
-	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
+	svc := iam.NewFromConfig(cfg)
+	resp, err := svc.ListAccountAliases(context.Background(), &iam.ListAccountAliasesInput{})
 	if err != nil {
 		return "", err
 	}
@@ -456,9 +458,9 @@ func accountAlias(creds *credentials.Credentials) (string, error) {
 		// No aliases found for the aws account.
 		return "", nil
 	}
-	a := resp.AccountAliases[0]
-	if a == nil {
-		return "", errors.New("unexpected nil getting aliases for aws account")
+	if len(resp.AccountAliases) < 1 {
+		return "", errors.New("no result getting aliases for aws account")
 	}
-	return *a, nil
+	a := resp.AccountAliases[0]
+	return a, nil
 }
