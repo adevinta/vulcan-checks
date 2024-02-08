@@ -122,17 +122,29 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 	if err != nil {
 		return err
 	}
-	creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
-	if err != nil {
-		return err
-	}
-	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-	cfg, err := config.LoadDefaultConfig(context.Background(),
-		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credsProvider),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to create AWS config: %w", err)
+	var cfg aws.Config
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		defaultCfg, err := config.LoadDefaultConfig(context.Background(),
+			config.WithRegion("us-east-1"),
+		)
+		if err != nil {
+			return fmt.Errorf("unable to create AWS config: %w", err)
+		}
+		cfg = defaultCfg
+	} else {
+		creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
+		if err != nil {
+			return err
+		}
+		credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+		stsCfg, err := config.LoadDefaultConfig(context.Background(),
+			config.WithRegion("us-east-1"),
+			config.WithCredentialsProvider(credsProvider),
+		)
+		if err != nil {
+			return fmt.Errorf("unable to create AWS config: %w", err)
+		}
+		cfg = stsCfg
 	}
 
 	s := support.NewFromConfig(cfg)
@@ -266,11 +278,11 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 			// considered empty.
 			if v.Description != nil {
 				iRecommendedAction := strings.Index(*v.Description, tagRecommendedAction)
-				iAdditionalResources := strings.Index(*v.Description, tagAdditionalResources)
-				if len(*v.Description) >= iRecommendedAction {
-					action = (*v.Description)[:iRecommendedAction]
+				if iRecommendedAction < 0 {
+					// No recommended actions
+					continue
 				}
-
+				iAdditionalResources := strings.Index(*v.Description, tagAdditionalResources)
 				// Extract recommendedActions
 				if iAdditionalResources >= iRecommendedAction+len(tagRecommendedAction) {
 					recommendedActions = extractLinesFromHTML(string(*v.Description)[iRecommendedAction+len(tagRecommendedAction) : iAdditionalResources])
@@ -301,7 +313,7 @@ func scanAccount(opt options, target, assetType string, logger *logrus.Entry, st
 				}
 				// Get the alias of the account only if we did not get previously.
 				if alias == nil {
-					res, err := accountAlias(creds)
+					res, err := accountAlias(cfg)
 					if err != nil {
 						return err
 					}
@@ -440,15 +452,7 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 
 // accountAlias gets one of the current aliases of the account that the
 // credentials passed belong to.
-func accountAlias(creds *aws.Credentials) (string, error) {
-	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-	cfg, err := config.LoadDefaultConfig(context.Background(),
-		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credsProvider),
-	)
-	if err != nil {
-		return "", fmt.Errorf("unable to create aws session: %w", err)
-	}
+func accountAlias(cfg aws.Config) (string, error) {
 	svc := iam.NewFromConfig(cfg)
 	resp, err := svc.ListAccountAliases(context.Background(), &iam.ListAccountAliasesInput{})
 	if err != nil {
