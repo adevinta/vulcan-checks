@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -394,7 +394,7 @@ func downloadFromUrl(URL string) error {
 		return fmt.Errorf("error downloading from url %s: %v", URL, err)
 	}
 	defer response.Body.Close()
-	bodyBytes, _ := ioutil.ReadAll(response.Body)
+	bodyBytes, _ := io.ReadAll(response.Body)
 	return writeFile(filePath, string(bodyBytes))
 }
 

@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -96,7 +96,7 @@ func checkVersion(changelogURL string, log *logrus.Entry) (drupal bool, version 
 		return false, "", errors.New("CHANGELOG.txt not found")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, "", err
 	}

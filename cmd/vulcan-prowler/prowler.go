@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
@@ -79,7 +79,7 @@ func runProwler(ctx context.Context, region string, groups []string) (*prowlerRe
 	logger.Infof("exit status: %v", status)
 	logger.Debugf("prowler output: %s", output)
 
-	fileReport, err := ioutil.ReadFile(reportLocation)
+	fileReport, err := os.ReadFile(reportLocation)
 	if err != nil {
 		return nil, err
 	}

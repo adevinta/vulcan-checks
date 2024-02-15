@@ -9,8 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -187,7 +187,7 @@ func main() {
 			return err
 		}
 
-		content, err := ioutil.ReadFile("/results.json")
+		content, err := os.ReadFile("/results.json")
 		if err != nil {
 			e.WithError(err).Error("results file not found")
 			return err

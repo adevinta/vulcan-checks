@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -251,7 +251,7 @@ func main() {
 			return err
 		}
 		// Load AWS CIS controls information.
-		content, err := ioutil.ReadFile("cis_controls.json")
+		content, err := os.ReadFile("cis_controls.json")
 		if err != nil {
 			return err
 		}
@@ -475,7 +475,7 @@ func loadCredentials(url string, accountID, role string, sessionDuration int) er
 	}
 	defer resp.Body.Close()
 
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

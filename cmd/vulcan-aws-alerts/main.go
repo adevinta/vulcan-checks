@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -88,7 +88,7 @@ func getCredentials(url string, accountID, role string) (*credentials.Credential
 	defer resp.Body.Close()
 
 	assumeRoleResponse := AssumeRoleResponse{}
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Errorf("Cannot read request body %s", err.Error())
 		return nil, err
