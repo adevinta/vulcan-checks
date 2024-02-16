@@ -16,19 +16,18 @@ import (
 	"strings"
 	"time"
 
+	check "github.com/adevinta/vulcan-check-sdk"
+	"github.com/adevinta/vulcan-check-sdk/helpers"
+	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	report "github.com/adevinta/vulcan-report"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/support"
-
 	"github.com/sirupsen/logrus"
-
-	check "github.com/adevinta/vulcan-check-sdk"
-	"github.com/adevinta/vulcan-check-sdk/helpers"
-	checkstate "github.com/adevinta/vulcan-check-sdk/state"
-	report "github.com/adevinta/vulcan-report"
 )
 
 const (
