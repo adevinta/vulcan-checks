@@ -10,6 +10,12 @@ updates:
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
+  directory: cmd/vulcan-gitleaks
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
   directory: cmd/vulcan-nuclei
   schedule:
     interval: "weekly"
