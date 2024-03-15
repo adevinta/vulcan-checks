@@ -1,7 +1,7 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
 AssetType = "AWSAccount"
-Options = '{"region":"eu-west-1","groups":["cislevel1"],"session_duration":3600}'
+Options = '{"region":"eu-west-1","groups":["cis_2.0_aws"],"session_duration":3600}'
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT = "http://localhost:8080/assume"
 ROLE_NAME = "SecurityAuditRole"
