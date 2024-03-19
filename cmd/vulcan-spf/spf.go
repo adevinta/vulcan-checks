@@ -224,12 +224,12 @@ func parseField(field string, i int, spf *SPF) {
 	spf.UnknownOrInvalid = append(spf.UnknownOrInvalid, spfField{field: qualifierStr + field, position: i})
 }
 
-//mechanisms are separated by ':'
+// mechanisms are separated by ':'
 func validateMechanism(field, mechanism string) bool {
 	return field == mechanism || (strings.HasPrefix(field, mechanism+":") && len(field) > len(mechanism+":"))
 }
 
-//modifiers are separated by '='
+// modifiers are separated by '='
 func validateModifier(field, modifier string) bool {
 	return field == modifier || (strings.HasPrefix(field, modifier+"=") && len(field) > len(modifier+"="))
 }
