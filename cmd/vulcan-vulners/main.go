@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"sort"
@@ -142,7 +142,7 @@ func buildVulnersFinding(s, v, t string) (*vulnersFinding, error) {
 		return nil, fmt.Errorf("wrong status code: got %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading the reponse: %w", err)
 	}
