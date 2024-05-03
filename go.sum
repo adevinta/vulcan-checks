@@ -17,8 +17,8 @@ github.com/adevinta/vulcan-check-sdk v1.2.1 h1:0X7WQp7m15BqffSZfoj5vncRwqk3QjSPb
 github.com/adevinta/vulcan-check-sdk v1.2.1/go.mod h1:gGaCUnW6lCBYMYGn42fZSa0kmVRX/2Uo74C3vyDAG2I=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
 github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
-github.com/adevinta/vulcan-types v1.2.15 h1:v0J1oy6+QFtEJL57602ee2zNhm413qjlvjA/wVXZKHI=
-github.com/adevinta/vulcan-types v1.2.15/go.mod h1:3H0sTnaLyaS2yqVuhYrGu6UJ47WYsL0KmbIuUK+e9/U=
+github.com/adevinta/vulcan-types v1.2.16 h1:WlRFg6E3exGBAZHfSJ8wkFr+wzldUj04LonSPXMA4FQ=
+github.com/adevinta/vulcan-types v1.2.16/go.mod h1:X/AZn+3rAQ91bFCDrQN+J0F7LV41g/fDwRByALi2Fpg=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHSxpiH9JdtuBj0=
