@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Copyright 2023 Adevinta
+
+echo -n -e \\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff | nc -l 179
