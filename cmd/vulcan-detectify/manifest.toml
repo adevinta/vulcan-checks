@@ -1,0 +1,8 @@
+Description = "Retrieves existing vulnerability for domain from Detectify"
+Timeout = 1800
+AssetTypes = ["Hostname"]
+RequiredVars = [
+  "DETECTIFY_ASSETS_URL",
+  "DETECTIFY_ASSETS_API_KEY", 
+]
+
