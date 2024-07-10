@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/support"
 	"github.com/sirupsen/logrus"
 )
@@ -104,46 +105,44 @@ func extractLinesFromHTML(htmlText string) []string {
 	return result
 }
 
-func scanAccount(opt options, target, assetType string, logger *logrus.Entry, state checkstate.State) error {
+func scanAccount(opt options, target, _ string, logger *logrus.Entry, state checkstate.State) error {
 	assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
 	role := os.Getenv("ROLE_NAME")
-
-	isReachable, err := helpers.IsReachable(target, assetType,
-		helpers.NewAWSCreds(assumeRoleEndpoint, role))
-	if err != nil {
-		logger.Warnf("Can not check asset reachability: %v", err)
-	}
-	if !isReachable {
-		return checkstate.ErrAssetUnreachable
-	}
 
 	parsedARN, err := arn.Parse(target)
 	if err != nil {
 		return err
 	}
 	var cfg aws.Config
-	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
-		defaultCfg, err := config.LoadDefaultConfig(context.Background(),
-			config.WithRegion("us-east-1"),
-		)
-		if err != nil {
-			return fmt.Errorf("unable to create AWS config: %w", err)
-		}
-		cfg = defaultCfg
-	} else {
+	if assumeRoleEndpoint != "" {
 		creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
 		if err != nil {
+			if errors.Is(err, errNoCredentials) {
+				return checkstate.ErrAssetUnreachable
+			}
 			return err
 		}
 		credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-		stsCfg, err := config.LoadDefaultConfig(context.Background(),
+		cfg, err = config.LoadDefaultConfig(context.Background(),
 			config.WithRegion("us-east-1"),
 			config.WithCredentialsProvider(credsProvider),
 		)
 		if err != nil {
 			return fmt.Errorf("unable to create AWS config: %w", err)
 		}
-		cfg = stsCfg
+	} else {
+		// try to access with the default credentials
+		cfg, err = config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
+		if err != nil {
+			return fmt.Errorf("unable to create AWS config: %w", err)
+		}
+	}
+
+	// Validate that the account id in the target ARN matches the account id in the credentials
+	if req, err := sts.NewFromConfig(cfg).GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{}); err != nil {
+		return fmt.Errorf("unable to get caller identity: %w", err)
+	} else if *req.Account != parsedARN.AccountID {
+		return fmt.Errorf("account id in target ARN does not match the account id in the credentials (target ARN: %s, credentials account id: %s)", parsedARN.AccountID, *req.Account)
 	}
 
 	s := support.NewFromConfig(cfg)
@@ -406,8 +405,10 @@ type AssumeRoleResponse struct {
 	SessionToken    string `json:"session_token"`
 }
 
+var errNoCredentials = errors.New("unable to decode credentials")
+
 func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*aws.Credentials, error) {
-	m := map[string]string{"account_id": accountID}
+	m := map[string]any{"account_id": accountID, "duration": 3600}
 	if role != "" {
 		m["role"] = role
 	}
@@ -437,16 +438,15 @@ func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*
 
 	err = json.Unmarshal(buf, &assumeRoleResponse)
 	if err != nil {
-		logger.Errorf("Cannot decode request %s", err.Error())
-		logger.Errorf("RequestBody: %s", string(buf))
-		return nil, err
+		logger.Errorf("Cannot decode request: %s", err.Error())
+		logger.Errorf("ResponseBody: %s", string(buf))
+		return nil, errNoCredentials
 	}
-	creds := aws.Credentials{
+	return &aws.Credentials{
 		AccessKeyID:     assumeRoleResponse.AccessKey,
 		SecretAccessKey: assumeRoleResponse.SecretAccessKey,
 		SessionToken:    assumeRoleResponse.SessionToken,
-	}
-	return &creds, nil
+	}, nil
 }
 
 // accountAlias gets one of the current aliases of the account that the
