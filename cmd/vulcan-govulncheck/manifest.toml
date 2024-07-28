@@ -1,0 +1,5 @@
+Description = "Reports known vulnerabilities that affect Go code"
+Timeout = 900 # 15 minutes
+AssetTypes = ["GitRepository"]
+RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
+Options = '{"depth": 1, "branch":""}'
