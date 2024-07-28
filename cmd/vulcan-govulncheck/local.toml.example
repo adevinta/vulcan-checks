@@ -1,0 +1,11 @@
+[Check]
+Target = "https://github.com/adevinta/vulcan-checks.git"
+AssetType = "GitRepository"
+# Options = '{"depth": 1, "branch":""}'
+
+#[RequiredVars]
+#GITHUB_ENTERPRISE_ENDPOINT = "ENDPOINT"
+#GITHUB_ENTERPRISE_TOKEN = "TOKEN"
+
+#[Log]
+#LogLevel = "DEBUG"

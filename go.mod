@@ -1,6 +1,6 @@
 module github.com/adevinta/vulcan-checks
 
-go 1.19
+go 1.22.5
 
 require (
 	github.com/FiloSottile/Heartbleed v0.2.1-0.20150408030656-4a3332ca1dc0
@@ -21,6 +21,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jpillora/backoff v1.0.0
+	github.com/jroimartin/sarif v0.0.0-20240801070922-46730760ddf5
 	github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
 	github.com/satori/go.uuid v1.2.0
