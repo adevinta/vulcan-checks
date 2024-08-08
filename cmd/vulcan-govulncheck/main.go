@@ -60,6 +60,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		"target":     target,
 		"asset_type": assetType,
 	})
+	logger.Logger.SetLevel(logrus.DebugLevel)
 
 	var opt options
 	if optJSON != "" {
@@ -74,19 +75,20 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-	repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+	repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+	logger.WithFields(logrus.Fields{"repo_path": repoPath, "branch_name": branchName, "err": err}).Debug("cloned repository")
 	if err != nil {
 		return fmt.Errorf("clone git repository: %w", err)
 	}
 
-	if err := runGovulncheck(ctx, repoPath, opt, state); err != nil {
+	if err := runGovulncheck(ctx, logger, repoPath, opt, state); err != nil {
 		return fmt.Errorf("run govulncheck: %w", err)
 	}
 
 	return nil
 }
 
-func runGovulncheck(ctx context.Context, dir string, opt options, state checkstate.State) error {
+func runGovulncheck(ctx context.Context, logger *logrus.Entry, dir string, opt options, state checkstate.State) error {
 	args := []string{"-format", "sarif"}
 	if opt.ChDir != "" {
 		args = append(args, "-C", opt.ChDir)
@@ -110,12 +112,15 @@ func runGovulncheck(ctx context.Context, dir string, opt options, state checksta
 		args = append(args, opt.Patterns)
 	}
 
+	logger.WithFields(logrus.Fields{"args": args}).Debug("running govulncheck")
+
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "govulncheck", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Dir = dir
 	if err := cmd.Run(); err != nil {
+		logger.WithFields(logrus.Fields{"err": err, "stderr": stderr.String()}).Error("run command")
 		return fmt.Errorf("run command: %w: %q", err, stderr.String())
 	}
 
@@ -124,7 +129,11 @@ func runGovulncheck(ctx context.Context, dir string, opt options, state checksta
 		return fmt.Errorf("parse sarif: %w", err)
 	}
 
-	state.AddVulnerabilities(vulns...)
+	for _, vuln := range vulns {
+		state.ResultData.Vulnerabilities = append(state.ResultData.Vulnerabilities, vuln)
+		logger.WithFields(logrus.Fields{"vuln": vuln}).Debug("found vulnerability")
+	}
+
 	return nil
 }
 
