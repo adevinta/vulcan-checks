@@ -192,6 +192,23 @@
 			]
 		},
 		{
+			"name": "vulcan-govulncheck",
+			"description": "Reports known vulnerabilities that affect Go code",
+			"image": "vulcansec/vulcan-govulncheck:edge",
+			"timeout": 900,
+			"options": {
+				"branch": "",
+				"depth": 1
+			},
+			"required_vars": [
+				"GITHUB_ENTERPRISE_ENDPOINT",
+				"GITHUB_ENTERPRISE_TOKEN"
+			],
+			"assets": [
+				"GitRepository"
+			]
+		},
+		{
 			"name": "vulcan-heartbleed",
 			"description": "Checks if an asset is vulnerable to Heartbleed",
 			"image": "vulcansec/vulcan-heartbleed:edge",
