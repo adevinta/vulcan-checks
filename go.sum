@@ -23,8 +23,8 @@ github.com/adevinta/vulcan-check-sdk v1.3.0 h1:nZ1oS0ftjM/yqN1pldbCpWVhm+cdbqQ5+
 github.com/adevinta/vulcan-check-sdk v1.3.0/go.mod h1:Yl2Nkp67iW6QRThE5f8WpO3OX1nxOoSYvciyr2EERDA=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
 github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
-github.com/adevinta/vulcan-types v1.2.20 h1:YGt7EP0vWURxyuA6+Z9L0J4mQkOAZqJNg2qpGjQBAe8=
-github.com/adevinta/vulcan-types v1.2.20/go.mod h1:kMvaOlqVLiz/CHXAqKxjNVYaWNR7xUhALZkJEd5Eojk=
+github.com/adevinta/vulcan-types v1.2.21 h1:mgRUHo0kVQ8ZJ0oFaPOxrns1YqdWSIaJ/2dKnBT0x4c=
+github.com/adevinta/vulcan-types v1.2.21/go.mod h1:YOtF3BmOQFRrUiFl5DOgjJhzZRh2acdbC80jMDQaZIo=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
@@ -166,8 +166,8 @@ github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523 h1:N4NQR4on
 github.com/lair-framework/go-nmap v0.0.0-20191202052157-3507e0b03523/go.mod h1:7Em1Lxm3DFdLvXWUZ6bQ/xIbGlxFy7jl07bziQMZ/kU=
 github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2 h1:YocNLcTBdEdvY3iDK6jfWXvEaM5OCKkjxPKoJRdB3Gg=
 github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2/go.mod h1:76rfSfYPWj01Z85hUf/ituArm797mNKcvINh1OlsZKo=
-github.com/miekg/dns v1.1.61 h1:nLxbwF3XxhwVSm8g9Dghm9MHPaUZuqhPiGL+675ZmEs=
-github.com/miekg/dns v1.1.61/go.mod h1:mnAarhS3nWaW+NVP2wTkYVIZyHNJ098SJZUki3eykwQ=
+github.com/miekg/dns v1.1.62 h1:cN8OuEF1/x5Rq6Np+h1epln8OiyPWV+lROx9LxcGgIQ=
+github.com/miekg/dns v1.1.62/go.mod h1:mvDlcItzm+br7MToIKqkglaGhlFMHJ9DTNNWONWXbNQ=
 github.com/onsi/gomega v1.27.10 h1:naR28SdDFlqrG6kScpT8VWpu1xWY5nJRCF3XaYyBjhI=
 github.com/onsi/gomega v1.27.10/go.mod h1:RsS8tutOdbdgzbPtzzATp12yT7kM5I5aElG3evPbQ0M=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=

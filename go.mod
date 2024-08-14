@@ -8,7 +8,7 @@ require (
 	github.com/adevinta/restuss v1.1.0
 	github.com/adevinta/vulcan-check-sdk v1.3.0
 	github.com/adevinta/vulcan-report v1.0.0
-	github.com/adevinta/vulcan-types v1.2.20
+	github.com/adevinta/vulcan-types v1.2.21
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.0
 	github.com/aws/aws-sdk-go-v2 v1.30.3
@@ -68,7 +68,7 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/miekg/dns v1.1.61 // indirect
+	github.com/miekg/dns v1.1.62 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
