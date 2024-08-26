@@ -12,7 +12,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.0
 	github.com/aws/aws-sdk-go-v2 v1.30.4
-	github.com/aws/aws-sdk-go-v2/config v1.27.29
+	github.com/aws/aws-sdk-go-v2/config v1.27.30
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.29
 	github.com/aws/aws-sdk-go-v2/service/iam v1.35.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.5
