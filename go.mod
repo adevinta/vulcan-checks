@@ -4,7 +4,7 @@ go 1.22.5
 
 require (
 	github.com/FiloSottile/Heartbleed v0.2.1-0.20150408030656-4a3332ca1dc0
-	github.com/Masterminds/semver/v3 v3.2.1
+	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/adevinta/restuss v1.1.0
 	github.com/adevinta/vulcan-check-sdk v1.3.0
 	github.com/adevinta/vulcan-report v1.0.0
