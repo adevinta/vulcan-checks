@@ -5,7 +5,7 @@
 set -e
 
 if [ -d /root/.cache ]; then
-    time find /root/.cache/ -name "*.gz" -print -exec gunzip {} \;
+    find /root/.cache/ -name "*.gz" -print -exec gunzip {} \;
 fi
 
 # run check

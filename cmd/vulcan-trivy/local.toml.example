@@ -7,8 +7,8 @@ AssetType = "DockerImage"
 
 # example Options
 # Options = """{
-#     "force_update_db": false, 
-#     "ignore_unfixed": false, 
+#     "force_update_db": false,
+#     "ignore_unfixed": false,
 #     "severities":"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
 #     "depth": 1,
 #     "branch":"",
@@ -22,5 +22,6 @@ AssetType = "DockerImage"
 #         "secret": false,
 #         "config": false
 #     },
-#     "disable_custom_secret_config": false
+#     "disable_custom_secret_config": false,
+#     "scan_image_metadata": true
 # }"""

@@ -70,30 +70,6 @@ func TestDownloadFromUrl(t *testing.T) {
 	os.Remove("temp")
 }
 
-func TestGetFilePath(t *testing.T) {
-	var urlToFilePath = []struct {
-		in       string
-		expected string
-	}{
-		{"https://domain.name/scripts/path/jquery.js", "temp/jquery.js"},
-		{"https://domain.name/script/a", "temp/a"},
-		{"https://domain.name/script/", "temp/uuid"},
-		{"https://domain.name/script", "temp/script"},
-	}
-	for _, tt := range urlToFilePath {
-		actual := getFilePath(tt.in)
-		if actual != tt.expected && tt.expected != "temp/uuid" {
-			t.Fatalf("getFilePath(%s): expected: %s, actual: %s", tt.in, tt.expected, actual)
-		}
-
-		if tt.expected == "temp/uuid" && len(actual) != 44 && !strings.HasPrefix(actual, "temp/") {
-			t.Fatalf("getFilePath(%s): expected: %s, actual: %s", tt.in, tt.expected, actual)
-		}
-
-	}
-
-}
-
 func TestGetAffectedVersion(t *testing.T) {
 	var versions = []struct {
 		atOrAbove string

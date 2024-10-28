@@ -1,18 +1,18 @@
-dist: bionic
+dist: focal
 git:
   depth: false
 language: go
 go:
-  - 1.19.x
+  - 1.21.x
 env:
   global:
   - PLATFORMS="linux/amd64 linux/arm64"
-  - ARM64_EXCLUDE="(prowler|semgrep|zap)"   # Regex with the check names to exclude from arm64 build
+  - ARM64_EXCLUDE="(prowler|zap)"   # Regex with the check names to exclude from arm64 build
 go_import_path: github.com/adevinta/vulcan-checks
 before_deploy:
   - _scripts/setup_buildx.sh
   - go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}"
-  - go install github.com/adevinta/vulcan-local@master
+  - go install github.com/adevinta/vulcan-local@v0.2.9
 deploy:
   - provider: script
     script: bash release.sh

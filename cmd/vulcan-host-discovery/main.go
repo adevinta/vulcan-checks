@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -174,7 +174,7 @@ func main() {
 			}
 
 			defer resp.Body.Close()
-			knownHostsJSON, err := ioutil.ReadAll(resp.Body)
+			knownHostsJSON, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}

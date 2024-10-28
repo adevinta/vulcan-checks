@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -153,7 +153,7 @@ func (r *Resturp) LaunchScan(ctx context.Context, targetURL string, configs []st
 		return uid, nil
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
 	}
@@ -182,7 +182,7 @@ func (r *Resturp) GetScanStatus(ctx context.Context, ID uint) (*ScanStatus, erro
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (r *Resturp) GetIssueDefinitions(ctx context.Context) ([]IssueDefinition, e
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (r *Resturp) gDo(ctx context.Context, params GraphQLQueryTemplateParams) er
 	if err != nil {
 		return err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

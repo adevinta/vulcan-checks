@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	report "github.com/adevinta/vulcan-report"
 	"github.com/mcuadros/go-version"
@@ -26,13 +24,16 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
-
-	"github.com/avast/retry-go"
 )
 
 const (
 	vulnCVETruncateLimit = 10
 	DefaultDepth         = 1
+	// trivyTimeout defines the value that will be passed to the trivy CLI via
+	// the '--timeout' flag. The value should be bigger than the check timeout
+	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
+	// status when the execution takes longer than expected.
+	trivyTimeout = "2h"
 )
 
 var (
@@ -41,7 +42,7 @@ var (
 	reportOutputFile = "report.json"
 	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
-	FilePatters = []string{
+	FilePatterns = []string{
 		// trivy only detect requirements.txt files
 		`pip:/requirements/[^/]+\.txt`,    // All the .txt files in a requirements directory.
 		`pip:[^/]*requirements[^/]*\.txt`, // All the files .txt that contains requirements
@@ -65,6 +66,11 @@ type options struct {
 	ImageChecks   checks `json:"image_checks"`
 
 	DisableCustomSecretConfig bool `json:"disable_custom_secret_config"`
+
+	// ScanImageMetadata enables scanning for secrets in the container image
+	// metadata. For further information check
+	// https://aquasecurity.github.io/trivy/v0.45/docs/target/container_image/
+	ScanImageMetadata bool `json:"scan_image_metadata"`
 }
 
 // TODO: Replace with "github.com/aquasecurity/trivy/pkg/types"
@@ -180,6 +186,10 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	trivyArgs := []string{}
+
+	// Increase the default (5m) trivy command timeout.
+	trivyArgs = append(trivyArgs, []string{"--timeout", trivyTimeout}...)
+
 	// Skip vulnerability db update if not explicitly forced.
 	if !opt.ForceUpdateDB {
 		trivyArgs = append(trivyArgs, "--skip-db-update", "--skip-java-db-update")
@@ -192,7 +202,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		trivyArgs = append(trivyArgs, "--ignore-unfixed")
 	}
 
-	for _, p := range FilePatters {
+	for _, p := range FilePatterns {
 		trivyArgs = append(trivyArgs, []string{"--file-patterns", fmt.Sprintf(`"%s"`, p)}...)
 	}
 
@@ -203,6 +213,15 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			sc = "vuln"
 		}
 		trivyArgs = append(trivyArgs, []string{"--scanners", sc}...)
+
+		if opt.ImageChecks.Secret {
+			if !opt.DisableCustomSecretConfig {
+				trivyArgs = append(trivyArgs, []string{"--secret-config", "secret.yaml"}...)
+			}
+			if opt.ScanImageMetadata {
+				trivyArgs = append(trivyArgs, []string{"--image-config-scanners", "secret"}...)
+			}
+		}
 
 		// Load required env vars for docker registry authentication.
 		registryEnvDomain := os.Getenv("REGISTRY_DOMAIN")
@@ -290,7 +309,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	}
 
 	if assetType == "GitRepository" {
-
 		sc := checksToParam(opt.GitChecks)
 		if sc == "" {
 			logger.Warnf("No checks enabled for GitRepository")
@@ -302,9 +320,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if opt.GitChecks.Secret && !opt.DisableCustomSecretConfig {
 			trivyArgs = append(trivyArgs, []string{"--secret-config", "secret.yaml"}...)
 		}
-
-		// Increase default (5m) trivy command timeout.
-		trivyArgs = append(trivyArgs, []string{"--timeout", "10m"}...)
 
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
@@ -375,6 +390,9 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 		action,
 		"-f", "json",
 		"-o", reportOutputFile,
+		// Indicate Trivy CLI to output just errors to have a cleaner
+		// 'check.Report.Error'.
+		"--quiet",
 	}
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
@@ -386,36 +404,22 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
 
-	err := retry.Do(
-		func() error {
-			cmd := exec.Command(trivyCmd, trivyArgs...)
-			cmdOutput, err := cmd.CombinedOutput()
-			if err != nil {
-				logger.Errorf("exec.Command() failed with %s\nCommand output: %s\n", err, string(cmdOutput))
-				return errors.New("trivy command execution failed")
-			}
-			logger.Infof("trivy command execution completed successfully")
-			return nil
-		},
-		retry.Attempts(3),
-		retry.DelayType(retry.RandomDelay),
-		retry.MaxJitter(5*time.Second),
-	)
+	cmd := exec.Command(trivyCmd, trivyArgs...)
+	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Errorf("retry exec.Command() failed with error: %s\n", err)
-		return nil, errors.New("trivy command execution failed")
+		return nil, fmt.Errorf("trivy command execution failed: %w. Command output: %s", err, string(cmdOutput))
 	}
+	logger.Infof("trivy command execution completed successfully")
 
 	byteValue, err := os.ReadFile(reportOutputFile)
 	if err != nil {
-		logger.Errorf("trivy report output file read failed with error: %s\n", err)
-		return nil, errors.New("trivy report output file read failed")
+		return nil, fmt.Errorf("trivy report output file read failed with error: %w", err)
 	}
 
 	var results results
 	err = json.Unmarshal(byteValue, &results)
 	if err != nil {
-		return nil, errors.New("unmarshal trivy output failed")
+		return nil, fmt.Errorf("unmarshal trivy output failed with error: %w", err)
 	}
 	return &results, nil
 }

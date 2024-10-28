@@ -14,8 +14,8 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-//DMARC represents a DMARC dns record
-//https://tools.ietf.org/html/rfc7489#section-6.4
+// DMARC represents a DMARC dns record
+// https://tools.ietf.org/html/rfc7489#section-6.4
 type DMARC struct {
 	version string
 	request string

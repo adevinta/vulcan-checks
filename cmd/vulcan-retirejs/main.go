@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -44,7 +44,19 @@ var (
 		"--jspath", jsPath,
 		"--jsrepo", "jsrepository.json",
 	}
+	client *http.Client
 )
+
+func init() {
+	timeout := 5 * time.Second
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client = &http.Client{
+		Transport: tr,
+		Timeout:   timeout,
+	}
+}
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
@@ -283,7 +295,7 @@ func findScriptFiles(target string) (int, error) {
 }
 
 func getTargetHTML(target string) (*html.Node, error) {
-	resp, err := http.Get(target)
+	resp, err := client.Get(target)
 	if err != nil {
 		return nil, err
 	}
@@ -363,38 +375,31 @@ func writeFile(fileName string, contents string) error {
 	return nil
 }
 
-func downloadFromUrl(url string) error {
-	filePath := getFilePath(url)
-	logger.Infof("Downloading %s to %s", url, filePath)
-	response, err := http.Get(url)
+func downloadFromUrl(URL string) error {
+	u, err := url.ParseRequestURI(URL)
 	if err != nil {
-		return fmt.Errorf("error downloading from url %s: %v", url, err)
+		return fmt.Errorf("error invalid url %s: %w", URL, err)
+	}
+	tokens := strings.Split(strings.Trim(u.EscapedPath(), "/"), "/")
+	filename := tokens[len(tokens)-1]
+
+	// NOTE: a random UUID is appended to avoid file path clashing with other
+	// previously downloaded scripts (e.g. '/a/jquery.min.js' and
+	// '/b/jquery.min.js').
+	filePath := fmt.Sprintf("%s/%s_%s.js", jsPath, filename, uuid.NewV4().String())
+
+	logger.Infof("Downloading %s to %s", URL, filePath)
+	response, err := client.Get(URL)
+	if err != nil {
+		return fmt.Errorf("error downloading from url %s: %v", URL, err)
 	}
 	defer response.Body.Close()
-	bodyBytes, _ := ioutil.ReadAll(response.Body)
+	bodyBytes, _ := io.ReadAll(response.Body)
 	return writeFile(filePath, string(bodyBytes))
-}
-
-func getFilePath(url string) string {
-	tokens := strings.Split(url, "/")
-	fileName := tokens[len(tokens)-1]
-	if fileName == "" {
-		uuid := uuid.NewV4()
-		fileName = uuid.String() + ".js"
-	}
-	return fmt.Sprint(jsPath, "/", fileName)
 }
 
 // Follow redirects and return final URL.
 func resolveTarget(target, assetType string) (string, error) {
-	timeout := 5 * time.Second
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   timeout,
-	}
 	switch assetType {
 	case "WebAddress":
 		resp, err := client.Get(target)

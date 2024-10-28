@@ -31,10 +31,7 @@ var (
 	client    zap.Interface
 )
 
-const (
-	contextName = "target"
-	contextID   = "1"
-)
+const contextName = "target"
 
 type options struct {
 	Depth    int     `json:"depth"`
@@ -48,14 +45,14 @@ type options struct {
 	DisabledScanners           []string `json:"disabled_scanners"`
 	IgnoredFingerprintScanners []string `json:"ignored_fingerprint_scanners"`
 	MaxSpiderDuration          int      `json:"max_spider_duration"`
-	MaxScanDuration            int      `json:"max_scan_duration"`
-	MaxRuleDuration            int      `json:"max_rule_duration"`
+	MaxScanDuration            int      `json:"max_scan_duration"` // In minutes
+	MaxRuleDuration            int      `json:"max_rule_duration"` // In minutes
 	OpenapiUrl                 string   `json:"openapi_url"`
 	OpenapiHost                string   `json:"openapi_host"`
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	run := func(_ context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -82,7 +79,11 @@ func main() {
 				"/zap/zap.sh",
 				"-daemon", "-host", "127.0.0.1", "-port", "8080",
 				"-config", "api.disablekey=true",
+				"-config", "database.recoverylog=false", // Reduce disk usage
+				"-notel",  // Disables telemetry
+				"-silent", // Prevents from checking for addon updates
 			).Output()
+
 			logger.Debugf("Error executing ZAP daemon: %v", err)
 			logger.Debugf("Output of the ZAP daemon: %s", string(out))
 
@@ -125,9 +126,13 @@ func main() {
 			return fmt.Errorf("error parsing target URL: %w", err)
 		}
 
-		_, err = client.Context().NewContext(contextName)
+		cx, err := client.Context().NewContext(contextName)
 		if err != nil {
 			return fmt.Errorf("error creating scope context: %w", err)
+		}
+		contextID, err := getStringAttribute(cx, "contextId")
+		if err != nil {
+			return err
 		}
 
 		// Add base URL to the scope.
@@ -159,7 +164,7 @@ func main() {
 		}
 
 		if opt.OpenapiUrl != "" {
-			_, err = client.Openapi().ImportUrl(opt.OpenapiUrl, opt.OpenapiHost)
+			_, err = client.Openapi().ImportUrl(opt.OpenapiUrl, opt.OpenapiHost, contextID)
 			if err != nil {
 				return fmt.Errorf("error importing openapi url: %w", err)
 			}
@@ -177,6 +182,11 @@ func main() {
 		_, err = client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
 		if err != nil {
 			return fmt.Errorf("error setting spider max duration: %w", err)
+		}
+
+		_, err = client.Pscan().DisableAllTags()
+		if err != nil {
+			return fmt.Errorf("error disabling all tags: %w", err)
 		}
 
 		logger.Printf("Running spider %v levels deep, max duration %v, ...", opt.Depth, opt.MaxSpiderDuration)
@@ -213,11 +223,10 @@ func main() {
 				if err != nil {
 					return fmt.Errorf("error getting the status of the spider: %w", err)
 				}
-
 				v, ok := resp["status"]
 				if !ok {
 					// In this case if we can not get the status let's fail.
-					return errors.New("can not retrieve the status of the spider")
+					return fmt.Errorf("cannot retrieve the status of the spider: %v", resp)
 				}
 				status, ok := v.(string)
 				if !ok {
@@ -305,7 +314,7 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Print("Running active scan...")
-			err := activeScan(ctx, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration)
+			err := activeScan(ctx, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
 			if err != nil {
 				return err
 			}
@@ -414,7 +423,7 @@ func fingerprintFromResources(resources []map[string]string) string {
 	return strings.Join(occurrences, "#")
 }
 
-func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int) error {
+func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
 	_, err := client.Ascan().DisableScanners(disabledScanners, "")
 	if err != nil {
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)
@@ -489,4 +498,16 @@ func isPluginIgnoredForFingerprint(opt options, pluginID string) bool {
 		}
 	}
 	return false
+}
+
+func getStringAttribute(m map[string]any, name string) (string, error) {
+	v, ok := m[name]
+	if !ok {
+		return "", fmt.Errorf("%s not found", name)
+	}
+	str, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("%s value [%v] is not a string", name, v)
+	}
+	return str, nil
 }
