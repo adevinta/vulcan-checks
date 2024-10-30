@@ -1,0 +1,4 @@
+Description = "Take AWS Config service non complice resources"
+AssetTypes = ["AWSAccount"]
+RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME"]
+Options = '{"regions": ["eu-west-1","eu-west-3","eu-central-1"]}'
