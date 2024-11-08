@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.4
 	github.com/aws/aws-sdk-go-v2/config v1.28.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.43
-	github.com/aws/aws-sdk-go-v2/service/iam v1.37.3
+	github.com/aws/aws-sdk-go-v2/service/iam v1.37.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.4
 	github.com/aws/aws-sdk-go-v2/service/support v1.26.5
 	github.com/cenkalti/backoff/v4 v4.3.0
