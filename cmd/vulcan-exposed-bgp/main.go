@@ -60,7 +60,7 @@ func tcpConnect(target string, port int) error {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		logger.Printf("Starting the %v check", checkName)
 
 		if target == "" {

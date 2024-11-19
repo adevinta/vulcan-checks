@@ -64,7 +64,7 @@ func main() {
 
 // run implements the Blast Radius check.
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State, intelAPIClient intelAPI) (err error) {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	logger.Printf("Starting the %v check", checkName)
 	if target == "" {
 		return errors.New("no hostname or IP address provided")

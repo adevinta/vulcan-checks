@@ -9,19 +9,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
-	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
+	"github.com/avast/retry-go"
 )
 
 const (
@@ -70,20 +73,32 @@ func main() {
 	c.RunAndServe()
 }
 
-func runNucleiCmd(ctx context.Context, logger *logrus.Entry, args []string) ([]byte, error) {
+func runNucleiCmd(logger *logrus.Entry, args []string) ([]byte, error) {
 	var err error
 	var cmdOutput []byte
-
-	cmdOutput, _, err = command.Execute(ctx, logger, nucleiCmd, args...)
+	err = retry.Do(
+		func() error {
+			cmd := exec.Command(nucleiCmd, args...)
+			cmdOutput, err = cmd.Output()
+			if err != nil {
+				logger.Errorf("exec.Command() with args [%s] failed with %s\nCommand output: %s\n", args, err, string(cmdOutput))
+				return errors.New("nuclei command execution failed")
+			}
+			logger.Infof("nuclei command with args [%s] execution completed successfully", args)
+			return nil
+		},
+		retry.Attempts(3),
+		retry.DelayType(retry.RandomDelay),
+		retry.MaxJitter(5*time.Second),
+	)
 	if err != nil {
-		logger.Errorf("unable to run the commad with the provided params: %s", err)
 		return []byte{}, err
 	}
 	return cmdOutput, nil
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 
 	var opt options
 	if optJSON != "" {
@@ -95,7 +110,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	// Update templates at runtime only if specified.
 	if opt.UpdateTemplates {
 		logger.Infof("updating templates to their latest version")
-		_, err := runNucleiCmd(ctx, logger, []string{"-ut"})
+		_, err := runNucleiCmd(logger, []string{"-ut"})
 		if err != nil {
 			logger.Warnf("nuclei failed updating templates: %v", err)
 		}
@@ -128,7 +143,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	nucleiArgs := buildNucleiScanCmdArgs(logger, target, opt)
 
-	nucleiFindings, err := runNuclei(ctx, logger, nucleiArgs)
+	nucleiFindings, err := runNuclei(logger, nucleiArgs)
 	if err != nil {
 		return err
 	}
@@ -246,10 +261,10 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 	return vulnerabilities
 }
 
-func runNuclei(ctx context.Context, logger *logrus.Entry, nucleiArgs []string) ([]ResultEvent, error) {
+func runNuclei(logger *logrus.Entry, nucleiArgs []string) ([]ResultEvent, error) {
 	cmdSucceed := []bool{}
 	nucleiFindings := []ResultEvent{}
-	output, err := runNucleiCmd(ctx, logger, nucleiArgs)
+	output, err := runNucleiCmd(logger, nucleiArgs)
 	if err != nil {
 		return nucleiFindings, fmt.Errorf("nuclei execution failed: %w", err)
 	}

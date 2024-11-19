@@ -56,7 +56,7 @@ type options struct {
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		var err error
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -93,7 +93,7 @@ func main() {
 
 		logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-		repoPath, _, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
+		repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 		if err != nil {
 			return err
 		}

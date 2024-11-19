@@ -44,7 +44,7 @@ type runner struct {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	var opt options
 	if optJSON != "" {
 		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -257,7 +257,7 @@ LOOP:
 // CleanUp is called by the sdk when the check needs to be aborted in order to give the
 // opportunity to clean up resources.
 func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	l := logger.WithFields(logrus.Fields{"action": "CleanUp"})
 	l.Debug("cleaning up nessus scan")
 	if r.nessusPersistedScan == nil {

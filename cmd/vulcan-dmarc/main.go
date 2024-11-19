@@ -18,7 +18,7 @@ const checkName = "vulcan-dmarc"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		logger.WithFields(logrus.Fields{
 			"domain": target,
 		}).Debug("requesting domain")

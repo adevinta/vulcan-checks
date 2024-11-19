@@ -64,7 +64,7 @@ func findIPv6Addresses(resolvedIps []net.IP) []net.IP {
 }
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		if net.ParseIP(target) != nil {
 			return errors.New("invalid hostname provided")
 		}

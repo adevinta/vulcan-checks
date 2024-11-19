@@ -284,7 +284,7 @@ func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) 
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		var err error
 		bannerRE, err = regexp.Compile(`^SSH-[0-9A-Za-z.]+-libssh-([[:graph:]]+)[[:space:]]*`)
 		if err != nil {

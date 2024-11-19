@@ -107,7 +107,7 @@ const checkName = "vulcan-github-alerts"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+		logger := check.NewCheckLog(checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}

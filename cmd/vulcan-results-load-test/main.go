@@ -28,7 +28,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	var opt options
 
 	logger.Debug("Validating params")

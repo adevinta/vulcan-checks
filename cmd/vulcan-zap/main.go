@@ -51,8 +51,8 @@ type options struct {
 }
 
 func main() {
-	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLogFromContext(ctx, checkName)
+	run := func(_ context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLog(checkName)
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {

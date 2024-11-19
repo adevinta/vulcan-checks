@@ -65,7 +65,7 @@ func main() {
 
 // run contains the actual logic of the checktype.
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	if target == "" {
 		return errors.New("check target missing")
 	}
@@ -82,7 +82,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-	repoPath, _, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
+	repoPath, _, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
 	if err != nil {
 		return fmt.Errorf("clone git repository: %w", err)
 	}
