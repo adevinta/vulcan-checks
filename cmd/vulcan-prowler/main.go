@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -29,6 +30,8 @@ import (
 )
 
 const (
+	checkName = "vulcan-prowler"
+
 	// defaultAPIRegion defines the default AWS region to use when querying AWS
 	// services API endpoints.
 	defaultAPIRegion       = `eu-west-1`
@@ -43,9 +46,6 @@ const (
 )
 
 var (
-	checkName = "vulcan-prowler"
-	logger    = check.NewCheckLog(checkName)
-
 	defaultGroups = []string{
 		"cislevel2",
 	}
@@ -206,6 +206,7 @@ func buildOptions(optJSON string) (options, error) {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -236,11 +237,11 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		if err := loadCredentials(endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
+		if err := loadCredentials(logger, endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
 			return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)
 		}
 
-		alias, err := accountAlias(credentials.NewEnvCredentials())
+		alias, err := accountAlias(logger, credentials.NewEnvCredentials())
 		if err != nil {
 			return fmt.Errorf("can not retrieve account alias: %w", err)
 		}
@@ -260,7 +261,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		r, err := runProwler(ctx, opts.Region, groups)
+		r, err := runProwler(ctx, logger, opts.Region, groups)
 		if err != nil {
 			return err
 		}
@@ -457,7 +458,7 @@ type assumeRoleResponse struct {
 	SessionToken    string `json:"session_token"`
 }
 
-func loadCredentials(url string, accountID, role string, sessionDuration int) error {
+func loadCredentials(logger *logrus.Entry, url string, accountID, role string, sessionDuration int) error {
 	m := map[string]interface{}{"account_id": accountID}
 	if role != "" {
 		m["role"] = role
@@ -504,7 +505,7 @@ func loadCredentials(url string, accountID, role string, sessionDuration int) er
 
 // accountAlias gets one of the current aliases for the account that the
 // credentials passed belong to.
-func accountAlias(creds *credentials.Credentials) (string, error) {
+func accountAlias(logger *logrus.Entry, creds *credentials.Credentials) (string, error) {
 	svc := iam.New(session.New(&aws.Config{Credentials: creds}))
 	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
 	if err != nil {

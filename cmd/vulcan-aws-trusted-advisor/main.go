@@ -34,12 +34,10 @@ import (
 const (
 	tagRecommendedAction   = `<h4 class='headerBodyStyle'>Recommended Action</h4>`
 	tagAdditionalResources = `<h4 class='headerBodyStyle'>Additional Resources</h4>`
+	checkName              = "vulcan-aws-trusted-advisor"
 )
 
 var (
-	checkName = "vulcan-aws-trusted-advisor"
-	logger    = check.NewCheckLog(checkName)
-
 	additionalResourcesPattern = regexp.MustCompile(`href=\"(?P<resource>.*?)\"`)
 	templateResource           = "$resource"
 
@@ -72,6 +70,7 @@ type options struct {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {

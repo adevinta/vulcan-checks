@@ -20,6 +20,7 @@ import (
 
 	report "github.com/adevinta/vulcan-report"
 	"github.com/mcuadros/go-version"
+	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -38,7 +39,6 @@ const (
 
 var (
 	checkName        = "vulcan-trivy"
-	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = "report.json"
 	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
@@ -176,6 +176,7 @@ func checksToParam(c checks) string {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options
@@ -254,7 +255,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return checkstate.ErrAssetUnreachable
 		}
 
-		results, err := execTrivy(opt, "image", append(trivyArgs, target))
+		results, err := execTrivy(logger, opt, "image", append(trivyArgs, target))
 		if err != nil {
 			return err
 		}
@@ -282,7 +283,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 		}
-		if err = processVulns(results.Results, vuln, "", state); err != nil {
+		if err = processVulns(results.Results, vuln, state); err != nil {
 			logger.Errorf("processing image vuln results: %+v", err)
 		}
 
@@ -329,8 +330,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			logger.Errorf("unable to clone repo: %+v", err)
 			return checkstate.ErrAssetUnreachable
 		}
+		defer os.RemoveAll(repoPath)
 
-		results, err := execTrivy(opt, "fs", append(trivyArgs, repoPath))
+		results, err := execTrivy(logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
 		} else {
@@ -353,7 +355,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				Labels: []string{"potential", "git"},
 				// Finding attributes.
 			}
-			if err := processVulns(results.Results, vuln, branchName, state); err != nil {
+			if err := processVulns(results.Results, vuln, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
 
@@ -383,7 +385,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	return fmt.Errorf("unknown assetType %s", assetType)
 }
 
-func execTrivy(opt options, action string, actionArgs []string) (*results, error) {
+func execTrivy(logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
 	// Build trivy command with arguments.
 	trivyCmd := "trivy"
 	trivyArgs := []string{
@@ -535,7 +537,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	return s + fmt.Sprintf("#L%d", l)
 }
 
-func processVulns(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {

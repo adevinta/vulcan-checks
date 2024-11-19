@@ -14,13 +14,11 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 )
 
-var (
-	checkName = "vulcan-dmarc"
-	logger    = check.NewCheckLog(checkName)
-)
+const checkName = "vulcan-dmarc"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		logger.WithFields(logrus.Fields{
 			"domain": target,
 		}).Debug("requesting domain")

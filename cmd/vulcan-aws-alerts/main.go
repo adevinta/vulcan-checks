@@ -14,6 +14,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -21,13 +22,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 )
 
-var (
-	checkName = "vulcan-aws-alerts"
-	logger    = check.NewCheckLog(checkName)
-)
+const checkName = "vulcan-aws-alerts"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
@@ -52,7 +51,7 @@ func main() {
 			return err
 		}
 
-		return caCertificateRotation(parsedARN.AccountID, vulcanAssumeRoleEndpoint, roleName, state)
+		return caCertificateRotation(logger, parsedARN.AccountID, vulcanAssumeRoleEndpoint, roleName, state)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
@@ -65,7 +64,7 @@ type AssumeRoleResponse struct {
 	SessionToken    string `json:"session_token"`
 }
 
-func getCredentials(url string, accountID, role string) (*credentials.Credentials, error) {
+func getCredentials(logger *logrus.Entry, url string, accountID, role string) (*credentials.Credentials, error) {
 	m := map[string]string{"account_id": accountID}
 	if role != "" {
 		m["role"] = role

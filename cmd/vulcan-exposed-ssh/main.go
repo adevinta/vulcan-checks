@@ -73,7 +73,6 @@ type sshScanReport struct {
 var (
 	pathToScanner = "ssh_scan"
 	checkName     = "vulcan-exposed-ssh"
-	logger        = check.NewCheckLog(checkName)
 	policyFile    = "policy/modern.yml"
 	defaultPorts  = []string{
 		"22",    // standard SSH port
@@ -285,6 +284,7 @@ func (r *runner) newSSHScan(ctx context.Context, target string, ports []string) 
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var err error
 		bannerRE, err = regexp.Compile(`^SSH-[0-9A-Za-z.]+-libssh-([[:graph:]]+)[[:space:]]*`)
 		if err != nil {

@@ -30,7 +30,6 @@ const (
 
 var (
 	checkName        = "vulcan-gitleaks"
-	logger           = check.NewCheckLog(checkName)
 	reportOutputFile = filepath.Join(os.TempDir(), "report.json")
 	localTargets     = []string{"localhost", "host.docker.internal", "172.17.0.1", "172.18.0.1"}
 	leakedSecret     = report.Vulnerability{
@@ -77,6 +76,8 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+
 	if target == "" {
 		return errors.New("check target missing")
 	}

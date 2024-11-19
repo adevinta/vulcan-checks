@@ -16,9 +16,10 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/adevinta/restuss"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
@@ -43,6 +44,7 @@ type runner struct {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	var opt options
 	if optJSON != "" {
 		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -89,7 +91,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	logger.Infof("Delaying startup for %v", delay)
 	time.Sleep(delay)
 
-	logger = logger.WithFields(log.Fields{
+	logger = logger.WithFields(logrus.Fields{
 		"target":    target,
 		"policy ID": policyID,
 	})
@@ -101,18 +103,18 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	scan, err := r.launchScan(ctx, target, policy)
+	scan, err := r.launchScan(ctx, logger, target, policy)
 	if err != nil {
 		return err
 	}
 	// We need to store in a field the scan info in order to delete it in the clean
 	// up step.
 	r.nessusPersistedScan = scan
-	scanDetail, err := r.waitUntilScanFinishes(ctx, pollingInterval)
+	scanDetail, err := r.waitUntilScanFinishes(ctx, logger, pollingInterval)
 	if err != nil {
 		return err
 	}
-	vulns, err := r.addVulnerabilities(*scanDetail, target)
+	vulns, err := r.addVulnerabilities(logger, *scanDetail, target)
 	if err != nil {
 		return err
 	}
@@ -148,7 +150,7 @@ func (r *runner) loadPolicyDetails(ctx context.Context, policyID int64) (restuss
 	return *policyDetails, nil
 }
 
-func (r *runner) launchScan(ctx context.Context, target string, policy restuss.Policy) (*restuss.PersistedScan, error) {
+func (r *runner) launchScan(ctx context.Context, logger *logrus.Entry, target string, policy restuss.Policy) (*restuss.PersistedScan, error) {
 	scan, err := r.nessusCli.CreateScanContext(ctx,
 		&restuss.Scan{
 			TemplateUUID: policy.UUID,
@@ -161,7 +163,7 @@ func (r *runner) launchScan(ctx context.Context, target string, policy restuss.P
 	if err != nil {
 		return nil, err
 	}
-	logger := logger.WithFields(log.Fields{
+	logger = logger.WithFields(logrus.Fields{
 		"scan": fmt.Sprintf("%+v", scan),
 	})
 	logger.Debug("Scan Created")
@@ -191,23 +193,23 @@ func (r *runner) launchScan(ctx context.Context, target string, policy restuss.P
 
 }
 
-func (r *runner) deleteScan(ctx context.Context, scanID int64) error {
+func (r *runner) deleteScan(ctx context.Context, logger *logrus.Entry, scanID int64) error {
 	err := r.nessusCli.DeleteScanContext(ctx, scanID)
 	if err != nil {
-		logger.WithFields(log.Fields{
+		logger.WithFields(logrus.Fields{
 			"scan": fmt.Sprintf("%+v", r.nessusPersistedScan), "error": err,
 		}).Error("error deleting Nessus scan")
 		return err
 	}
 
-	logger.WithFields(log.Fields{
+	logger.WithFields(logrus.Fields{
 		"scan": fmt.Sprintf("%+v", r.nessusPersistedScan),
 	}).Debug("Scan deleted from Nessus")
 
 	return err
 }
 
-func (r *runner) waitUntilScanFinishes(ctx context.Context, pollingInterval int) (*restuss.ScanDetail, error) {
+func (r *runner) waitUntilScanFinishes(ctx context.Context, logger *logrus.Entry, pollingInterval int) (*restuss.ScanDetail, error) {
 	t := time.NewTicker(time.Duration(pollingInterval) * time.Second)
 LOOP:
 	for {
@@ -219,18 +221,18 @@ LOOP:
 		case <-t.C:
 			scanDetail, err := r.nessusCli.GetScanByID(r.nessusPersistedScan.ID)
 			if err != nil {
-				logger.WithFields(log.Fields{
+				logger.WithFields(logrus.Fields{
 					"scan": fmt.Sprintf("%+v", r.nessusPersistedScan),
 				}).Errorf("Error while retrieving scan details: %v", err)
 				continue LOOP
 			}
 			if scanDetail == nil {
-				logger.WithFields(log.Fields{
+				logger.WithFields(logrus.Fields{
 					"scan": fmt.Sprintf("%+v", r.nessusPersistedScan),
 				}).Errorf("Missing Status information when retrieving Nessus scan information. will try again in 30 seconds.")
 				continue LOOP
 			}
-			logger.WithFields(log.Fields{
+			logger.WithFields(logrus.Fields{
 				"nessusScanID": fmt.Sprintf("%+v", r.nessusPersistedScan.ID),
 			}).Infof("Status: %s", scanDetail.Info.Status)
 
@@ -255,7 +257,8 @@ LOOP:
 // CleanUp is called by the sdk when the check needs to be aborted in order to give the
 // opportunity to clean up resources.
 func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
-	l := logger.WithFields(log.Fields{"action": "CleanUp"})
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+	l := logger.WithFields(logrus.Fields{"action": "CleanUp"})
 	l.Debug("cleaning up nessus scan")
 	if r.nessusPersistedScan == nil {
 		l.Debug("no clean up needed")
@@ -277,7 +280,7 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 		}
 		// We decrease the pool time here because stoping a scan should take far less time
 		// than running a scan.
-		_, err = r.waitUntilScanFinishes(ctx, 2)
+		_, err = r.waitUntilScanFinishes(ctx, logger, 2)
 		if err != nil && err.Error() != "canceled" {
 			l.WithError(err).Errorf("error while waiting the scan to stop")
 			return
@@ -285,14 +288,14 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 	}
 
 	if r.Delete {
-		err = r.deleteScan(ctx, id)
+		err = r.deleteScan(ctx, logger, id)
 		if err != nil {
 			l.WithError(err).Error("error deleting scan")
 		}
 	}
 }
 
-func (r *runner) addVulnerabilities(scan restuss.ScanDetail, target string) ([]report.Vulnerability, error) {
+func (r *runner) addVulnerabilities(logger *logrus.Entry, scan restuss.ScanDetail, target string) ([]report.Vulnerability, error) {
 	if len(scan.Vulnerabilities) <= 0 {
 		return nil, nil
 	}
@@ -305,7 +308,7 @@ func (r *runner) addVulnerabilities(scan restuss.ScanDetail, target string) ([]r
 		}
 
 		hostID := scan.Hosts[0].ID
-		vulcanVulnerabilities, err := r.translateFromNessusToVulcan(hostID, target, nessusVulnerability)
+		vulcanVulnerabilities, err := r.translateFromNessusToVulcan(logger, hostID, target, nessusVulnerability)
 		if err != nil {
 			logger.Errorf("Error reading nessusVulnerability[%v] :%v", nessusVulnerability.PluginName, err)
 			continue
@@ -333,7 +336,7 @@ func (r *runner) addVulnerabilities(scan restuss.ScanDetail, target string) ([]r
 // information found to report the issue. For example for the `SSL Version 2
 // and 3 Protocol Detection` plugin it reports information about the protocols
 // and ciphersuites enabled for the target.
-func (r *runner) translateFromNessusToVulcan(hostID int64, target string, nessusVulnerability restuss.Vulnerability) ([]report.Vulnerability, error) {
+func (r *runner) translateFromNessusToVulcan(logger *logrus.Entry, hostID int64, target string, nessusVulnerability restuss.Vulnerability) ([]report.Vulnerability, error) {
 	p, err := r.nessusCli.GetPluginByID(nessusVulnerability.PluginID)
 	if err != nil {
 		return nil, err

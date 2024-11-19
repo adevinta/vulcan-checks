@@ -77,7 +77,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	e = logger.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 	if target == "" {
