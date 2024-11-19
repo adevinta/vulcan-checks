@@ -70,7 +70,7 @@ type options struct {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {

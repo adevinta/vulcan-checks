@@ -98,7 +98,7 @@ func runNucleiCmd(logger *logrus.Entry, args []string) ([]byte, error) {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 
 	var opt options
 	if optJSON != "" {

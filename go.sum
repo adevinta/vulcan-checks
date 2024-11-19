@@ -19,8 +19,8 @@ github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCv
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
 github.com/adevinta/restuss v1.1.0 h1:ufdZrDEaPfY43xNvkughifyybEJ31mN8X5qUvnZp32A=
 github.com/adevinta/restuss v1.1.0/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
-github.com/adevinta/vulcan-check-sdk v1.3.0 h1:nZ1oS0ftjM/yqN1pldbCpWVhm+cdbqQ5+8owcVXactw=
-github.com/adevinta/vulcan-check-sdk v1.3.0/go.mod h1:Yl2Nkp67iW6QRThE5f8WpO3OX1nxOoSYvciyr2EERDA=
+github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241119151725-78d65d19762d h1:YoRxmoBDMFBFCMRCqGqokM6yuotJW2os6Xn2D5Bar6I=
+github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241119151725-78d65d19762d/go.mod h1:Yl2Nkp67iW6QRThE5f8WpO3OX1nxOoSYvciyr2EERDA=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
 github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
 github.com/adevinta/vulcan-types v1.2.21 h1:mgRUHo0kVQ8ZJ0oFaPOxrns1YqdWSIaJ/2dKnBT0x4c=

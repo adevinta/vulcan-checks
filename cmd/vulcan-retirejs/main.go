@@ -59,7 +59,7 @@ func init() {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 
 		if target == "" {
 			return fmt.Errorf("check target missing")
