@@ -13,7 +13,8 @@ RUN apk add --no-cache rpm && \
 
 WORKDIR /
 
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-trivy /
 COPY entrypoint.sh /
 COPY config/secret.yaml /
