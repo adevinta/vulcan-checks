@@ -8,10 +8,7 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 )
 
-var (
-	checkName = "vulcan-burp"
-	logger    = check.NewCheckLog(checkName)
-)
+const checkName = "vulcan-burp"
 
 // Options defines the possible options to be received by the check.
 type Options struct {

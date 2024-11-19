@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-var checkName = "vulcan-aws-alerts"
+const checkName = "vulcan-aws-alerts"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {

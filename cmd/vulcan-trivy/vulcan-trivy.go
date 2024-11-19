@@ -241,7 +241,7 @@ func findLargeNonBinaryFiles(rootPath string, excludeDirs []string) ([]string, e
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options

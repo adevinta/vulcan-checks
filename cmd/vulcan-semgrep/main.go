@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -29,11 +30,10 @@ const (
 	//	CWE-1236: Improper Neutralization of Formula Elements in a CSV File
 	CWERegexStr    = `CWE-(\d+)\s*:\s*([[:print:]]+)`
 	MaxMatchLenght = 1000
+	checkName      = "vulcan-semgrep"
 )
 
 var (
-	checkName       = "vulcan-semgrep"
-	logger          = check.NewCheckLog(checkName)
 	DefaultRulesets = []string{"p/r2c-security-audit"}
 	severityMap     = map[string]report.SeverityRank{
 		"INFO":    report.SeverityNone,
@@ -41,7 +41,7 @@ var (
 		"ERROR":   report.SeverityMedium,
 	}
 
-	CWERegex *regexp.Regexp
+	CWERegex = regexp.MustCompile(CWERegexStr)
 )
 
 type options struct {
@@ -56,17 +56,12 @@ type options struct {
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		var err error
-		CWERegex, err = regexp.Compile(CWERegexStr)
-		if err != nil {
-			return err
-		}
-
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}
 
 		logger = logger.WithFields(logrus.Fields{
-			"target":     target,
 			"asset_type": assetType,
 		})
 
@@ -102,13 +97,14 @@ func main() {
 		if err != nil {
 			return err
 		}
+		defer os.RemoveAll(repoPath)
 
 		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.Exclude, opt.ExcludeRule, RulesetArray, repoPath)
 		if err != nil {
 			return err
 		}
 
-		addVulnsToState(state, r, repoPath, target)
+		addVulnsToState(logger, state, r, repoPath)
 
 		return nil
 	}
@@ -117,7 +113,7 @@ func main() {
 	c.RunAndServe()
 }
 
-func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target string) {
+func addVulnsToState(logger *logrus.Entry, state checkstate.State, r *SemgrepOutput, repoPath string) {
 	if r == nil || len(r.Results) < 1 {
 		return
 	}
@@ -129,7 +125,7 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 		filepath := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repoPath))
 		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
 
-		v := vuln(result, filepath, vulns)
+		v := vuln(logger, result, filepath, vulns)
 		match := result.Extra.Lines
 		if len(result.Extra.Lines) > MaxMatchLenght {
 			match = result.Extra.Lines[:MaxMatchLenght] + "..."
@@ -197,7 +193,7 @@ func addVulnsToState(state checkstate.State, r *SemgrepOutput, repoPath, target 
 	}
 }
 
-func vuln(result Result, filepath string, vulns map[string]report.Vulnerability) report.Vulnerability {
+func vuln(logger *logrus.Entry, result Result, filepath string, vulns map[string]report.Vulnerability) report.Vulnerability {
 	logger.WithFields(logrus.Fields{"check_id": result.CheckID, "cwe": result.Extra.Metadata.Cwe}).Debug("processing result")
 
 	// Check ID example:

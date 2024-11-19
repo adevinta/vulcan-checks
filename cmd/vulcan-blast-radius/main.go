@@ -22,13 +22,12 @@ import (
 )
 
 const (
-	name           = "vulcan-blast-radius"
+	checkName      = "vulcan-blast-radius"
 	detailsTxtTemp = `Calculated Blast Radius score: {{ printf "%.2f" .}}`
 	summaryTxtTemp = `Blast Radius: {{if not . }}Unknown{{else}}{{.}}{{end}}`
 )
 
 var (
-	logger          = check.NewCheckLog(name)
 	detailsTemplate = template.Must(template.New("").Parse(detailsTxtTemp))
 	summaryTemplate = template.Must(template.New("").Parse(summaryTxtTemp))
 	blastRadiusVuln = report.Vulnerability{
@@ -59,13 +58,14 @@ func main() {
 	runner := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
 		return run(ctx, target, assetType, optJSON, state, nil)
 	}
-	c := check.NewCheckFromHandler(name, runner)
+	c := check.NewCheckFromHandler(checkName, runner)
 	c.RunAndServe()
 }
 
 // run implements the Blast Radius check.
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State, intelAPIClient intelAPI) (err error) {
-	logger.Printf("Starting the %v check", name)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger.Printf("Starting the %v check", checkName)
 	if target == "" {
 		return errors.New("no hostname or IP address provided")
 	}

@@ -23,6 +23,8 @@ import (
 )
 
 const (
+	checkName = "vulcan-prowler"
+
 	// defaultAPIRegion defines the default AWS region to use when querying AWS
 	// services API endpoints.
 	defaultAPIRegion       = `eu-west-1`
@@ -34,8 +36,6 @@ const (
 )
 
 var (
-	checkName = "vulcan-prowler"
-
 	defaultGroups = []string{
 		"cislevel2",
 	}

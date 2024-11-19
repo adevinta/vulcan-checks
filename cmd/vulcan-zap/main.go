@@ -25,13 +25,12 @@ import (
 	"github.com/zaproxy/zap-api-go/zap"
 )
 
-var (
-	checkName = "vulcan-zap"
-	logger    = check.NewCheckLog(checkName)
-	client    zap.Interface
+const (
+	checkName   = "vulcan-zap"
+	contextName = "target"
 )
 
-const contextName = "target"
+var client zap.Interface
 
 type options struct {
 	Depth    int     `json:"depth"`
@@ -52,7 +51,8 @@ type options struct {
 }
 
 func main() {
-	run := func(_ context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -314,7 +314,7 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Print("Running active scan...")
-			err := activeScan(ctx, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
+			err := activeScan(ctx, logger, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
 			if err != nil {
 				return err
 			}
@@ -423,7 +423,7 @@ func fingerprintFromResources(resources []map[string]string) string {
 	return strings.Join(occurrences, "#")
 }
 
-func activeScan(ctx context.Context, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
+func activeScan(ctx context.Context, logger *logrus.Entry, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
 	_, err := client.Ascan().DisableScanners(disabledScanners, "")
 	if err != nil {
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)

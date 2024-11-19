@@ -37,10 +37,6 @@ const (
 	defaultCWE = 937 // Using Components with Known Vulnerabilities
 )
 
-// logger is the logger used to log events from this specific
-// checktype.
-var logger = check.NewCheckLog(checkName)
-
 // options contains the runtime options provided to the check.
 type options struct {
 	Depth  int    `json:"depth"`
@@ -69,6 +65,7 @@ func main() {
 
 // run contains the actual logic of the checktype.
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	if target == "" {
 		return errors.New("check target missing")
 	}
