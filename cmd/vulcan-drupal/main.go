@@ -24,10 +24,9 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-var (
-	checkName     = "vulcan-drupal"
-	drupalVersion = regexp.MustCompile("Drupal (.+?),")
-)
+const checkName = "vulcan-drupal"
+
+var drupalVersion = regexp.MustCompile("Drupal (.+?),")
 
 func detectVulnerabilities(versionString string, u url.URL) ([]report.Vulnerability, error) {
 	var vulnerabilities []report.Vulnerability

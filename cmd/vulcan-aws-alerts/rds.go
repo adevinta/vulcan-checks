@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	report "github.com/adevinta/vulcan-report"
+	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -19,13 +20,13 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-func caCertificateRotation(target string, vulcanAssumeRoleEndpoint string, roleName string, state state.State) error {
+func caCertificateRotation(logger *logrus.Entry, target string, vulcanAssumeRoleEndpoint string, roleName string, state state.State) error {
 	sess, err := session.NewSession(&aws.Config{})
 	if err != nil {
 		return err
 	}
 
-	creds, err := getCredentials(vulcanAssumeRoleEndpoint, target, roleName)
+	creds, err := getCredentials(logger, vulcanAssumeRoleEndpoint, target, roleName)
 	if err != nil {
 		return err
 	}

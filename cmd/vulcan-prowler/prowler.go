@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -62,7 +63,7 @@ func buildParams(region string, groups []string) []string {
 	return params
 }
 
-func runProwler(ctx context.Context, region string, groups []string) (*prowlerReport, error) {
+func runProwler(ctx context.Context, logger *logrus.Entry, region string, groups []string) (*prowlerReport, error) {
 	logger.Infof("using region: %+v, and groups: %+v", region, groups)
 	params := buildParams(region, groups)
 
