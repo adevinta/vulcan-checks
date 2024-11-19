@@ -1,6 +1,7 @@
 # Copyright 2019 Adevinta
 
 FROM ruby:3.4-alpine
+
 RUN apk add --no-cache openssh \
         && apk add build-base \
         && gem install ssh_scan && gem cleanup \
