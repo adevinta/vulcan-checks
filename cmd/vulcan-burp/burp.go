@@ -46,7 +46,7 @@ var scanTerminalStatus = map[string]bool{
 // CleanUp is called by the sdk when the check finishes or a check abort
 // operation has been requested. We must perform clean up tasks at this point.
 func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 
 	if r.burpScanID == 0 {
 		// Nothing to handle.
@@ -75,7 +75,7 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 
 	var opt Options
 	if optJSON != "" {

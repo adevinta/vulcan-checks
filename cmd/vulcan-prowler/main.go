@@ -206,7 +206,7 @@ func buildOptions(optJSON string) (options, error) {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}

@@ -33,7 +33,7 @@ var (
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
 			logger.Warnf("Can not check asset reachability: %v", err)
