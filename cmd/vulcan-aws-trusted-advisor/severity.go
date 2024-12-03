@@ -10,7 +10,6 @@ import (
 
 // Information extracted from: https://aws.amazon.com/premiumsupport/ta-iam/
 var severityMap = map[string]map[string]float32{
-
 	// Security Groups - Unrestricted Access
 	"1iG5NDGVre": {
 		"Red": report.SeverityThresholdMedium,
