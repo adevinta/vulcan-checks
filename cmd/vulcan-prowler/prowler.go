@@ -9,10 +9,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/sirupsen/logrus"
 )
 
@@ -63,7 +65,7 @@ func buildParams(region string, groups []string) []string {
 	return params
 }
 
-func runProwler(ctx context.Context, logger *logrus.Entry, region string, groups []string) (*prowlerReport, error) {
+func runProwler(ctx context.Context, logger *logrus.Entry, cfg aws.Credentials, region string, groups []string) (*prowlerReport, error) {
 	logger.Infof("using region: %+v, and groups: %+v", region, groups)
 	params := buildParams(region, groups)
 
@@ -73,7 +75,12 @@ func runProwler(ctx context.Context, logger *logrus.Entry, region string, groups
 	}
 	logger.Infof("prowler version: %s", version)
 
-	output, status, err := command.Execute(ctx, logger, prowlerCmd, params...)
+	env := []string{
+		fmt.Sprintf("%s=%s", envKeyID, cfg.AccessKeyID),
+		fmt.Sprintf("%s=%s", envKeySecret, cfg.SecretAccessKey),
+		fmt.Sprintf("%s=%s", envToken, cfg.SessionToken),
+	}
+	output, status, err := command.ExecuteEnv(ctx, logger, env, prowlerCmd, params...)
 	if err != nil {
 		return nil, err
 	}
