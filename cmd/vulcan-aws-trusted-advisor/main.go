@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/support"
@@ -113,28 +114,39 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 		return err
 	}
 	var cfg aws.Config
+	var creds aws.Credentials
 	if assumeRoleEndpoint != "" {
-		creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
+		c, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
 		if err != nil {
 			if errors.Is(err, errNoCredentials) {
 				return checkstate.ErrAssetUnreachable
 			}
 			return err
 		}
-		credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-		cfg, err = config.LoadDefaultConfig(context.Background(),
-			config.WithRegion("us-east-1"),
-			config.WithCredentialsProvider(credsProvider),
-		)
-		if err != nil {
-			return fmt.Errorf("unable to create AWS config: %w", err)
-		}
+		creds = *c
 	} else {
 		// try to access with the default credentials
+		// TODO: Review when the error should be an checkstate.ErrAssetUnreachable (INCONCLUSIVE)
 		cfg, err = config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
 		if err != nil {
 			return fmt.Errorf("unable to create AWS config: %w", err)
 		}
+		stsSvc := sts.NewFromConfig(cfg)
+		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", parsedARN.AccountID, role)
+		prov := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
+		creds, err = prov.Retrieve(context.Background())
+		if err != nil {
+			return fmt.Errorf("unable to assume role: %w", err)
+		}
+	}
+
+	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	cfg, err = config.LoadDefaultConfig(context.Background(),
+		config.WithRegion("us-east-1"),
+		config.WithCredentialsProvider(credsProvider),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create AWS config: %w", err)
 	}
 
 	// Validate that the account id in the target ARN matches the account id in the credentials

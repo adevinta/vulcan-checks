@@ -16,11 +16,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -220,32 +222,56 @@ func main() {
 			return err
 		}
 
-		endpoint := os.Getenv(envEndpoint)
-		if endpoint == "" {
-			return fmt.Errorf("%s env var must have a non-empty value", envEndpoint)
-		}
+		assumeRoleEndpoint := os.Getenv(envEndpoint)
 		role := os.Getenv(envRole)
 
-		logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
+		var cfg aws.Config
+		var creds aws.Credentials
+		if assumeRoleEndpoint != "" {
+			c, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
+			if err != nil {
+				if errors.Is(err, errNoCredentials) {
+					return checkstate.ErrAssetUnreachable
+				}
+				return err
+			}
+			creds = *c
+		} else {
+			// try to access with the default credentials
+			// TODO: Review when the error should be an checkstate.ErrAssetUnreachable (INCONCLUSIVE)
+			cfg, err = config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
+			if err != nil {
+				return fmt.Errorf("unable to create AWS config: %w", err)
+			}
+			stsSvc := sts.NewFromConfig(cfg)
+			roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", parsedARN.AccountID, role)
+			prov := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
+			creds, err = prov.Retrieve(context.Background())
+			if err != nil {
+				return fmt.Errorf("unable to assume role: %w", err)
+			}
+		}
 
-		isReachable, err := helpers.IsReachable(target, assetType,
-			helpers.NewAWSCreds(endpoint, role))
+		credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+		cfg, err = config.LoadDefaultConfig(context.Background(),
+			config.WithRegion("us-east-1"),
+			config.WithCredentialsProvider(credsProvider),
+		)
 		if err != nil {
-			logger.Warnf("Can not check asset reachability: %v", err)
-		}
-		if !isReachable {
-			return checkstate.ErrAssetUnreachable
+			return fmt.Errorf("unable to create AWS config: %w", err)
 		}
 
-		if err := loadCredentials(logger, endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
-			return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)
+		// Validate that the account id in the target ARN matches the account id in the credentials
+		if req, err := sts.NewFromConfig(cfg).GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{}); err != nil {
+			return fmt.Errorf("unable to get caller identity: %w", err)
+		} else if *req.Account != parsedARN.AccountID {
+			return fmt.Errorf("account id in target ARN does not match the account id in the credentials (target ARN: %s, credentials account id: %s)", parsedARN.AccountID, *req.Account)
 		}
 
-		alias, err := accountAlias(logger, credentials.NewEnvCredentials())
+		alias, err := accountAlias(cfg)
 		if err != nil {
-			return fmt.Errorf("can not retrieve account alias: %w", err)
+			return err
 		}
-
 		logger.Infof("account alias: '%s'", alias)
 		groups, err := groupsFromOpts(opts)
 		if err != nil {
@@ -261,7 +287,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		r, err := runProwler(ctx, logger, opts.Region, groups)
+		r, err := runProwler(ctx, logger, creds, opts.Region, groups)
 		if err != nil {
 			return err
 		}
@@ -452,72 +478,73 @@ func parseControl(raw string) (control string, description string, err error) {
 	return
 }
 
-type assumeRoleResponse struct {
+type AssumeRoleResponse struct {
 	AccessKey       string `json:"access_key"`
 	SecretAccessKey string `json:"secret_access_key"`
 	SessionToken    string `json:"session_token"`
 }
 
-func loadCredentials(logger *logrus.Entry, url string, accountID, role string, sessionDuration int) error {
-	m := map[string]interface{}{"account_id": accountID}
+var errNoCredentials = errors.New("unable to decode credentials")
+
+func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*aws.Credentials, error) {
+	m := map[string]any{"account_id": accountID, "duration": 3600}
 	if role != "" {
 		m["role"] = role
 	}
-	if sessionDuration != 0 {
-		m["duration"] = sessionDuration
-	}
 	jsonBody, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal assume role request body for account %s: %w", accountID, err)
+	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create request for the assume role service: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		logger.Errorf("cannot do request: %s", err.Error())
+		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint
 
+	assumeRoleResponse := AssumeRoleResponse{}
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		logger.Errorf("can not read request body %s", err.Error())
+		return nil, err
 	}
 
-	var r assumeRoleResponse
-	err = json.Unmarshal(buf, &r)
+	err = json.Unmarshal(buf, &assumeRoleResponse)
 	if err != nil {
-		logger.Errorf("can not decode response body '%s'", string(buf))
-		return err
+		logger.Errorf("Cannot decode request: %s", err.Error())
+		logger.Errorf("ResponseBody: %s", string(buf))
+		return nil, errNoCredentials
 	}
-
-	if err := os.Setenv(envKeyID, r.AccessKey); err != nil {
-		return err
-	}
-
-	if err := os.Setenv(envKeySecret, r.SecretAccessKey); err != nil {
-		return err
-	}
-
-	if err := os.Setenv(envToken, r.SessionToken); err != nil {
-		return err
-	}
-
-	return nil
+	return &aws.Credentials{
+		AccessKeyID:     assumeRoleResponse.AccessKey,
+		SecretAccessKey: assumeRoleResponse.SecretAccessKey,
+		SessionToken:    assumeRoleResponse.SessionToken,
+	}, nil
 }
 
 // accountAlias gets one of the current aliases for the account that the
 // credentials passed belong to.
-func accountAlias(logger *logrus.Entry, creds *credentials.Credentials) (string, error) {
-	svc := iam.New(session.New(&aws.Config{Credentials: creds}))
-	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
+// accountAlias gets one of the current aliases of the account that the
+// credentials passed belong to.
+func accountAlias(cfg aws.Config) (string, error) {
+	svc := iam.NewFromConfig(cfg)
+	resp, err := svc.ListAccountAliases(context.Background(), &iam.ListAccountAliasesInput{})
 	if err != nil {
 		return "", err
 	}
 	if len(resp.AccountAliases) == 0 {
-		logger.Warn("No aliases found for the account")
+		// No aliases found for the aws account.
 		return "", nil
 	}
-	a := resp.AccountAliases[0]
-	if a == nil {
-		return "", errors.New("unexpected nil getting aliases for aws account")
+	if len(resp.AccountAliases) < 1 {
+		return "", errors.New("no result getting aliases for aws account")
 	}
-	return *a, nil
+	a := resp.AccountAliases[0]
+	return a, nil
 }
