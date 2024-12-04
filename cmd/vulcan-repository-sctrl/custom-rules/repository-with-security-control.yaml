@@ -1,0 +1,100 @@
+rules:
+  - id: repository-with-lava-scan
+    message: 'Action using lava scan binary'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - pattern-regex: 'lava scan'
+  - id: repository-with-lava-action
+    message: 'Action running Lava'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - patterns:
+          - pattern: |
+              ...
+              uses: "$USES"
+          - metavariable-pattern:
+              metavariable: $USES
+              language: generic
+              pattern-either:
+                - pattern: lava-internal-action
+                - pattern: lava-action
+  - id: repository-with-sonarqube-action
+    message: 'Action running Sonarqube'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - pattern: |
+          ...
+          uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          pattern: code-quality-action
+  - id: repository-with-trivy-action
+    message: 'Action running Trivy'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - pattern: |
+          ...
+          uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          pattern: trivy-action
+  - id: repository-with-snyk-action
+    message: 'Action running Snyk'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - pattern: |
+          ...
+          uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          pattern: snyk/actions
+  - id: repository-with-govulncheck
+    message: 'Action running Govulncheck'
+    severity: INFO
+    languages:
+      - yaml
+    paths:
+      include:
+        - ".github/**/*.yaml"
+        - ".github/**/*.yml"
+    patterns:
+      - pattern: |
+          ...
+          uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          pattern: govulncheck-action
