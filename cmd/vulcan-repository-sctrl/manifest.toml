@@ -1,0 +1,5 @@
+Description = "Report wether a Github repository has a security control in place"
+Timeout = 3600 # 1 hour
+AssetTypes = ["GitRepository"]
+RequiredVars = ["GITHUB_ENTERPRISE_ENDPOINT", "GITHUB_ENTERPRISE_TOKEN"]
+Options = '{"depth": 1, "branch":"", "timeout":0, "rule_config_path":""}'
