@@ -9,7 +9,6 @@ require (
 	github.com/adevinta/vulcan-check-sdk v1.4.1
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
-	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2 v1.36.1
 	github.com/aws/aws-sdk-go-v2/service/rds v1.93.12
 	github.com/aws/aws-sdk-go-v2/service/support v1.26.14

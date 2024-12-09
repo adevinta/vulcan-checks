@@ -386,7 +386,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
-		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		repoPath, branchName, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 		if err != nil {
 			logger.Errorf("unable to clone repo: %+v", err)
 			return checkstate.ErrAssetUnreachable
