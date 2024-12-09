@@ -100,7 +100,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-	repoPath, branch, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+	repoPath, branch, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 	if err != nil {
 		return err
 	}
