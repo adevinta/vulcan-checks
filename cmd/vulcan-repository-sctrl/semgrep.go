@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	"github.com/sirupsen/logrus"
@@ -65,6 +66,30 @@ type Result struct {
 			AbstractContent string `json:"abstract_content"`
 		} `json:"metavars"`
 	} `json:"extra,omitempty"`
+}
+
+func semgrepFindings(logger *logrus.Entry, r *SemgrepOutput, target, repo, branch string) []map[string]string {
+	findingRows := []map[string]string{}
+	if r == nil || len(r.Results) < 1 {
+		logger.Info("no security controls found by semgrep")
+		return findingRows
+	}
+
+	logger.WithFields(logrus.Fields{"num_results": len(r.Results)}).Info("security controls found. Processing results")
+
+	for _, result := range r.Results {
+		filepath := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repo))
+		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
+		link := strings.TrimSuffix(target, ".git") + "/blob/" + branch + "/" + filepath + "#L" + fmt.Sprint(result.Start.Line)
+		row := map[string]string{
+			"Control": result.Extra.Message,
+			"Path":    path,
+			"Link":    fmt.Sprintf("(Link)[%s]", link),
+		}
+		findingRows = append(findingRows, row)
+	}
+
+	return findingRows
 }
 
 func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleConfigPath string, dir string) (*SemgrepOutput, error) {

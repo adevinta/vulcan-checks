@@ -1,5 +1,5 @@
 # vulcan-repository-sctrl
 
-Check for detect if a repository has security controls in place.
+Checks if a code repository has security controls in place.
 
 Based on [Semgrep](https://github.com/returntocorp/semgrep)

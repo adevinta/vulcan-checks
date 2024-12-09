@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
-	"sort"
-	"strings"
+	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -42,6 +40,17 @@ var (
 		Summary: "Security control detected in repository",
 		Score:   report.SeverityThresholdNone,
 		Labels:  []string{"informational", "security-control", "repository"},
+		Resources: []report.ResourcesGroup{
+			{
+				Name: "Security Controls",
+				Header: []string{
+					"Control",
+					"Path",
+					"Link",
+				},
+				Rows: []map[string]string{},
+			},
+		},
 	}
 )
 
@@ -82,61 +91,45 @@ func main() {
 		}
 		defer os.RemoveAll(repoPath)
 
+		v := securityControlFound
+		v.AffectedResource = target
+
+		// Run semgrep.
+		logger.Info("running semgrep")
+		semgrepTS := time.Now().Unix()
 		r, err := runSemgrep(ctx, logger, opt.Timeout, opt.RuleConfigPath, repoPath)
 		if err != nil {
 			return err
 		}
+		semgrepFindingResources := semgrepFindings(logger, r, target, repoPath, repoBranch)
+		v.Resources[0].Rows = append(v.Resources[0].Rows, semgrepFindingResources...)
+		logger.WithField("semgrep_took", time.Since(time.Unix(semgrepTS, 0)).Seconds()).Info("semgrep took")
 
-		addVulnsToState(logger, state, r, target, repoPath, repoBranch)
+		// Check for dependabot.
+		logger.Info("checking dependabot")
+		dependabotTS := time.Now().Unix()
+		dependabotResource, err := checkDependabot(ctx, logger, target)
+		if err != nil {
+			logger.WithError(err).Error("could not get repository security information")
+			if len(v.Resources[0].Rows) > 0 {
+				logger.Warn("dependabot check failed, but skipping error because other security controls were found")
+			} else {
+				return err
+			}
+		}
+		v.Resources[0].Rows = append(v.Resources[0].Rows, dependabotResource...)
+		logger.WithField("dependabot_took", time.Since(time.Unix(dependabotTS, 0)).Seconds()).Info("dependabot took")
 
+		// No security controls found. Reporing missing security controls vulnerability.
+		if len(v.Resources[0].Rows) == 0 {
+			v = missingSecurityControls
+			v.AffectedResource = target
+		}
+
+		state.AddVulnerabilities(v)
 		return nil
 	}
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
-}
-
-func addVulnsToState(logger *logrus.Entry, state checkstate.State, r *SemgrepOutput, target, repo, branch string) {
-	if r == nil || len(r.Results) < 1 {
-		logger.Info("no security controls found")
-		v := missingSecurityControls
-		v.AffectedResource = target
-		state.AddVulnerabilities(v)
-		return
-	}
-
-	logger.WithFields(logrus.Fields{"num_results": len(r.Results)}).Info("security controls found. Processing results")
-
-	v := securityControlFound
-	v.AffectedResource = target
-	v.Resources = []report.ResourcesGroup{
-		{
-			Name: "Security Controls",
-			Header: []string{
-				"Control",
-				"Path",
-				"Link",
-			},
-			Rows: []map[string]string{},
-		},
-	}
-
-	for _, result := range r.Results {
-		filepath := strings.TrimPrefix(result.Path, fmt.Sprintf("%s/", repo))
-		path := fmt.Sprintf("%s:%d", filepath, result.Start.Line)
-		link := strings.TrimSuffix(target, ".git") + "/blob/" + branch + "/" + filepath + "#L" + fmt.Sprint(result.Start.Line)
-		row := map[string]string{
-			"Control": result.Extra.Message,
-			"Path":    path,
-			"Link":    fmt.Sprintf("(Link)[%s]", link),
-		}
-		v.Resources[0].Rows = append(v.Resources[0].Rows, row)
-	}
-	sort.Slice(v.Resources[0].Rows, func(i, j int) bool {
-		return v.Resources[0].Rows[i]["Path"] < v.Resources[0].Rows[j]["Path"]
-	})
-
-	v.Fingerprint = helpers.ComputeFingerprint(v.Resources[0].Rows)
-
-	state.AddVulnerabilities(v)
 }
