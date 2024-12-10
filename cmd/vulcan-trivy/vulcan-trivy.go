@@ -39,7 +39,6 @@ const (
 
 var (
 	checkName        = "vulcan-trivy"
-	loggerr          = check.NewCheckLog(checkName)
 	reportOutputFile = "report.json"
 	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
