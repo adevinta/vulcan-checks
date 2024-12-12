@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -20,9 +20,11 @@ import (
 
 	report "github.com/adevinta/vulcan-report"
 	"github.com/mcuadros/go-version"
+	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -33,14 +35,13 @@ const (
 	// the '--timeout' flag. The value should be bigger than the check timeout
 	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
 	// status when the execution takes longer than expected.
-	trivyTimeout = "2h"
+	trivyTimeout     = "2h"
+	maxNonBinaryFile = 1024 * 1024 * 20
 )
 
 var (
-	checkName        = "vulcan-trivy"
-	logger           = check.NewCheckLog(checkName)
-	reportOutputFile = "report.json"
-	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
+	checkName    = "vulcan-trivy"
+	localTargets = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
 	FilePatterns = []string{
 		// trivy only detect requirements.txt files
@@ -175,7 +176,60 @@ func checksToParam(c checks) string {
 	return strings.Join(checks, ",")
 }
 
+// isBinaryFile checks if a file is binary by reading the first few bytes.
+// From https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/utils/utils.go#L85
+func isBinaryFile(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 300)
+	_, err = file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	for _, b := range buf {
+		if b < 7 || b == 11 || (13 < b && b < 27) || (27 < b && b < 0x20) || b == 0x7f {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// findLargeBinaryFiles traverses the filesystem and finds binary files > 1MB.
+func findLargeNonBinaryFiles(rootPath string) ([]string, error) {
+	var files []string
+
+	if !strings.HasSuffix(rootPath, "/") {
+		rootPath = rootPath + "/"
+	}
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if info.Size() > maxNonBinaryFile {
+			isBinary, err := isBinaryFile(path)
+			if err != nil {
+				return err
+			}
+			if !isBinary {
+				files = append(files, strings.TrimPrefix(rootPath, path))
+			}
+		}
+		return nil
+	})
+
+	return files, err
+}
+
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options
@@ -254,7 +308,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return checkstate.ErrAssetUnreachable
 		}
 
-		results, err := execTrivy(opt, "image", append(trivyArgs, target))
+		results, err := execTrivy(ctx, logger, opt, "image", append(trivyArgs, target))
 		if err != nil {
 			return err
 		}
@@ -282,7 +336,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 		}
-		if err = processVulns(results.Results, vuln, "", state); err != nil {
+		if err = processVulns(results.Results, vuln, state); err != nil {
 			logger.Errorf("processing image vuln results: %+v", err)
 		}
 
@@ -324,13 +378,22 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
-		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		repoPath, branchName, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 		if err != nil {
 			logger.Errorf("unable to clone repo: %+v", err)
 			return checkstate.ErrAssetUnreachable
 		}
+		defer os.RemoveAll(repoPath)
 
-		results, err := execTrivy(opt, "fs", append(trivyArgs, repoPath))
+		if opt.GitChecks.Secret {
+			if files, err := findLargeNonBinaryFiles(repoPath); err == nil {
+				for _, f := range files {
+					trivyArgs = append(trivyArgs, "--skip-files", f)
+				}
+			}
+		}
+
+		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
 		} else {
@@ -353,7 +416,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				Labels: []string{"potential", "git"},
 				// Finding attributes.
 			}
-			if err := processVulns(results.Results, vuln, branchName, state); err != nil {
+			if err := processVulns(results.Results, vuln, state); err != nil {
 				logger.Errorf("processing fs results: %+v", err)
 			}
 
@@ -383,17 +446,18 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	return fmt.Errorf("unknown assetType %s", assetType)
 }
 
-func execTrivy(opt options, action string, actionArgs []string) (*results, error) {
+func execTrivy(ctx context.Context, logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
 	// Build trivy command with arguments.
 	trivyCmd := "trivy"
 	trivyArgs := []string{
 		action,
 		"-f", "json",
-		"-o", reportOutputFile,
 		// Indicate Trivy CLI to output just errors to have a cleaner
 		// 'check.Report.Error'.
 		"--quiet",
+		"--parallel", "0", // autodetect number of go routines.
 	}
+
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
@@ -403,24 +467,13 @@ func execTrivy(opt options, action string, actionArgs []string) (*results, error
 	trivyArgs = append(trivyArgs, actionArgs...)
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
-
-	cmd := exec.Command(trivyCmd, trivyArgs...)
-	cmdOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("trivy command execution failed: %w. Command output: %s", err, string(cmdOutput))
-	}
-	logger.Infof("trivy command execution completed successfully")
-
-	byteValue, err := os.ReadFile(reportOutputFile)
-	if err != nil {
-		return nil, fmt.Errorf("trivy report output file read failed with error: %w", err)
-	}
-
 	var results results
-	err = json.Unmarshal(byteValue, &results)
+
+	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &results, trivyCmd, trivyArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal trivy output failed with error: %w", err)
+		return nil, err
 	}
+	logger.WithFields(logrus.Fields{"exit_code": exitCode}).Debug("trivy command finished")
 	return &results, nil
 }
 
@@ -535,7 +588,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	return s + fmt.Sprintf("#L%d", l)
 }
 
-func processVulns(results scanResponse, vuln report.Vulnerability, branch string, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
