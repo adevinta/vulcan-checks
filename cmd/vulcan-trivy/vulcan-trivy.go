@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"sort"
@@ -24,6 +23,7 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -38,9 +38,8 @@ const (
 )
 
 var (
-	checkName        = "vulcan-trivy"
-	reportOutputFile = "report.json"
-	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
+	checkName    = "vulcan-trivy"
+	localTargets = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
 	FilePatterns = []string{
 		// trivy only detect requirements.txt files
@@ -255,7 +254,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return checkstate.ErrAssetUnreachable
 		}
 
-		results, err := execTrivy(logger, opt, "image", append(trivyArgs, target))
+		results, err := execTrivy(ctx, logger, opt, "image", append(trivyArgs, target))
 		if err != nil {
 			return err
 		}
@@ -332,7 +331,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		defer os.RemoveAll(repoPath)
 
-		results, err := execTrivy(logger, opt, "fs", append(trivyArgs, repoPath))
+		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
 		} else {
@@ -385,17 +384,17 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	return fmt.Errorf("unknown assetType %s", assetType)
 }
 
-func execTrivy(logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
+func execTrivy(ctx context.Context, logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
 	// Build trivy command with arguments.
 	trivyCmd := "trivy"
 	trivyArgs := []string{
 		action,
 		"-f", "json",
-		"-o", reportOutputFile,
 		// Indicate Trivy CLI to output just errors to have a cleaner
 		// 'check.Report.Error'.
 		"--quiet",
 	}
+
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
@@ -405,24 +404,13 @@ func execTrivy(logger *logrus.Entry, opt options, action string, actionArgs []st
 	trivyArgs = append(trivyArgs, actionArgs...)
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
-
-	cmd := exec.Command(trivyCmd, trivyArgs...)
-	cmdOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("trivy command execution failed: %w. Command output: %s", err, string(cmdOutput))
-	}
-	logger.Infof("trivy command execution completed successfully")
-
-	byteValue, err := os.ReadFile(reportOutputFile)
-	if err != nil {
-		return nil, fmt.Errorf("trivy report output file read failed with error: %w", err)
-	}
-
 	var results results
-	err = json.Unmarshal(byteValue, &results)
+
+	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &results, trivyCmd, trivyArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal trivy output failed with error: %w", err)
+		return nil, err
 	}
+	logger.WithFields(logrus.Fields{"exit_code": exitCode}).Debug("trivy command finished")
 	return &results, nil
 }
 
