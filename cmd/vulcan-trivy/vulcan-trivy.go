@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -34,7 +35,8 @@ const (
 	// the '--timeout' flag. The value should be bigger than the check timeout
 	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
 	// status when the execution takes longer than expected.
-	trivyTimeout = "2h"
+	trivyTimeout     = "2h"
+	maxNonBinaryFile = 1024 * 1024 * 20
 )
 
 var (
@@ -172,6 +174,58 @@ func checksToParam(c checks) string {
 		checks = append(checks, "config")
 	}
 	return strings.Join(checks, ",")
+}
+
+// isBinaryFile checks if a file is binary by reading the first few bytes.
+// From https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/utils/utils.go#L85
+func isBinaryFile(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 300)
+	_, err = file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	for _, b := range buf {
+		if b < 7 || b == 11 || (13 < b && b < 27) || (27 < b && b < 0x20) || b == 0x7f {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// findLargeBinaryFiles traverses the filesystem and finds binary files > 1MB.
+func findLargeNonBinaryFiles(rootPath string) ([]string, error) {
+	var files []string
+
+	if !strings.HasSuffix(rootPath, "/") {
+		rootPath = rootPath + "/"
+	}
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if info.Size() > maxNonBinaryFile {
+			isBinary, err := isBinaryFile(path)
+			if err != nil {
+				return err
+			}
+			if !isBinary {
+				files = append(files, strings.TrimPrefix(rootPath, path))
+			}
+		}
+		return nil
+	})
+
+	return files, err
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
@@ -331,6 +385,14 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		defer os.RemoveAll(repoPath)
 
+		if opt.GitChecks.Secret {
+			if files, err := findLargeNonBinaryFiles(repoPath); err == nil {
+				for _, f := range files {
+					trivyArgs = append(trivyArgs, "--skip-files", f)
+				}
+			}
+		}
+
 		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
@@ -393,6 +455,7 @@ func execTrivy(ctx context.Context, logger *logrus.Entry, opt options, action st
 		// Indicate Trivy CLI to output just errors to have a cleaner
 		// 'check.Report.Error'.
 		"--quiet",
+		"--parallel", "0", // autodetect number of go routines.
 	}
 
 	// Show only vulnerabilities with specific severities.
