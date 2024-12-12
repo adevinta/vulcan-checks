@@ -12,7 +12,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,7 +36,8 @@ const (
 	// the '--timeout' flag. The value should be bigger than the check timeout
 	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
 	// status when the execution takes longer than expected.
-	trivyTimeout = "2h"
+	trivyTimeout     = "2h"
+	maxNonBinaryFile = 1024 * 1024 * 20
 )
 
 var (
@@ -45,6 +48,10 @@ var (
 		// trivy only detect requirements.txt files
 		`pip:/requirements/[^/]+\.txt`,    // All the .txt files in a requirements directory.
 		`pip:[^/]*requirements[^/]*\.txt`, // All the files .txt that contains requirements
+	}
+	ignoredPaths = []string{
+		// Paths to ignore while searching for big non binary files
+		".git",
 	}
 )
 
@@ -172,6 +179,63 @@ func checksToParam(c checks) string {
 		checks = append(checks, "config")
 	}
 	return strings.Join(checks, ",")
+}
+
+// isBinaryFile checks if a file is binary by reading the first few bytes.
+// From https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/utils/utils.go#L85
+func isBinaryFile(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 300)
+	_, err = file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	for _, b := range buf {
+		if b < 7 || b == 11 || (13 < b && b < 27) || (27 < b && b < 0x20) || b == 0x7f {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func findLargeNonBinaryFiles(rootPath string, excludeDirs []string) ([]string, error) {
+	var files []string
+	if !strings.HasSuffix(rootPath, "/") {
+		rootPath = rootPath + "/"
+	}
+	err := filepath.WalkDir(rootPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if slices.Contains(excludeDirs, filepath.Base(path)) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		if info.Size() > maxNonBinaryFile {
+			isBinary, err := isBinaryFile(path)
+			if err != nil {
+				return err
+			}
+			if !isBinary {
+				files = append(files, strings.TrimPrefix(path, rootPath))
+			}
+		}
+		return nil
+	})
+
+	return files, err
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
@@ -331,6 +395,17 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		defer os.RemoveAll(repoPath)
 
+		// Semgrep warns to --skip-files for large nonbinary (20MB) files because scanning those files for secrets can be time consuming.
+		// As there is no flag to opt-in to automatically discard those files we implement it before.
+		// See https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/analyzer/secret/secret.go#L105
+		if opt.GitChecks.Secret {
+			if files, err := findLargeNonBinaryFiles(repoPath, ignoredPaths); err == nil {
+				for _, f := range files {
+					trivyArgs = append(trivyArgs, "--skip-files", f)
+				}
+			}
+		}
+
 		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
@@ -393,6 +468,7 @@ func execTrivy(ctx context.Context, logger *logrus.Entry, opt options, action st
 		// Indicate Trivy CLI to output just errors to have a cleaner
 		// 'check.Report.Error'.
 		"--quiet",
+		"--parallel", "0", // autodetect number of go routines.
 	}
 
 	// Show only vulnerabilities with specific severities.
