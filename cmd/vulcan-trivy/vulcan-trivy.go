@@ -346,9 +346,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 		}
-		if err = processVulns(results.Results, vuln, state); err != nil {
-			logger.Errorf("processing image vuln results: %+v", err)
-		}
+		processVulns(results.Results, vuln, state)
 
 		vuln = report.Vulnerability{
 			Summary:       "Secret Leaked in DockerImage",
@@ -365,11 +363,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 			},
 		}
-		if err := processSecrets(results.Results, vuln, target, "", state); err != nil {
-			logger.Errorf("processing image secret results: %+v", err)
-		}
-
-		return processMisconfigs(results.Results, target, "", state)
+		processSecrets(results.Results, vuln, target, "", state)
+		processMisconfigs(results.Results, target, "", state)
+		return nil
 	}
 
 	if assetType == "GitRepository" {
@@ -409,51 +405,47 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
 		if err != nil {
 			logger.Errorf("Can not execute trivy: %+v", err)
-		} else {
-			vuln := report.Vulnerability{
-				// Issue attributes.
-				Summary:     "Outdated Packages in Git repository",
-				Description: "Vulnerabilities have been found in outdated packages referenced in Git repository.",
-				Recommendations: []string{
-					"Update affected packages to the versions specified in the resources table or newer.",
-				},
-				Details: strings.Join([]string{
-					"Run the following command to obtain the full report in your computer.",
-					"If using a public git repository:",
-					fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
-					"If using a private repository clone first:",
-					fmt.Sprintf("\tgit clone %s repo", target),
-					"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
-				}, "\n"),
-				CWEID:  937,
-				Labels: []string{"potential", "git"},
-				// Finding attributes.
-			}
-			if err := processVulns(results.Results, vuln, state); err != nil {
-				logger.Errorf("processing fs results: %+v", err)
-			}
-
-			vuln = report.Vulnerability{
-				Summary:       "Secret Leaked In Git Repository",
-				Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
-				CWEID:         540,
-				Score:         8.9,
-				ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
-				Labels:        []string{"issue", "secret"},
-				Recommendations: []string{
-					"Completely remove the secrets from the repository as explained in the references.",
-					"It is recommended to utilize a tool such as AWS Secrets Manager or Vault, or follow the guidance provided by your CI/CD provider, to securely store confidential information.",
-				},
-				References: []string{
-					"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
-				},
-			}
-			if err := processSecrets(results.Results, vuln, target, branchName, state); err != nil {
-				logger.Errorf("processing fs results: %+v", err)
-			}
+			return err
 		}
+		vuln := report.Vulnerability{
+			// Issue attributes.
+			Summary:     "Outdated Packages in Git repository",
+			Description: "Vulnerabilities have been found in outdated packages referenced in Git repository.",
+			Recommendations: []string{
+				"Update affected packages to the versions specified in the resources table or newer.",
+			},
+			Details: strings.Join([]string{
+				"Run the following command to obtain the full report in your computer.",
+				"If using a public git repository:",
+				fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
+				"If using a private repository clone first:",
+				fmt.Sprintf("\tgit clone %s repo", target),
+				"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
+			}, "\n"),
+			CWEID:  937,
+			Labels: []string{"potential", "git"},
+			// Finding attributes.
+		}
+		processVulns(results.Results, vuln, state)
 
-		return processMisconfigs(results.Results, target, branchName, state)
+		vuln = report.Vulnerability{
+			Summary:       "Secret Leaked In Git Repository",
+			Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
+			CWEID:         540,
+			Score:         8.9,
+			ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
+			Labels:        []string{"issue", "secret"},
+			Recommendations: []string{
+				"Completely remove the secrets from the repository as explained in the references.",
+				"It is recommended to utilize a tool such as AWS Secrets Manager or Vault, or follow the guidance provided by your CI/CD provider, to securely store confidential information.",
+			},
+			References: []string{
+				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
+			},
+		}
+		processSecrets(results.Results, vuln, target, branchName, state)
+		processMisconfigs(results.Results, target, branchName, state)
+		return nil
 	}
 
 	return fmt.Errorf("unknown assetType %s", assetType)
@@ -601,7 +593,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	return s + fmt.Sprintf("#L%d", l)
 }
 
-func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
@@ -727,11 +719,9 @@ func processVulns(results scanResponse, vuln report.Vulnerability, state checkst
 		// Build the vulnerability.
 		state.AddVulnerabilities(vuln)
 	}
-
-	return nil
 }
 
-func processSecrets(results scanResponse, vuln report.Vulnerability, target, branch string, state checkstate.State) error {
+func processSecrets(results scanResponse, vuln report.Vulnerability, target, branch string, state checkstate.State) {
 	for _, tt := range results {
 		for _, ts := range tt.Secrets {
 
@@ -772,8 +762,6 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, target, bra
 			state.AddVulnerabilities(vuln)
 		}
 	}
-
-	return nil
 }
 
 func getScore(severity string) float32 {
