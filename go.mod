@@ -6,10 +6,9 @@ require (
 	github.com/FiloSottile/Heartbleed v0.2.1-0.20150408030656-4a3332ca1dc0
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/adevinta/restuss v1.1.0
-	github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241209174335-0c36fc7b31a0
+	github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241218184535-7270d8d0b984
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
-	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/aws/aws-sdk-go-v2 v1.32.6
 	github.com/aws/aws-sdk-go-v2/config v1.28.3
