@@ -30,7 +30,7 @@ log_msg() {
 }
 
 PLATFORMS=${PLATFORMS:-"linux/arm64 linux/amd64"}
-BRANCH=${TRAVIS_BRANCH:-$(git_branch .)}
+BRANCH=${GIT_BRANCH:-$(git_branch .)}
 BRANCH=${BRANCH//\//-}   # Replace / with - for branch names such as dependabot generated ones
 
 IMAGE_TAGS=()
@@ -39,8 +39,8 @@ if [[ $BRANCH == "master" ]]; then
     IMAGE_TAGS+=(latest edge)
     FORCE_BUILD="${FORCE_BUILD:-true}"
     ADD_TAG_CHECK=true
-elif [[ $TRAVIS_TAG != "" ]]; then
-    IMAGE_TAGS+=("$TRAVIS_TAG")
+elif [[ $GIT_TAG != "" ]]; then
+    IMAGE_TAGS+=("$GIT_TAG")
     FORCE_BUILD="${FORCE_BUILD:-true}"
     ADD_TAG_CHECK=false
 else
@@ -75,16 +75,6 @@ fi
 # Download go dependencies
 go mod download
 log_msg "Downloaded go mod"
-
-# Login into registry (authenticated pulls)
-dkr_login > /dev/null
-
-if ! docker buildx inspect multiarch; then
-    # see https://github.com/docker/buildx/issues/495#issuecomment-761562905
-    docker run --rm -it --privileged multiarch/qemu-user-static --reset -p yes
-    docker buildx create --name multiarch --driver docker-container --use --bootstrap
-    log_msg "Created buildx"
-fi
 
 # Generate a checktypes for the current tag.
 TEST_TAG="${IMAGE_TAGS[0]}"
@@ -152,5 +142,3 @@ for check in "${CHECKS[@]}"; do
 
     log_msg "Pushed image $check:[${IMAGE_TAGS[*]}]"
 done
-
-docker buildx rm multiarch
