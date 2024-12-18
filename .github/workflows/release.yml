@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: Regex with the check name to force build (i.e. ".+" "vulcan-sleep")
+        default: "^$"
+        required: false
+        type: string
+
+jobs:
+
+  release:
+
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.22.5'
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Install deps
+        run: |
+          go install "github.com/adevinta/vulcan-check-catalog/cmd/vulcan-check-catalog@${VCC_VERSION:-main}"
+          go install github.com/adevinta/vulcan-local@v0.2.9
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DKR_USERNAME }}
+          password: ${{ secrets.DKR_PASSWORD }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Release
+        env:
+          DKR_USERNAME: ${{ vars.DKR_USERNAME }}
+          PLATFORMS: "linux/amd64 linux/arm64"
+          ARM64_EXCLUDE: "(prowler|zap)"   # Regex with the check names to exclude from arm64 build
+          GIT_BRANCH: "${{ github.ref_name }}"
+          GIT_TAG: "${{ (github.ref_type == 'tag' && github.ref_name) || '' }}"
+          FORCE_BUILD: "${{ inputs.force_build || '' }}"
+        run: |
+          ./release.sh
+
+      - name: Generate gh pages
+        env:
+          DKR_USERNAME: ${{ vars.DKR_USERNAME }}
+        run: |
+          mkdir pages/checktypes
+          vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag edge -output pages/checktypes/edge.json cmd/
+
+      - name: Deploy gh pages
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/master'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages
