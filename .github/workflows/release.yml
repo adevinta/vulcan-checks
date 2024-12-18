@@ -2,7 +2,14 @@ name: Release
 
 on:
   push:
-  # pull_request:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: Regex with the check name to force build (i.e. ".+" "vulcan-sleep")
+        default: "^$"
+        required: false
+        type: string
 
 jobs:
 
@@ -47,6 +54,7 @@ jobs:
           ARM64_EXCLUDE: "(prowler|zap)"   # Regex with the check names to exclude from arm64 build
           GIT_BRANCH: "${{ github.ref_name }}"
           GIT_TAG: "${{ (github.ref_type == 'tag' && github.ref_name) || '' }}"
+          FORCE_BUILD: "${{ inputs.force_build || '' }}"
         run: |
           ./release.sh
 

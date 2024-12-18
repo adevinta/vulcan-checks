@@ -37,15 +37,15 @@ IMAGE_TAGS=()
 CACHE_TAGS=(edge)
 if [[ $BRANCH == "master" ]]; then
     IMAGE_TAGS+=(latest edge)
-    FORCE_BUILD="${FORCE_BUILD:-true}"
+    FORCE_BUILD="${FORCE_BUILD:-".*"}"
     ADD_TAG_CHECK=true
 elif [[ $GIT_TAG != "" ]]; then
     IMAGE_TAGS+=("$GIT_TAG")
-    FORCE_BUILD="${FORCE_BUILD:-true}"
+    FORCE_BUILD="${FORCE_BUILD:-".*"}"
     ADD_TAG_CHECK=false
 else
     IMAGE_TAGS+=("$BRANCH" "$BRANCH-$(git rev-parse --short HEAD)")
-    FORCE_BUILD="${FORCE_BUILD:-false}"
+    FORCE_BUILD="${FORCE_BUILD:-"^$"}"
     ADD_TAG_CHECK=true
     CACHE_TAGS+=("$BRANCH")  # First time will print a message => ERROR importing cache manifest from XXXX
 fi
@@ -55,7 +55,7 @@ log_msg "Starting FORCE_BUILD=$FORCE_BUILD"
 CHECKS=()
 for cf in cmd/*; do
     check=$(basename "$cf")
-    if [[ $FORCE_BUILD == "false" ]]; then
+    if [[ ! $check =~ $FORCE_BUILD ]]; then
         TAG_CHECK="$(get_tag_check "cmd/$check")"
         # Check if check version (code+dep) has been already pushed to Registry
         if [[ $(dkr_image_exists "$check" "$TAG_CHECK") == true ]]; then
