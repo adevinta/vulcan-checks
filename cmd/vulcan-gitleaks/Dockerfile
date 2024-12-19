@@ -10,7 +10,8 @@ ENTRYPOINT ["/usr/bin/env"]
 
 
 # Install check
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-gitleaks /
 
 CMD ["/vulcan-gitleaks"]

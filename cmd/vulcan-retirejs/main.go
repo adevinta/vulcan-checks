@@ -31,12 +31,11 @@ import (
 )
 
 const (
-	jsPath = "temp"
+	jsPath    = "temp"
+	checkName = "vulcan-retirejs"
 )
 
 var (
-	checkName  = "vulcan-retirejs"
-	logger     = check.NewCheckLog(checkName)
 	retireArgs = []string{
 		"retire",
 		"--exitwith", "0",
@@ -60,6 +59,8 @@ func init() {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
+
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
@@ -96,15 +97,15 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 	os.MkdirAll(jsPath, os.ModePerm)
 	defer os.RemoveAll(jsPath)
 
-	_, err = findScriptFiles(target)
+	_, err = findScriptFiles(logger, target)
 	if err != nil {
 		return err
 	}
-	_, err = findInlineScripts(target)
+	_, err = findInlineScripts(logger, target)
 	if err != nil {
 		return err
 	}
-	retireJsReport, err := runRetireJs(ctx, args)
+	retireJsReport, err := runRetireJs(ctx, logger, args)
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 	return nil
 }
 
-func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, error) {
+func runRetireJs(ctx context.Context, logger *logrus.Entry, args []string) ([]RetireJsFileResult, error) {
 	if len(args) == 0 {
 		args = retireArgs
 	}
@@ -267,7 +268,7 @@ type RetireJsVulnerability struct {
 	Severity    string           `json:"severity"`
 }
 
-func findScriptFiles(target string) (int, error) {
+func findScriptFiles(logger *logrus.Entry, target string) (int, error) {
 	htmlNode, err := getTargetHTML(target)
 	if err != nil {
 		return 0, err
@@ -286,7 +287,7 @@ func findScriptFiles(target string) (int, error) {
 		if isRelativeUrl(url) {
 			url = getAbsoluteUrl(target, url)
 		}
-		if err := downloadFromUrl(url); err != nil {
+		if err := downloadFromUrl(logger, url); err != nil {
 			return 0, err
 		}
 		count++
@@ -336,7 +337,7 @@ func isRelativeUrl(url string) bool {
 
 // findInlineScripts downloads all inline scripts inside a given target HTML
 // it returns the number of dowloaded files
-func findInlineScripts(target string) (int, error) {
+func findInlineScripts(logger *logrus.Entry, target string) (int, error) {
 	inlineMather := func(n *html.Node) bool {
 		if n.DataAtom == atom.Script {
 			return len(scrape.Attr(n, "src")) <= 0
@@ -375,7 +376,7 @@ func writeFile(fileName string, contents string) error {
 	return nil
 }
 
-func downloadFromUrl(URL string) error {
+func downloadFromUrl(logger *logrus.Entry, URL string) error {
 	u, err := url.ParseRequestURI(URL)
 	if err != nil {
 		return fmt.Errorf("error invalid url %s: %w", URL, err)

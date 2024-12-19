@@ -66,7 +66,7 @@ func TestDownloadFromUrl(t *testing.T) {
 		w.Write([]byte("ABCDE"))
 	}))
 	defer ts.Close()
-	downloadFromUrl(ts.URL)
+	downloadFromUrl(check.NewCheckLog(checkName), ts.URL)
 	os.Remove("temp")
 }
 
@@ -149,7 +149,7 @@ func TestFindScriptFiles(t *testing.T) {
 	localAddr = ts.URL
 
 	expected := 2
-	got, err := findScriptFiles(localAddr)
+	got, err := findScriptFiles(check.NewCheckLog(checkName), localAddr)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
@@ -166,7 +166,8 @@ func TestInlineScripts(t *testing.T) {
 	defer ts.Close()
 	localAddr = ts.URL
 	expected := 1
-	got, err := findInlineScripts(localAddr)
+
+	got, err := findInlineScripts(check.NewCheckLog(checkName), localAddr)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestRunRetireJS(t *testing.T) {
 
 	ctx := context.Background()
 	args := []string{"echo", mockRetireOutput}
-	_, err := runRetireJs(ctx, args)
+	_, err := runRetireJs(ctx, check.NewCheckLog(checkName), args)
 	if err != nil {
 		t.Fatalf("Error when running runRetireJs: %v", err)
 	}

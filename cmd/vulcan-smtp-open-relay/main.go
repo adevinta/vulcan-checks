@@ -34,14 +34,16 @@ type options struct {
 	Ports []string `json:"ports"`
 }
 
-var (
+const (
 	checkName = "vulcan-smtp-open-relay"
-	logger    = check.NewCheckLog(checkName)
 
 	defaultTiming          = 3
-	defaultPorts           = []string{"25", "465", "587"}
 	openRelayTrueSubString = "Server is an open relay"
 	scriptName             = "smtp-open-relay"
+)
+
+var (
+	defaultPorts = []string{"25", "465", "587"}
 
 	// https://www.rapid7.com/db/vulnerabilities/smtp-general-openrelay
 	openRelay = report.Vulnerability{
@@ -85,6 +87,7 @@ func evalReport(target string, nmapReport *gonmap.NmapRun, state checkstate.Stat
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {

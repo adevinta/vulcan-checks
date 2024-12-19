@@ -13,10 +13,12 @@ import (
 	"strings"
 	"time"
 
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	"github.com/adevinta/vulcan-checks/cmd/vulcan-burp/resturp"
 	report "github.com/adevinta/vulcan-report"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -44,6 +46,8 @@ var scanTerminalStatus = map[string]bool{
 // CleanUp is called by the sdk when the check finishes or a check abort
 // operation has been requested. We must perform clean up tasks at this point.
 func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+
 	if r.burpScanID == 0 {
 		// Nothing to handle.
 		return
@@ -71,6 +75,8 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+
 	var opt Options
 	if optJSON != "" {
 		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -146,7 +152,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		if err != nil {
 			return err
 		}
-		s, err = r.WaitScanFinished(ctx)
+		s, err = r.WaitScanFinished(ctx, logger)
 	}
 	if err != nil {
 		return err
@@ -155,13 +161,13 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	vulns := fillVulns(s.IssueEvents, defs)
+	vulns := fillVulns(logger, s.IssueEvents, defs)
 	state.AddVulnerabilities(vulns...)
 
 	return nil
 }
 
-func (r *runner) WaitScanFinished(ctx context.Context) (*resturp.ScanStatus, error) {
+func (r *runner) WaitScanFinished(ctx context.Context, logger *logrus.Entry) (*resturp.ScanStatus, error) {
 	t := time.NewTicker(scanPollingInterval * time.Second)
 	var (
 		err error
@@ -200,7 +206,7 @@ LOOP:
 	return s, err
 }
 
-func fillVulns(ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []report.Vulnerability {
+func fillVulns(logger *logrus.Entry, ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []report.Vulnerability {
 	// Index definitions by issue type ID.
 	defsIndex := map[string]resturp.IssueDefinition{}
 	for _, d := range defs {

@@ -15,10 +15,7 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-var (
-	checkName = "vulcan-results-load-test"
-	logger    = check.NewCheckLog(checkName)
-)
+const checkName = "vulcan-results-load-test"
 
 type options struct {
 	RawSizeInKB    int `json:"raw_size"`
@@ -31,6 +28,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	var opt options
 
 	logger.Debug("Validating params")

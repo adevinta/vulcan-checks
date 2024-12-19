@@ -20,7 +20,6 @@ import (
 
 var (
 	checkName      = "vulcan-exposed-bgp"
-	logger         = check.NewCheckLog(checkName)
 	defaultTimeout = 30 * time.Second
 	defaultBGPPort = 179
 
@@ -61,6 +60,7 @@ func tcpConnect(target string, port int) error {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		logger.Printf("Starting the %v check", checkName)
 
 		if target == "" {
