@@ -68,9 +68,9 @@ type Result struct {
 	} `json:"extra,omitempty"`
 }
 
-func semgrepFindings(logger *logrus.Entry, r *SemgrepOutput, target, repo, branch string) []map[string]string {
+func semgrepFindings(logger *logrus.Entry, r SemgrepOutput, target, repo, branch string) []map[string]string {
 	findingRows := []map[string]string{}
-	if r == nil || len(r.Results) < 1 {
+	if len(r.Results) < 1 {
 		logger.Info("no security controls found by semgrep")
 		return findingRows
 	}
@@ -92,7 +92,7 @@ func semgrepFindings(logger *logrus.Entry, r *SemgrepOutput, target, repo, branc
 	return findingRows
 }
 
-func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleConfigPath string, dir string) (*SemgrepOutput, error) {
+func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleConfigPath string, dir string) (SemgrepOutput, error) {
 	if ruleConfigPath == "" {
 		ruleConfigPath = DefaultRuleConfigPath
 	}
@@ -103,20 +103,20 @@ func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, ruleConf
 	var report SemgrepOutput
 	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &report, Cmd, params...)
 	if err != nil {
-		return nil, err
+		return report, err
 	}
 
 	logger.WithFields(logrus.Fields{"exit_code": exitCode, "report": report}).Debug("semgrep command finished")
 
 	switch exitCode {
 	case SemgrepStatusOK, SemgrepStatusOKWithIssues:
-		return &report, nil
+		return report, nil
 	// Don't fail the check for unsupported languages.
 	case SemgrepStatusFailedUnknownLanguage:
-		return nil, nil
+		return report, nil
 	default:
 		err := fmt.Errorf("semgrep scan failed with exit code %d", exitCode)
 		logger.WithError(err).WithFields(logrus.Fields{"errors": report.Errors}).Error("")
-		return nil, err
+		return report, err
 	}
 }
