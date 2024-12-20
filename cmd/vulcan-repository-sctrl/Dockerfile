@@ -1,3 +1,5 @@
+# Copyright 2024 Adevinta
+
 FROM semgrep/semgrep:1.97.0-nonroot
 
 # Override entrypoint
