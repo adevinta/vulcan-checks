@@ -120,7 +120,7 @@ func main() {
 		v.Resources[0].Rows = append(v.Resources[0].Rows, dependabotResource...)
 		logger.WithField("dependabot_took", time.Since(time.Unix(dependabotTS, 0)).Seconds()).Info("dependabot took")
 
-		// No security controls found. Reporing missing security controls vulnerability.
+		// No security controls found. Reporting missing security controls vulnerability.
 		if len(v.Resources[0].Rows) == 0 {
 			v = missingSecurityControls
 			v.AffectedResource = target

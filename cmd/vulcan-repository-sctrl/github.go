@@ -59,7 +59,7 @@ func checkDependabot(ctx context.Context, logger *logrus.Entry, target string) (
 	}
 	logger.WithField("security_and_analysis", rsa).Info("repository security and analysis")
 
-	// If the token does not have access to the reposiotry security settings, return an error.
+	// If the token does not have access to the repository security settings, return an error.
 	if rsa.SecurityAndAnalysis.DependabotSecurityUpdates.Status == "" {
 		return findingRows, fmt.Errorf("unable to obtain repository security information")
 	}
@@ -126,7 +126,7 @@ func getRepoSecurity(ctx context.Context, target string) (RSA, int, error) {
 		url = fmt.Sprintf("%s://%s%s/repos/%s/%s", targetURL.Scheme, targetURL.Host, GitHubEntepriseAPIPath, org, repo)
 		token = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
 	default:
-		return rsa, 0, fmt.Errorf("unsupported code reposiotry URL: %s", target)
+		return rsa, 0, fmt.Errorf("unsupported code repository URL: %s", target)
 	}
 
 	client := &http.Client{}
