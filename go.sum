@@ -19,10 +19,8 @@ github.com/ProtonMail/go-crypto v1.0.0 h1:LRuvITjQWX+WIfr930YHG2HNfjR1uOfyf5vE0k
 github.com/ProtonMail/go-crypto v1.0.0/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
 github.com/adevinta/restuss v1.1.0 h1:ufdZrDEaPfY43xNvkughifyybEJ31mN8X5qUvnZp32A=
 github.com/adevinta/restuss v1.1.0/go.mod h1:W4IeLE5TV42aNW+4YHlxQSe3gv2dx8wKPDt3gS/OMCo=
-github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241122141239-38470c390404 h1:6RceUMnmXX65cFkJwWoEdjK5JJqwo0dIHSWxA377vFA=
-github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241122141239-38470c390404/go.mod h1:AzOSXEOTLCFfI8qJeZvHCHKXBe7FLbrPYDxMlS+TQEk=
-github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241203154924-93e01c7dd2a6 h1:Wkqq6K6cQoHYbWVivQJU4ujWYPgTrBY8vvKbo6daqcA=
-github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241203154924-93e01c7dd2a6/go.mod h1:AzOSXEOTLCFfI8qJeZvHCHKXBe7FLbrPYDxMlS+TQEk=
+github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241218184535-7270d8d0b984 h1:y1apA1S95tQYKmNNNMKgvvVORDM+n1t8VrAsX/pkB54=
+github.com/adevinta/vulcan-check-sdk v1.3.1-0.20241218184535-7270d8d0b984/go.mod h1:DwIjLKeiqWaRyxqH7xgh8T8FeeGrgmP3pZzgIPyLOhs=
 github.com/adevinta/vulcan-report v1.0.0 h1:44aICPZ+4svucgCSA5KmjlT3ZGzrvZXiSnkbnj6AC2k=
 github.com/adevinta/vulcan-report v1.0.0/go.mod h1:k34KaeoXc3H77WNMwI9F4F1G28hBjB95PeMUp9oHbEE=
 github.com/adevinta/vulcan-types v1.2.21 h1:mgRUHo0kVQ8ZJ0oFaPOxrns1YqdWSIaJ/2dKnBT0x4c=
@@ -224,6 +222,8 @@ go.opentelemetry.io/otel/metric v1.24.0 h1:6EhoGWWK28x1fbpA4tYTOWBkPefTDQnb8WSGX
 go.opentelemetry.io/otel/metric v1.24.0/go.mod h1:VYhLe1rFfxuTXLgj4CBiyz+9WYBA8pNGJgDcSFRKBco=
 go.opentelemetry.io/otel/trace v1.24.0 h1:CsKnnL4dUAr/0llH9FKuc698G04IrpWV0MQA/Y1YELI=
 go.opentelemetry.io/otel/trace v1.24.0/go.mod h1:HPc3Xr/cOApsBI154IU0OI0HJexz+aw5uPdbs3UCjNU=
+go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
+go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=

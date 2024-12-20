@@ -89,7 +89,7 @@ func main() {
 
 		logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-		repoPath, repoBranch, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		repoPath, repoBranch, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 		if err != nil {
 			return err
 		}
