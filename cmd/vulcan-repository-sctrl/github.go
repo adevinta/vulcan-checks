@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	// GitHubAPI defines the default public Github base URL.
+	// GitHubAPI defines the default public GitHub base URL.
 	GitHubAPI = "https://api.github.com"
 
-	// GithubEntepriseAPIPath defines the default Github Enterprise API path.
-	GithubEntepriseAPIPath = "/api/v3"
+	// GitHubEntepriseAPIPath defines the default GitHub Enterprise API path.
+	GitHubEntepriseAPIPath = "/api/v3"
 
 	// DefaultMaxRetries defines the default number of retries for the HTTP request.
 	DefaultMaxRetries = 3
@@ -117,13 +117,13 @@ func getRepoSecurity(ctx context.Context, target string) (RSA, int, error) {
 
 	var url, token string
 	switch {
-	// Public Github.
+	// Public GitHub.
 	case targetURL.Host == "github.com":
 		url = fmt.Sprintf("%s/repos/%s/%s", GitHubAPI, org, repo)
 		token = os.Getenv("GITHUB_API_TOKEN")
-	// Private Github Enterprise.
+	// Private GitHub Enterprise.
 	case strings.HasPrefix(target, os.Getenv("GITHUB_ENTERPRISE_ENDPOINT")):
-		url = fmt.Sprintf("%s://%s%s/repos/%s/%s", targetURL.Scheme, targetURL.Host, GithubEntepriseAPIPath, org, repo)
+		url = fmt.Sprintf("%s://%s%s/repos/%s/%s", targetURL.Scheme, targetURL.Host, GitHubEntepriseAPIPath, org, repo)
 		token = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
 	default:
 		return rsa, 0, fmt.Errorf("unsupported code reposiotry URL: %s", target)
