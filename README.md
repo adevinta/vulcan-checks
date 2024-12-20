@@ -32,6 +32,7 @@ Currently there's no vendoring provided for this project.
 * **vulcan-nuclei** - Runs [Nuclei](https://github.com/projectdiscovery/nuclei) scanner tool with selected [templates](https://github.com/projectdiscovery/nuclei-templates/)
 * **vulcan-prowler** - Checks compliance against CIS AWS Foundations Benchmark
 * **vulcan-results-load-test** - Internal testing check, not for production
+* **vulcan-repository-sctrl** - Checks whether a Git repository implements security controls.
 * **vulcan-retirejs** - Checks for vulnerabilities in JS frontend dependencies
 * **vulcan-semgrep** - Runs [Semgrep](https://github.com/returntocorp/semgrep) scanner tool for detect security issues in code
 * **vulcan-sleep** - Internal testing check, not for production
