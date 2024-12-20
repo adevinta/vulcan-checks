@@ -15,14 +15,16 @@ import (
 )
 
 const (
-	// Public GitHub API hostname.
+	// GitHubAPI defines the default public Github base URL.
 	GitHubAPI = "https://api.github.com"
 
-	// Private Github API path.
+	// GithubEntepriseAPIPath defines the default Github Enterprise API path.
 	GithubEntepriseAPIPath = "/api/v3"
 
-	// Retry default values.
-	DefaultMaxRetries      = 3
+	// DefaultMaxRetries defines the default number of retries for the HTTP request.
+	DefaultMaxRetries = 3
+
+	// DefaultBackoffDuration defines the default backoff duration for the HTTP request.
 	DefaultBackoffDuration = 5 * time.Second
 )
 
