@@ -57,9 +57,6 @@ func checkDependabot(ctx context.Context, logger *logrus.Entry, target string) (
 	if err != nil {
 		return findingRows, err
 	}
-	if rsa == nil {
-		return findingRows, fmt.Errorf("repository security information is nil")
-	}
 	logger.WithField("security_and_analysis", rsa).Info("repository security and analysis")
 
 	// If the token does not have access to the reposiotry security settings, return an error.
@@ -82,18 +79,18 @@ func checkDependabot(ctx context.Context, logger *logrus.Entry, target string) (
 	return findingRows, nil
 }
 
-func getRepoSecurityWithRetry(ctx context.Context, target string, maxRetries int, backoff time.Duration) (*RSA, error) {
+func getRepoSecurityWithRetry(ctx context.Context, target string, maxRetries int, backoff time.Duration) (RSA, error) {
 	var err error
-	var result *RSA
+	var rsa RSA
 	var statusCode int
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		result, statusCode, err = getRepoSecurity(ctx, target)
+		rsa, statusCode, err = getRepoSecurity(ctx, target)
 		if err == nil {
-			return result, nil
+			return rsa, nil
 		}
 		if !strings.HasPrefix(err.Error(), "unexpected status code") {
-			return nil, err
+			return rsa, err
 		}
 
 		if statusCode >= 500 || statusCode == 429 {
@@ -104,13 +101,14 @@ func getRepoSecurityWithRetry(ctx context.Context, target string, maxRetries int
 		break
 	}
 
-	return nil, fmt.Errorf("failed after %d attempts with error: %w", maxRetries, err)
+	return rsa, fmt.Errorf("failed after %d attempts with error: %w", maxRetries, err)
 }
 
-func getRepoSecurity(ctx context.Context, target string) (*RSA, int, error) {
+func getRepoSecurity(ctx context.Context, target string) (RSA, int, error) {
+	var rsa RSA
 	targetURL, err := url.Parse(target)
 	if err != nil {
-		return nil, 0, fmt.Errorf("unable to parse target as URL: %w", err)
+		return rsa, 0, fmt.Errorf("unable to parse target as URL: %w", err)
 	}
 
 	targetURL.Path = strings.TrimSuffix(targetURL.Path, ".git")
@@ -128,13 +126,13 @@ func getRepoSecurity(ctx context.Context, target string) (*RSA, int, error) {
 		url = fmt.Sprintf("%s://%s%s/repos/%s/%s", targetURL.Scheme, targetURL.Host, GithubEntepriseAPIPath, org, repo)
 		token = os.Getenv("GITHUB_ENTERPRISE_TOKEN")
 	default:
-		return nil, 0, fmt.Errorf("unsupported code reposiotry URL: %s", target)
+		return rsa, 0, fmt.Errorf("unsupported code reposiotry URL: %s", target)
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, 0, err
+		return rsa, 0, err
 	}
 
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -144,22 +142,21 @@ func getRepoSecurity(ctx context.Context, target string) (*RSA, int, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, resp.StatusCode, err
+		return rsa, resp.StatusCode, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, resp.StatusCode, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return rsa, resp.StatusCode, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %w", err)
+		return rsa, resp.StatusCode, fmt.Errorf("failed to read response body: %w", err)
 	}
-	var rsa RSA
 	if err := json.Unmarshal(body, &rsa); err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("failed to unmarshal response: %w", err)
+		return rsa, resp.StatusCode, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return &rsa, resp.StatusCode, nil
+	return rsa, resp.StatusCode, nil
 }
