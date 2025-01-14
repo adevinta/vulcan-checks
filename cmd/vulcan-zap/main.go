@@ -7,22 +7,20 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
-	"net/url"
-	"os/exec"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
+	"text/template"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
-	"github.com/zaproxy/zap-api-go/zap"
 )
 
 const (
@@ -30,18 +28,15 @@ const (
 	contextName = "target"
 )
 
-var client zap.Interface
-
 type options struct {
 	Depth    int     `json:"depth"`
 	Active   bool    `json:"active"`
 	Port     int     `json:"port"`
-	Username string  `json:"username"`
-	Password string  `json:"password"`
 	MinScore float32 `json:"min_score"`
 	// List of active/passive scanners to disable by their identifiers:
 	// https://www.zaproxy.org/docs/alerts/
 	DisabledScanners           []string `json:"disabled_scanners"`
+	DisabledActiveScanners     []string `json:"disabled_active_scanners"`
 	IgnoredFingerprintScanners []string `json:"ignored_fingerprint_scanners"`
 	MaxSpiderDuration          int      `json:"max_spider_duration"`
 	MaxScanDuration            int      `json:"max_scan_duration"` // In minutes
@@ -49,6 +44,124 @@ type options struct {
 	OpenapiUrl                 string   `json:"openapi_url"`
 	OpenapiHost                string   `json:"openapi_host"`
 }
+
+const configTemplate = `
+env:
+  contexts:
+  - name: Default Context
+    urls:
+    - "${URL}"
+    includePaths:
+    - "${URL}.*"
+jobs:
+{{ if .OpenapiUrl }}
+- type: openapi
+  parameters:
+    apiUrl: "{{ .OpenapiUrl }}"
+    targetUrl: "{{ .OpenapiHost }}"
+{{ end }}
+- type: passiveScan-config
+  parameters:
+    scanOnlyInScope: true
+    maxAlertsPerRule: 5
+    enableTags: false
+  rules:
+{{ range .DisabledScanners }}
+  - id: {{ . }}
+    threshold: off
+{{ end }}
+- type: spider
+  parameters:
+    maxDuration: {{ .MaxSpiderDuration }}
+    maxDepth: {{ .Depth }}
+- type: spiderAjax
+  parameters:
+    maxDuration: {{ .MaxSpiderDuration }}
+    maxCrawlDepth: {{ .Depth }}
+    browserId: htmlunit
+- type: passiveScan-wait
+  parameters: {}
+{{ if .Active }}
+- type: activeScan
+  parameters:
+    maxRuleDurationInMins: {{ .MaxRuleDuration }}
+    maxScanDurationInMins: {{ .MaxScanDuration }}
+    maxAlertsPerRule: 5
+  policyDefinition:
+    defaultStrength: medium
+    defaultThreshold: medium
+    rules:
+{{ range .DisabledActiveScanners }}
+    - id: {{ . }}
+      threshold: off
+      strength: default
+{{ end }}
+{{ end }}
+- name: report.json
+  type: report
+  parameters:
+    template: traditional-json
+    reportDir: "${ZAPDIR}"
+    reportFile: report.json
+    displayReport: false
+  risks:
+  - info
+  - low
+  - medium
+  - high
+  confidences:
+  - falsepositive
+  - low
+  - medium
+  - high
+  - confirmed
+`
+
+type Report struct {
+	ProgramName string `json:"@programName"`
+	Version     string `json:"@version"`
+	Generated   string `json:"@generated"`
+	Site        []struct {
+		Name   string `json:"@name"`
+		Host   string `json:"@host"`
+		Port   string `json:"@port"`
+		Ssl    string `json:"@ssl"`
+		Alerts []struct {
+			Pluginid   string `json:"pluginid"`
+			AlertRef   string `json:"alertRef"`
+			Alert      string `json:"alert"`
+			Name       string `json:"name"`
+			Riskcode   string `json:"riskcode"`
+			Confidence string `json:"confidence"`
+			Riskdesc   string `json:"riskdesc"`
+			Desc       string `json:"desc"`
+			Instances  []struct {
+				URI       string `json:"uri"`
+				Method    string `json:"method"`
+				Param     string `json:"param"`
+				Attack    string `json:"attack"`
+				Evidence  string `json:"evidence"`
+				Otherinfo string `json:"otherinfo"`
+			} `json:"instances"`
+			Count     string `json:"count"`
+			Solution  string `json:"solution"`
+			Otherinfo string `json:"otherinfo"`
+			Reference string `json:"reference"`
+			Cweid     string `json:"cweid"`
+			Wascid    string `json:"wascid"`
+			Sourceid  string `json:"sourceid"`
+		} `json:"alerts"`
+	} `json:"site"`
+}
+
+type pool struct {
+	l []int
+	m sync.Mutex
+}
+
+// Create a pool of 5 ports starting from 13000.
+// 5 defines the max number of concurrent scans to allow before a "too many requests error"
+var portPool *pool = createPortPool(13000, 5)
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
@@ -60,8 +173,6 @@ func main() {
 			}
 		}
 
-		disabledScanners := strings.Join(opt.DisabledScanners, ",")
-
 		isReachable, err := helpers.IsReachable(target, assetType, nil)
 		if err != nil {
 			logger.Warnf("Can not check asset reachability: %v", err)
@@ -70,299 +181,155 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		ctx, ctxCancel := context.WithCancel(context.Background())
-
-		// Execute ZAP daemon.
-		go func() {
-			logger.Print("Executing for ZAP daemon...")
-			out, err := exec.Command(
-				"/zap/zap.sh",
-				"-daemon", "-host", "127.0.0.1", "-port", "8080",
-				"-config", "api.disablekey=true",
-				"-config", "database.recoverylog=false", // Reduce disk usage
-				"-notel",  // Disables telemetry
-				"-silent", // Prevents from checking for addon updates
-			).Output()
-
-			logger.Debugf("Error executing ZAP daemon: %v", err)
-			logger.Debugf("Output of the ZAP daemon: %s", string(out))
-
-			ctxCancel()
-		}()
-
-		// Wait for ZAP to be available.
-		logger.Print("Waiting for ZAP proxy...")
-		ticker := time.NewTicker(time.Second)
-	proxyLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return errors.New("ZAP exited while waiting for proxy")
-			case <-ticker.C:
-				conn, _ := net.DialTimeout("tcp", "127.0.0.1:8080", time.Second)
-				if conn != nil {
-					conn.Close()
-					break proxyLoop
-				}
-			}
-		}
-
-		logger.Print("Initiating ZAP client...")
-
-		cfg := &zap.Config{
-			Proxy:     "http://127.0.0.1:8080",
-			Base:      "http://127.0.0.1:8080/JSON/",
-			BaseOther: "http://127.0.0.1:8080/OTHER/",
-		}
-		client, err = zap.NewClient(cfg)
+		d, err := os.MkdirTemp(os.TempDir(), "zap-")
 		if err != nil {
-			return fmt.Errorf("error configuring the ZAP proxy client: %w", err)
+			return fmt.Errorf("unable to create tmp dir: %w", err)
 		}
 
-		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
+		defer os.RemoveAll(d)
 
-		targetURL, err := url.Parse(target)
+		tmpl, err := template.New("config").Parse(configTemplate)
 		if err != nil {
-			return fmt.Errorf("error parsing target URL: %w", err)
+			panic(err)
 		}
-
-		cx, err := client.Context().NewContext(contextName)
+		sb := new(strings.Builder)
+		err = tmpl.Execute(sb, opt)
 		if err != nil {
-			return fmt.Errorf("error creating scope context: %w", err)
+			return fmt.Errorf("unable to execute template: %w", err)
 		}
-		contextID, err := getStringAttribute(cx, "contextId")
+
+		file := fmt.Sprintf("%s/auto.yaml", d)
+
+		err = os.WriteFile(file, []byte(sb.String()), 0600)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to create auto.yaml file: %w", err)
 		}
 
-		// Add base URL to the scope.
-		targetPort := ""
-		if targetURL.Port() != "" {
-			targetPort = fmt.Sprintf(":%s", targetURL.Port())
-		}
-		hostnameRegExQuote := strings.Replace(targetURL.Hostname(), `.`, `\.`, -1)
-		includeInContextRegEx := fmt.Sprintf(`http(s)?:\/\/%s%s\/.*`, hostnameRegExQuote, targetPort)
-		logger.Printf("include in context regexp: %s", includeInContextRegEx)
-		_, err = client.Context().IncludeInContext(contextName, includeInContextRegEx)
+		logger.WithField("autorun", sb.String()).Info("cmd config")
+
+		port, err := portPool.getPort()
 		if err != nil {
-			return fmt.Errorf("error including target URL to context: %w", err)
+			return fmt.Errorf("too many requests: %w", err)
 		}
+		defer portPool.releasePort(port)
 
-		_, err = client.Context().SetContextInScope(contextName, "True")
+		out, outErr, exitCode, err := command.ExecuteWithEnvStdErr(ctx, logger,
+			[]string{
+				fmt.Sprintf("URL=%s", target),
+				fmt.Sprintf("ZAPDIR=%s", d),
+			},
+			"/zap/zap.sh",
+			"-dir", d,
+			"-cmd", "-autorun", file,
+			"-config", "database.recoverylog=false", // Reduce disk usage
+			"-config", "network.connection.defaultUserAgent='Vulcan - Security Scanner - vulcan@adevinta.com'",
+			"-port", strconv.Itoa(port),
+			"-notel",  // Disables telemetry
+			"-silent", // Prevents from checking for addon updates
+		)
 		if err != nil {
-			return fmt.Errorf("error setting context in scope: %w", err)
+			logger.Errorf("Output of the ZAP daemon: %s", string(out))
+			return fmt.Errorf("running zap: %w", err)
 		}
 
-		if opt.Username != "" {
-			auth := client.Authentication()
-			auth.SetAuthenticationMethod("1", "httpAuthentication", fmt.Sprintf("hostname=%v&port=%v", targetURL.Hostname(), targetURL.Port()))
-
-			users := client.Users()
-			users.NewUser("1", opt.Username)
-			users.SetAuthenticationCredentials("1", "0", fmt.Sprintf("username=%v&password=%v", opt.Username, opt.Password))
-			users.SetUserEnabled("1", "0", "True")
+		// Exit codes:
+		// 0: Success
+		// 1: At least 1 FAIL
+		// 2: At least one WARN and no FAILs
+		// 3: Any other failure
+		if exitCode != 0 {
+			logger.WithField("exitCode", exitCode).WithField("stdOut", string(out)).WithField("stdErr", string(outErr)).Info("Zap finished")
 		}
 
-		if opt.OpenapiUrl != "" {
-			_, err = client.Openapi().ImportUrl(opt.OpenapiUrl, opt.OpenapiHost, contextID)
-			if err != nil {
-				return fmt.Errorf("error importing openapi url: %w", err)
-			}
-		}
-
-		_, err = client.Pscan().DisableScanners(disabledScanners)
+		res, err := os.ReadFile(fmt.Sprintf("%s/report.json", d))
 		if err != nil {
-			return fmt.Errorf("error disabling scanners for passive scan: %w", err)
+			return fmt.Errorf("unable to read report.json: %v", err)
 		}
 
-		_, err = client.Spider().SetOptionMaxDepth(opt.Depth)
-		if err != nil {
-			return fmt.Errorf("error setting spider max depth: %w", err)
-		}
-		_, err = client.Spider().SetOptionMaxDuration(opt.MaxSpiderDuration)
-		if err != nil {
-			return fmt.Errorf("error setting spider max duration: %w", err)
-		}
-
-		_, err = client.Pscan().DisableAllTags()
-		if err != nil {
-			return fmt.Errorf("error disabling all tags: %w", err)
-		}
-
-		logger.Printf("Running spider %v levels deep, max duration %v, ...", opt.Depth, opt.MaxSpiderDuration)
-
-		resp, err := client.Spider().Scan(targetURL.String(), "", contextName, "", "")
-		if err != nil {
-			return fmt.Errorf("error executing the spider: %w", err)
-		}
-
-		v, ok := resp["scan"]
-		if !ok {
-			// Scan has not been executed. Due to the ZAP proxy behaviour
-			// (the request to the ZAP API does not return the status codes)
-			// we can not be sure whether it was because a non existant target
-			// or because an error accessing the ZAP API. Therefore, we will
-			// terminate the check without errors.
-			logger.WithFields(logrus.Fields{"resp": resp}).Warn("Scan not present in response body when calling Spider().Scan()")
-			return nil
-		}
-
-		scanid, ok := v.(string)
-		if !ok {
-			return errors.New("scan is present in response body when calling Spider().Scan() but it is not a string")
-		}
-
-		ticker = time.NewTicker(10 * time.Second)
-	spiderLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return errors.New("ZAP exited while waiting for spider")
-			case <-ticker.C:
-				resp, err := client.Spider().Status(scanid)
-				if err != nil {
-					return fmt.Errorf("error getting the status of the spider: %w", err)
-				}
-				v, ok := resp["status"]
-				if !ok {
-					// In this case if we can not get the status let's fail.
-					return fmt.Errorf("cannot retrieve the status of the spider: %v", resp)
-				}
-				status, ok := v.(string)
-				if !ok {
-					return errors.New("status is present in response body when calling Spider().Scatus() but it is not a string")
-				}
-
-				progress, err := strconv.Atoi(status)
-				if err != nil {
-					return fmt.Errorf("can not convert status value %s into an int", status)
-				}
-
-				logger.Debugf("Spider at %v progress.", progress)
-
-				if opt.Active {
-					state.SetProgress(float32(progress) / 200)
-				} else {
-					state.SetProgress(float32(progress) / 100)
-				}
-
-				if progress >= 100 {
-					break spiderLoop
-				}
-			}
-		}
-
-		logger.Print("Waiting for spider results...")
-		time.Sleep(5 * time.Second)
-
-		resp, err = client.Spider().AllUrls()
-		if err != nil {
-			return fmt.Errorf("error getting the list of URLs from spider: %w", err)
-		}
-		logger.Printf("Spider found the following URLs: %+v", resp)
-
-		_, err = client.AjaxSpider().SetOptionMaxDuration(opt.MaxSpiderDuration)
-		if err != nil {
-			return fmt.Errorf("error setting ajax spider max duration: %w", err)
-		}
-
-		logger.Printf("Running AJAX spider %v levels deep, max duration %v...", opt.Depth, opt.MaxSpiderDuration)
-
-		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
-		_, err = client.AjaxSpider().Scan(targetURL.String(), "", contextName, "")
-		if err != nil {
-			return fmt.Errorf("error executing the AJAX spider: %w", err)
-		}
-
-		ticker = time.NewTicker(10 * time.Second)
-	ajaxSpiderLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return errors.New("ZAP exited while waiting for AJAX spider")
-			case <-ticker.C:
-				resp, err := client.AjaxSpider().Status()
-				if err != nil {
-					return fmt.Errorf("error getting the status of the AJAX spider: %w", err)
-				}
-
-				v, ok := resp["status"]
-				if !ok {
-					// In this case if we can not get the status let's fail.
-					return errors.New("can not retrieve the status of the AJAX spider")
-				}
-				status, ok := v.(string)
-				if !ok {
-					return errors.New("status is present in response body when calling AjaxSpider().Scatus() but it is not a string")
-				}
-
-				if status >= "running" {
-					break ajaxSpiderLoop
-				}
-			}
-		}
-
-		logger.Print("Waiting for AJAX spider results...")
-		time.Sleep(5 * time.Second)
-
-		resp, err = client.AjaxSpider().FullResults()
-		if err != nil {
-			return fmt.Errorf("error getting the list of URLs from AJAX spider: %w", err)
-		}
-		logger.Printf("AJAX spider found the following URLs: %+v", resp)
-
-		// Scan actively only if explicitly indicated.
-		if opt.Active {
-			logger.Print("Running active scan...")
-			err := activeScan(ctx, logger, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
-			if err != nil {
-				return err
-			}
-			logger.Print("Waiting for active scan results...")
-			time.Sleep(5 * time.Second)
-		}
-
-		// Retrieve alerts.
-		alerts, err := client.Core().Alerts("", "", "", "")
-		if err != nil {
-			return fmt.Errorf("error retrieving alerts: %v", alerts)
-		}
-
-		alertsSlice, ok := alerts["alerts"].([]interface{})
-		if !ok {
-			return errors.New("alerts does not exist or it is not an array of interface{}")
+		r := Report{}
+		if err = json.Unmarshal(res, &r); err != nil {
+			return fmt.Errorf("unable to parse report: %v", err)
 		}
 
 		vulnerabilities := make(map[string]*report.Vulnerability)
 		vulnSummary2PluginID := make(map[string]string)
-		for _, alert := range alertsSlice {
-			a, ok := alert.(map[string]interface{})
-			if !ok {
-				return errors.New("alert it is not a map[string]interface{}")
+		for _, site := range r.Site {
+			logger.WithFields(logrus.Fields{
+				"site.host":       site.Host,
+				"site.num_alerts": len(site.Alerts)}).Info("alerts")
+			if !strings.Contains(target, site.Host) {
+				// This can happen i.e. when the openapi target url is other than the target.
+				// DOUBT: Filter? exclude?
+				logger.Warnf("Reporting alerts from an outside target %s %s", target, site.Host)
 			}
+			for _, a := range site.Alerts {
 
-			v, err := processAlert(a)
-			if err != nil {
-				logger.WithError(err).Warn("can not process alert")
-				continue
-			}
-			pluginID, err := parsePluginID(a)
-			if err != nil {
-				logger.WithError(err).Warn("can not parse plugin ID")
-				continue
-			}
-			vulnSummary2PluginID[v.Summary] = pluginID
+				cwe := 0
+				if a.Cweid != "-1" {
+					cwe, err = strconv.Atoi(a.Cweid)
+					if err != nil {
+						logger.Warnf("Wrong number Cweid %d", cwe)
+					}
+				}
+				v := report.Vulnerability{
+					Summary:         a.Name,
+					Description:     trimP(a.Desc),
+					Details:         a.Otherinfo,
+					Recommendations: splitP(a.Solution),
+					References:      splitP(a.Reference),
+					Labels:          []string{"issue", "web", "zap", a.Pluginid}, // DOUBT: Added Pluginid as label.
+					CWEID:           uint32(cwe),
+					Score: func(risk string) float32 {
+						switch risk {
+						case "0":
+							return report.SeverityThresholdNone
+						case "1":
+							return report.SeverityThresholdLow
+						case "2":
+							return report.SeverityThresholdMedium
+						case "3":
+							return report.SeverityThresholdHigh
+						}
+						return float32(report.SeverityNone)
+					}(a.Riskcode),
+				}
 
-			if _, ok := vulnerabilities[v.Summary]; ok {
-				vulnerabilities[v.Summary].Resources[0].Rows = append(
-					vulnerabilities[v.Summary].Resources[0].Rows,
-					v.Resources[0].Rows...,
-				)
-			} else {
-				vulnerabilities[v.Summary] = &v
+				// DOUBT: Only the fist instance?
+				if len(a.Instances) > 0 {
+					i := a.Instances[0]
+					v.Resources = []report.ResourcesGroup{
+						{
+							Name: "Affected Requests",
+							Header: []string{
+								"Method",
+								"URL",
+								"Parameter",
+								"Attack",
+								"Evidence",
+							},
+							Rows: []map[string]string{
+								{
+									"Method":    i.Method,
+									"URL":       i.URI,
+									"Parameter": i.Param,
+									"Attack":    i.Attack,
+									"Evidence":  i.Evidence,
+								},
+							},
+						},
+					}
+				}
+				vulnSummary2PluginID[v.Summary] = a.Pluginid
+				if _, ok := vulnerabilities[v.Summary]; ok {
+					vulnerabilities[v.Summary].Resources[0].Rows = append(
+						vulnerabilities[v.Summary].Resources[0].Rows,
+						v.Resources[0].Rows...,
+					)
+				} else {
+					vulnerabilities[v.Summary] = &v
+				}
 			}
 		}
-
 		for _, v := range vulnerabilities {
 			// NOTE: Due to a signifcant number of false positive findings
 			// reported for low severity issues by ZAP, the MinScore option
@@ -388,6 +355,14 @@ func main() {
 
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
+}
+
+func trimP(html string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(html, "<p>"), "</p>")
+}
+
+func splitP(html string) []string {
+	return strings.Split(trimP(html), "</p><p>")
 }
 
 func fingerprintFromResources(resources []map[string]string) string {
@@ -423,74 +398,6 @@ func fingerprintFromResources(resources []map[string]string) string {
 	return strings.Join(occurrences, "#")
 }
 
-func activeScan(ctx context.Context, logger *logrus.Entry, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
-	_, err := client.Ascan().DisableScanners(disabledScanners, "")
-	if err != nil {
-		return fmt.Errorf("error disabling scanners for active scan: %w", err)
-	}
-
-	_, err = client.Ascan().SetOptionMaxScanDurationInMins(maxScanDuration)
-	if err != nil {
-		return fmt.Errorf("error setting max scan duration for active scan: %w", err)
-	}
-
-	_, err = client.Ascan().SetOptionMaxRuleDurationInMins(maxRuleDuration)
-	if err != nil {
-		return fmt.Errorf("error setting max rule duration for active scan: %w", err)
-	}
-
-	resp, err := client.Ascan().Scan("", "True", "", "", "", "", contextID)
-	if err != nil {
-		return fmt.Errorf("error executing the active scan: %w", err)
-	}
-
-	v, ok := resp["scan"]
-	if !ok {
-		return fmt.Errorf("scan is not present in response body when calling Ascan().Scan()")
-	}
-
-	scanid, ok := v.(string)
-	if !ok {
-		return errors.New("scan is present in response body when calling Ascan().Scan() but it is not a string")
-	}
-
-	ticker := time.NewTicker(60 * time.Second)
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.New("ZAP exited while waiting for active scan")
-		case <-ticker.C:
-			ascan := client.Ascan()
-
-			resp, err := ascan.Status(scanid)
-			if err != nil {
-				return fmt.Errorf("error getting the status of the scan: %w", err)
-			}
-
-			v, ok := resp["status"]
-			if !ok {
-				// In this case if we can not get the status let's fail.
-				return errors.New("can not retrieve the status of the scan")
-			}
-			status, ok := v.(string)
-			if !ok {
-				return errors.New("status is present in response body when calling Ascan().Scatus() but it is not a string")
-			}
-			progress, err := strconv.Atoi(status)
-			if err != nil {
-				return fmt.Errorf("can not convert status value %s into an int", status)
-			}
-
-			state.SetProgress((1 + float32(progress)) / 200)
-
-			logger.Debugf("Active scan at %v progress.", progress)
-			if progress >= 100 {
-				return nil
-			}
-		}
-	}
-}
-
 func isPluginIgnoredForFingerprint(opt options, pluginID string) bool {
 	for _, ignoredID := range opt.IgnoredFingerprintScanners {
 		if pluginID == ignoredID {
@@ -500,14 +407,30 @@ func isPluginIgnoredForFingerprint(opt options, pluginID string) bool {
 	return false
 }
 
-func getStringAttribute(m map[string]any, name string) (string, error) {
-	v, ok := m[name]
-	if !ok {
-		return "", fmt.Errorf("%s not found", name)
+func createPortPool(first, count int) *pool {
+	pp := pool{
+		l: make([]int, count),
+		m: sync.Mutex{},
 	}
-	str, ok := v.(string)
-	if !ok {
-		return "", fmt.Errorf("%s value [%v] is not a string", name, v)
+	for i := range pp.l {
+		pp.l[i] = first + i
 	}
-	return str, nil
+	return &pp
+}
+
+func (p *pool) getPort() (int, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if len(p.l) == 0 {
+		return 0, fmt.Errorf("no ports available")
+	}
+	port := p.l[len(p.l)-1]
+	p.l = p.l[:len(p.l)-1]
+	return port, nil
+}
+
+func (p *pool) releasePort(port int) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.l = append(p.l, port)
 }
