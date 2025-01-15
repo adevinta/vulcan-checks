@@ -124,7 +124,7 @@ func exposedPorts(target string, res []Result, exclude []uint16) []report.Vulner
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
 		var opt options

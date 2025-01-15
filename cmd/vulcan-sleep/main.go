@@ -17,7 +17,6 @@ import (
 
 var (
 	checkName = "vulcan-sleep"
-	logger    = check.NewCheckLog(checkName)
 )
 
 type options struct {
@@ -30,6 +29,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	var opt options
 	logger.Printf("Starting the %v check", checkName)
 	logger.Printf("Validating params. Target: %v Options: %v ...", target, optJSON)

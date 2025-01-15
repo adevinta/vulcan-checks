@@ -8,6 +8,7 @@ USER zap
 
 RUN /zap/zap.sh -cmd -addonupdate -notel
 
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-zap /
 CMD ["/vulcan-zap"]
