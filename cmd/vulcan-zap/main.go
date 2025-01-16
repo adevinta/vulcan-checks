@@ -45,20 +45,24 @@ type options struct {
 	OpenapiHost                string   `json:"openapi_host"`
 }
 
+type tmplOptions struct {
+	Opts options
+	URL  string
+	Dir  string
+}
+
 const configTemplate = `
 env:
   contexts:
   - name: Default Context
-    urls:
-    - "${URL}"
-    includePaths:
-    - "${URL}.*"
+    urls: [ "{{ .URL }}" ]
+    includePaths: [ "{{ .URL }}/.*" ]
 jobs:
-{{ if .OpenapiUrl }}
+{{ if .Opts.OpenapiUrl }}
 - type: openapi
   parameters:
-    apiUrl: "{{ .OpenapiUrl }}"
-    targetUrl: "{{ .OpenapiHost }}"
+    apiUrl: "{{ .Opts.OpenapiUrl }}"
+    targetUrl: "{{ .Opts.OpenapiHost }}"
 {{ end }}
 - type: passiveScan-config
   parameters:
@@ -66,32 +70,32 @@ jobs:
     maxAlertsPerRule: 5
     enableTags: false
   rules:
-{{ range .DisabledScanners }}
+{{ range .Opts.DisabledScanners }}
   - id: {{ . }}
     threshold: off
 {{ end }}
 - type: spider
   parameters:
-    maxDuration: {{ .MaxSpiderDuration }}
-    maxDepth: {{ .Depth }}
+    maxDuration: {{ .Opts.MaxSpiderDuration }}
+    maxDepth: {{ .Opts.Depth }}
 - type: spiderAjax
   parameters:
-    maxDuration: {{ .MaxSpiderDuration }}
-    maxCrawlDepth: {{ .Depth }}
+    maxDuration: {{ .Opts.MaxSpiderDuration }}
+    maxCrawlDepth: {{ .Opts.Depth }}
     browserId: htmlunit
 - type: passiveScan-wait
   parameters: {}
-{{ if .Active }}
+{{ if .Opts.Active }}
 - type: activeScan
   parameters:
-    maxRuleDurationInMins: {{ .MaxRuleDuration }}
-    maxScanDurationInMins: {{ .MaxScanDuration }}
+    maxRuleDurationInMins: {{ .Opts.MaxRuleDuration }}
+    maxScanDurationInMins: {{ .Opts.MaxScanDuration }}
     maxAlertsPerRule: 5
   policyDefinition:
     defaultStrength: medium
     defaultThreshold: medium
     rules:
-{{ range .DisabledActiveScanners }}
+{{ range .Opts.DisabledActiveScanners }}
     - id: {{ . }}
       threshold: off
       strength: default
@@ -101,7 +105,7 @@ jobs:
   type: report
   parameters:
     template: traditional-json
-    reportDir: "${ZAPDIR}"
+    reportDir: "{{ .Dir }}"
     reportFile: report.json
     displayReport: false
   risks:
@@ -193,7 +197,11 @@ func main() {
 			panic(err)
 		}
 		sb := new(strings.Builder)
-		err = tmpl.Execute(sb, opt)
+		err = tmpl.Execute(sb, tmplOptions{
+			Opts: opt,
+			URL:  target,
+			Dir:  d,
+		})
 		if err != nil {
 			return fmt.Errorf("unable to execute template: %w", err)
 		}
@@ -213,11 +221,7 @@ func main() {
 		}
 		defer portPool.releasePort(port)
 
-		out, outErr, exitCode, err := command.ExecuteWithEnvStdErr(ctx, logger,
-			[]string{
-				fmt.Sprintf("URL=%s", target),
-				fmt.Sprintf("ZAPDIR=%s", d),
-			},
+		out, outErr, exitCode, err := command.ExecuteWithStdErr(ctx, logger,
 			"/zap/zap.sh",
 			"-dir", d,
 			"-cmd", "-autorun", file,

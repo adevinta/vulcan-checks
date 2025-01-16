@@ -22,15 +22,22 @@ func TestTemplate(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		opts            options
+		opts            tmplOptions
 		wantContains    []string
 		wantNotContains []string
 	}{
 		{
 			name: "Simple",
-			opts: options{},
+			opts: tmplOptions{
+				URL: "http://my.url",
+				Dir: "/tmp",
+			},
 			wantContains: []string{
 				"maxDuration: 0",
+				`reportDir: "/tmp"`,
+				`r: "/tmp"`,
+				`urls: [ "http://my.url" ]`,
+				`includePaths: [ "http://my.url/.*" ]`,
 			},
 			wantNotContains: []string{
 				"credentials:",
@@ -41,17 +48,18 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "Active",
-			opts: options{
-				Active: true,
-			},
+			opts: tmplOptions{
+				Opts: options{
+					Active: true,
+				}},
 			wantContains: []string{
 				"type: activeScan",
 			},
 		},
 		{
 			name: "Openapi",
-			opts: options{
-				OpenapiUrl: "http://my.url/openapi",
+			opts: tmplOptions{
+				Opts: options{OpenapiUrl: "http://my.url/openapi"},
 			},
 			wantContains: []string{
 				"apiUrl: \"http://my.url/openapi\"",
@@ -59,11 +67,13 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "Constants",
-			opts: options{
-				Active:            true,
-				MaxSpiderDuration: 10,
-				MaxRuleDuration:   100,
-				MaxScanDuration:   1000,
+			opts: tmplOptions{
+				Opts: options{
+					Active:            true,
+					MaxSpiderDuration: 10,
+					MaxRuleDuration:   100,
+					MaxScanDuration:   1000,
+				},
 			},
 			wantContains: []string{
 				"maxDuration: 10",
@@ -73,8 +83,10 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "DisabledScanners",
-			opts: options{
-				DisabledScanners: []string{"S1", "123"},
+			opts: tmplOptions{
+				Opts: options{
+					DisabledScanners: []string{"S1", "123"},
+				},
 			},
 			wantContains: []string{
 				"- id: S1",
