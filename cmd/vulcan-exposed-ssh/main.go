@@ -84,7 +84,7 @@ var (
 	c6, c7, c8     version.Constraints
 	exposedSSHVuln = report.Vulnerability{
 		CWEID:           284,
-		Summary:         strings.Title("Exposed SSH Ports"),
+		Summary:         "Exposed SSH Ports",
 		ImpactDetails:   "An attacker may be able to use the exposed port to exploit a vulnerability in the service.",
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Block access to SSH ports from the internet."},
@@ -101,7 +101,7 @@ var (
 	}
 	passAuthVuln = report.Vulnerability{
 		CWEID:           309,
-		Summary:         strings.Title("SSH Allows Authentication Using Passwords"),
+		Summary:         "SSH Allows Authentication Using Passwords",
 		ImpactDetails:   "An attacker can try to gain access to the host by trying brute forcing users and passwords.",
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{},
@@ -110,7 +110,7 @@ var (
 	}
 	allowSSHv1Vuln = report.Vulnerability{
 		CWEID:           937,
-		Summary:         strings.Title("Support for SSHv1"),
+		Summary:         "Support For SSHv1",
 		ImpactDetails:   "Version 1 of the SSH protocol contains fundamental weaknesses which make sessions vulnerable to man-in-the-middle attacks.",
 		Score:           report.SeverityThresholdMedium,
 		Recommendations: []string{"Disable SSH version 1."},
@@ -119,7 +119,7 @@ var (
 	}
 	weakKexConfigVuln = report.Vulnerability{
 		CWEID:           326,
-		Summary:         strings.Title("Service Uses Weak Key Exchange Algorithms"),
+		Summary:         "Service Uses Weak Key Exchange Algorithms",
 		ImpactDetails:   "An attacker can compromise secure channel due to use of weak ciphers and algorithms.",
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
@@ -128,7 +128,7 @@ var (
 	}
 	weakCiphersConfigVuln = report.Vulnerability{
 		CWEID:           326,
-		Summary:         strings.Title("Service Uses Weak Ciphers"),
+		Summary:         "Service Uses Weak Ciphers",
 		ImpactDetails:   "An attacker can compromise secure channel due to use of weak ciphers and algorithms.",
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
@@ -137,7 +137,7 @@ var (
 	}
 	weakMACsConfigVuln = report.Vulnerability{
 		CWEID:           326,
-		Summary:         strings.Title("Service Uses Weak Message Authentication Codes"),
+		Summary:         "Service Uses Weak Message Authentication Codes",
 		ImpactDetails:   "An attacker can compromise secure channel due to use of weak ciphers and algorithms.",
 		Score:           report.SeverityThresholdLow,
 		Recommendations: []string{},
@@ -145,7 +145,7 @@ var (
 		Labels:          []string{"issue", "ssh"},
 	}
 	comprAlgoConfigVuln = report.Vulnerability{
-		Summary:         strings.Title("Compression Algorithms Misconfiguration"),
+		Summary:         "Compression Algorithms Misconfiguration",
 		Score:           report.SeverityThresholdNone,
 		Recommendations: []string{},
 		References:      []string{"https://wiki.mozilla.org/Security/Guidelines/OpenSSH"},
@@ -165,7 +165,7 @@ type runner struct {
 	notes  string
 }
 
-func (r *runner) gradeVuln(target string) ([]report.Vulnerability, error) {
+func (r *runner) gradeVuln() ([]report.Vulnerability, error) {
 	kexRecommendationPattern := "key exchange algorithms"
 	ciphersRecommendationPattern := "encryption ciphers"
 	macsRecommendationPattern := "MAC algorithms"
@@ -329,11 +329,11 @@ func main() {
 		}
 
 		var r runner
-		if err := r.newSSHScan(ctx, target, defaultPorts); err != nil {
+		if err := r.newSSHScan(ctx, target, opt.Ports); err != nil {
 			return err
 		}
 
-		vulnArray, err := r.gradeVuln(target)
+		vulnArray, err := r.gradeVuln()
 		if err != nil {
 			return err
 		}
