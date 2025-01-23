@@ -1,8 +1,7 @@
-# Copyright 2024 Adevinta
+# Copyright 2025 Adevinta
 
-FROM python:3.13-alpine
-
-RUN pip3 install --no-cache-dir requests cloudflare ghostbuster
+FROM alpine
+RUN apk add --no-cache ca-certificates
 
 ADD https://ip-ranges.amazonaws.com/ip-ranges.json /tmp
 RUN cp /tmp/ip-ranges.json /
