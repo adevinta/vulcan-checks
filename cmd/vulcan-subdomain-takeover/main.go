@@ -31,8 +31,8 @@ import (
 
 const checkName = "vulcan-subdomain-takeover"
 
+// ErrTargetUnreachable means that it couldn't possible to reach the AWS target account.
 var ErrTargetUnreachable = errors.New("target is Unreachable")
-var routeZoneRecordsSet = make(map[string]string)
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
@@ -100,7 +100,9 @@ func NewScan(logger *logrus.Entry, target string) (Scanner, error) {
 }
 
 func (s Scanner) Run() ([]string, error) {
-	dnsRecords, err := s.getRoute53ARecords()
+	var routeZoneRecordsSet = make(map[string]string)
+
+	dnsRecords, err := s.getRoute53ARecords(routeZoneRecordsSet)
 	if err != nil {
 		return nil, fmt.Errorf("get DNS records: %w", err)
 	}
@@ -177,7 +179,7 @@ type dnsRecord struct {
 	records []string
 }
 
-func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
+func (s Scanner) getRoute53ARecords(routeZoneRecordsSet map[string]string) ([]dnsRecord, error) {
 	var dnsRecords []dnsRecord
 
 	hz, err := s.getRoute53HostedZones(nil, nil)
@@ -187,7 +189,7 @@ func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 
 	for _, hostedZone := range hz {
 		var nextRecordType types.RRType
-		zr, err := s.getRoute53ZoneRecords(hostedZone.Id, nil, nextRecordType)
+		zr, err := s.getRoute53ZoneRecords(hostedZone.Id, nil, nextRecordType, routeZoneRecordsSet)
 		if err != nil {
 			return nil, fmt.Errorf("get zone records: %w", err)
 		}
@@ -217,21 +219,14 @@ func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 func (s Scanner) getRoute53HostedZones(dnsName, hostedZoneId *string) ([]types.HostedZone, error) {
 	var listHostedZonesByNameOutput *route53.ListHostedZonesByNameOutput
 	var err error
-	if dnsName == nil || *dnsName == "" {
-		listParams := &route53.ListHostedZonesByNameInput{
-			DNSName:      dnsName,
-			HostedZoneId: hostedZoneId,
-		}
-		listHostedZonesByNameOutput, err = s.route53Client.ListHostedZonesByName(
-			context.Background(), listParams)
-		if err != nil {
-			return nil, fmt.Errorf("list hosted zones: %w", err)
-		}
-	} else {
-		listHostedZonesByNameOutput, err = s.route53Client.ListHostedZonesByName(context.Background(), nil)
-		if err != nil {
-			return nil, fmt.Errorf("list hosted zones: %w", err)
-		}
+	var listParams route53.ListHostedZonesByNameInput
+	if dnsName != nil && *dnsName == "" {
+		listParams.DNSName = dnsName
+		listParams.HostedZoneId = hostedZoneId
+	}
+	listHostedZonesByNameOutput, err = s.route53Client.ListHostedZonesByName(context.Background(), &listParams)
+	if err != nil {
+		return nil, fmt.Errorf("list hosted zones: %w", err)
 	}
 
 	hostedZones := listHostedZonesByNameOutput.HostedZones
@@ -247,24 +242,20 @@ func (s Scanner) getRoute53HostedZones(dnsName, hostedZoneId *string) ([]types.H
 }
 
 func (s Scanner) getRoute53ZoneRecords(
-	zoneId *string, nextRecordName *string, nextRecordType types.RRType) ([]types.ResourceRecordSet, error) {
+	zoneId *string, nextRecordName *string, nextRecordType types.RRType,
+	routeZoneRecordsSet map[string]string) ([]types.ResourceRecordSet, error) {
 	var recordSetsOutput *route53.ListResourceRecordSetsOutput
 	var err error
-	if nextRecordName == nil || *nextRecordName == "" {
-		listParams := &route53.ListResourceRecordSetsInput{
-			HostedZoneId:    zoneId,
-			StartRecordName: nextRecordName,
-			StartRecordType: nextRecordType,
-		}
-		recordSetsOutput, err = s.route53Client.ListResourceRecordSets(context.Background(), listParams)
-		if err != nil {
-			return nil, fmt.Errorf("list resource records: %w", err)
-		}
-	} else {
-		recordSetsOutput, err = s.route53Client.ListResourceRecordSets(context.Background(), &route53.ListResourceRecordSetsInput{}, nil)
-		if err != nil {
-			return nil, fmt.Errorf("list resource records: %w", err)
-		}
+	listParams := &route53.ListResourceRecordSetsInput{
+		HostedZoneId: zoneId,
+	}
+	if nextRecordName != nil && *nextRecordName != "" {
+		listParams.StartRecordName = nextRecordName
+		listParams.StartRecordType = nextRecordType
+	}
+	recordSetsOutput, err = s.route53Client.ListResourceRecordSets(context.Background(), listParams)
+	if err != nil {
+		return nil, fmt.Errorf("list resource records: %w", err)
 	}
 
 	zoneRecords := recordSetsOutput.ResourceRecordSets
@@ -272,7 +263,7 @@ func (s Scanner) getRoute53ZoneRecords(
 	if recordSetsOutput.IsTruncated {
 		zoneSetRecordKey := *recordSetsOutput.NextRecordName + "_" + string(recordSetsOutput.NextRecordType)
 		if _, ok := routeZoneRecordsSet[zoneSetRecordKey]; !ok {
-			zr, err := s.getRoute53ZoneRecords(zoneId, recordSetsOutput.NextRecordName, recordSetsOutput.NextRecordType)
+			zr, err := s.getRoute53ZoneRecords(zoneId, recordSetsOutput.NextRecordName, recordSetsOutput.NextRecordType, routeZoneRecordsSet)
 			if err != nil {
 				return nil, fmt.Errorf("get zone records: %w", err)
 			}
