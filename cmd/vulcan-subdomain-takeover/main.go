@@ -66,7 +66,7 @@ type route53Client interface {
 }
 
 type ec2Client interface {
-	DescribeAddresses(ctx context.Context, params *ec2.DescribeAddressesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeAddressesOutput, error)
+	DescribeAddressesAttribute(context.Context, *ec2.DescribeAddressesAttributeInput, ...func(*ec2.Options)) (*ec2.DescribeAddressesAttributeOutput, error)
 	DescribeNetworkInterfaces(ctx context.Context, params *ec2.DescribeNetworkInterfacesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeNetworkInterfacesOutput, error)
 }
 
@@ -244,34 +244,32 @@ func (s Scanner) getRoute53ZoneRecords(zoneId *string) ([]types.ResourceRecordSe
 	return zoneRecords, nil
 }
 
+// getIPs retrieve the public IPs.
 func (s Scanner) getIPs() ([]string, error) {
 	var elasticIPs = make(map[string]string)
-	describeAddressesOutput, err := s.ec2Client.DescribeAddresses(context.Background(), nil)
-	if err != nil {
-		return nil, err
-	}
-	for _, address := range describeAddressesOutput.Addresses {
-		elasticIPs[*address.PublicIp] = *address.PublicIp
-	}
-	var listParams *ec2.DescribeNetworkInterfacesInput
-	var describeNetworkInterfacesOutput *ec2.DescribeNetworkInterfacesOutput
-	for {
-		if describeNetworkInterfacesOutput != nil && describeNetworkInterfacesOutput.NextToken != nil {
-			listParams = &ec2.DescribeNetworkInterfacesInput{
-				NextToken: describeNetworkInterfacesOutput.NextToken,
-			}
-		}
-		describeNetworkInterfacesOutput, err = s.ec2Client.DescribeNetworkInterfaces(context.Background(), listParams)
+	// Get the public IPs from the addresses.
+	paginatorAddresses := ec2.NewDescribeAddressesAttributePaginator(s.ec2Client, nil)
+	for paginatorAddresses.HasMorePages() {
+		resp, err := paginatorAddresses.NextPage(context.Background())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("describe addresses: %w", err)
 		}
-		for _, networkInterface := range describeNetworkInterfacesOutput.NetworkInterfaces {
+		for _, address := range resp.Addresses {
+			elasticIPs[*address.PublicIp] = *address.PublicIp
+		}
+	}
+
+	// Get the public IPs from the Network Interfaces.
+	paginatorNetworkInterfaces := ec2.NewDescribeNetworkInterfacesPaginator(s.ec2Client, nil)
+	for paginatorNetworkInterfaces.HasMorePages() {
+		resp, err := paginatorNetworkInterfaces.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("describe network interfaces: %w", err)
+		}
+		for _, networkInterface := range resp.NetworkInterfaces {
 			if networkInterface.Association != nil {
 				elasticIPs[*networkInterface.Association.PublicIp] = *networkInterface.Association.PublicIp
 			}
-		}
-		if describeNetworkInterfacesOutput.NextToken == nil {
-			break
 		}
 	}
 	return slices.Collect(maps.Keys(elasticIPs)), nil
