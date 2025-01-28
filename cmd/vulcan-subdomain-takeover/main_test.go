@@ -34,6 +34,130 @@ func (mr *mockedRoute53API) ListResourceRecordSets(
 	return result, nil
 }
 
+func TestScanner_getRoute53ARecords(t *testing.T) {
+	tests := []struct {
+		name                         string
+		listHostedZonesOutput        []route53.ListHostedZonesOutput
+		listResourceRecordSetsOutput []route53.ListResourceRecordSetsOutput
+		want                         []dnsRecord
+		wantErr                      bool
+	}{
+		{
+			name: "no hosted zones",
+			listHostedZonesOutput: []route53.ListHostedZonesOutput{
+				{},
+			},
+			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
+				{},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "hosted zones with no records",
+			listHostedZonesOutput: []route53.ListHostedZonesOutput{
+				{
+					HostedZones: []typesroute53.HostedZone{
+						{
+							Id: ptr("HostedZone1"),
+						},
+					},
+				},
+			},
+			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
+				{},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "hosted zones with A record",
+			listHostedZonesOutput: []route53.ListHostedZonesOutput{
+				{
+					HostedZones: []typesroute53.HostedZone{
+						{
+							Id: ptr("HostedZone1"),
+						},
+					},
+				},
+			},
+			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
+				{
+					ResourceRecordSets: []typesroute53.ResourceRecordSet{
+						{
+							Type: typesroute53.RRTypeA,
+							ResourceRecords: []typesroute53.ResourceRecord{
+								{
+									Value: ptr("ResourceRecordAValue"),
+								},
+							},
+							Name: ptr("ResourceRecordA"),
+						},
+					},
+				},
+			},
+			want: []dnsRecord{
+				{
+					name:    "ResourceRecordA",
+					records: []string{"ResourceRecordAValue"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "hosted zones without A record",
+			listHostedZonesOutput: []route53.ListHostedZonesOutput{
+				{
+					HostedZones: []typesroute53.HostedZone{
+						{
+							Id: ptr("HostedZone1"),
+						},
+					},
+				},
+			},
+			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
+				{
+					ResourceRecordSets: []typesroute53.ResourceRecordSet{
+						{
+							Type: typesroute53.RRTypeDs,
+							ResourceRecords: []typesroute53.ResourceRecord{
+								{
+									Value: ptr("ResourceRecordDsValue"),
+								},
+							},
+							Name: ptr("ResourceRecordDs"),
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := check.NewCheckLogFromContext(context.Background(), checkName)
+			s := Scanner{
+				logger: logger,
+				route53Client: &mockedRoute53API{
+					listHostedZonesOutput:        tt.listHostedZonesOutput,
+					listResourceRecordSetsOutput: tt.listResourceRecordSetsOutput,
+				},
+			}
+			got, err := s.getRoute53ARecords()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error value: %v", err)
+			}
+			opts := []cmp.Option{
+				cmp.AllowUnexported(dnsRecord{}),
+			}
+			if diff := cmp.Diff(tt.want, got, opts...); diff != "" {
+				t.Errorf("unnexpected HostedZones: want %v, got = %v", tt.want, got)
+			}
+		})
+	}
+}
+
 func TestScanner_getRoute53HostedZones(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -60,7 +184,6 @@ func TestScanner_getRoute53HostedZones(t *testing.T) {
 							Id: ptr("HostedZone1"),
 						},
 					},
-					IsTruncated: false,
 				},
 			},
 			want: []typesroute53.HostedZone{
@@ -132,7 +255,7 @@ func TestScanner_getRoute53ZoneRecords(t *testing.T) {
 		wantErr                      bool
 	}{
 		{
-			name: "no hosted zones",
+			name: "no zone records",
 			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
 				{
 					ResourceRecordSets: []typesroute53.ResourceRecordSet{},
@@ -142,7 +265,7 @@ func TestScanner_getRoute53ZoneRecords(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "a hosted zone",
+			name: "a zone record",
 			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
 				{
 					ResourceRecordSets: []typesroute53.ResourceRecordSet{
@@ -170,7 +293,7 @@ func TestScanner_getRoute53ZoneRecords(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "paginated hosted zones",
+			name: "paginated zone records",
 			listResourceRecordSetsOutput: []route53.ListResourceRecordSetsOutput{
 				{
 					ResourceRecordSets: []typesroute53.ResourceRecordSet{
@@ -366,6 +489,123 @@ func TestScanner_getIPs(t *testing.T) {
 			}
 			sort.Strings(tt.want)
 			sort.Strings(got)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unnexpected IP: want %v, got = %v", tt.want, got)
+			}
+		})
+	}
+}
+
+type mockedIpRangesClient struct {
+	awsPrefixes AWSPrefixes
+}
+
+func (mi mockedIpRangesClient) GetPrefixes() (AWSPrefixes, error) {
+	return mi.awsPrefixes, nil
+}
+
+func TestScanner_calculateTakeovers(t *testing.T) {
+	tests := []struct {
+		name        string
+		elasticIPs  []string
+		dnsRecords  []dnsRecord
+		awsPrefixes AWSPrefixes
+		want        []string
+		wantErr     bool
+	}{
+		{
+			name:        "no takeovers",
+			elasticIPs:  nil,
+			dnsRecords:  nil,
+			awsPrefixes: AWSPrefixes{},
+			want:        nil,
+			wantErr:     false,
+		},
+		{
+			name: "takeover",
+			dnsRecords: []dnsRecord{
+				{
+					name: "dnsRecord1.example.com",
+					records: []string{
+						"1.2.3.5",
+					},
+				},
+			},
+			awsPrefixes: AWSPrefixes{
+				iPPrefixes: []IPPrefix{
+					{
+						IPPrefix:           "1.2.3.5/32",
+						Region:             "eu-west-1",
+						Service:            "EC2",
+						NetworkBorderGroup: "eu-west-1",
+					},
+				},
+			},
+			want:    []string{"1.2.3.5"},
+			wantErr: false,
+		},
+		{
+			name:       "prefix not found",
+			elasticIPs: nil,
+			dnsRecords: []dnsRecord{
+				{
+					name: "dnsRecord1.example.com",
+					records: []string{
+						"1.2.3.5",
+					},
+				},
+			},
+			awsPrefixes: AWSPrefixes{
+				iPPrefixes: []IPPrefix{
+					{
+						IPPrefix:           "1.2.3.4/32",
+						Region:             "eu-west-1",
+						Service:            "EC2",
+						NetworkBorderGroup: "eu-west-1",
+					},
+				},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:       "dns pointing to a existing ip",
+			elasticIPs: []string{"1.2.3.4"},
+			dnsRecords: []dnsRecord{
+				{
+					name: "dnsRecord1.example.com",
+					records: []string{
+						"1.2.3.4",
+					},
+				},
+			},
+			awsPrefixes: AWSPrefixes{
+				iPPrefixes: []IPPrefix{
+					{
+						IPPrefix:           "1.2.3.4/32",
+						Region:             "eu-west-1",
+						Service:            "EC2",
+						NetworkBorderGroup: "eu-west-1",
+					},
+				},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := check.NewCheckLogFromContext(context.Background(), checkName)
+			s := Scanner{
+				logger: logger,
+				ipRangesClient: &mockedIpRangesClient{
+					awsPrefixes: tt.awsPrefixes,
+				},
+			}
+			got, err := s.calculateTakeovers(tt.dnsRecords, tt.elasticIPs)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error value: %v", err)
+			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unnexpected IP: want %v, got = %v", tt.want, got)
 			}

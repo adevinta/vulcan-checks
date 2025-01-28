@@ -41,7 +41,7 @@ func main() {
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
-		scan, err := NewScan(logger, target)
+		scan, err := NewScanner(logger, target)
 		if err != nil {
 			return fmt.Errorf("could not create scan: %w", err)
 		}
@@ -60,20 +60,24 @@ type awsConfigurator interface {
 	getConfig(logger *logrus.Entry, target string) (aws.Config, error)
 }
 
+// route53Client represents a AWS route 53 client.
 type route53Client interface {
 	ListHostedZones(context.Context, *route53.ListHostedZonesInput, ...func(*route53.Options)) (*route53.ListHostedZonesOutput, error)
 	ListResourceRecordSets(ctx context.Context, params *route53.ListResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ListResourceRecordSetsOutput, error)
 }
 
+// ec2Client represents a AWS route EC2 client.
 type ec2Client interface {
 	DescribeAddressesAttribute(context.Context, *ec2.DescribeAddressesAttributeInput, ...func(*ec2.Options)) (*ec2.DescribeAddressesAttributeOutput, error)
 	DescribeNetworkInterfaces(ctx context.Context, params *ec2.DescribeNetworkInterfacesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeNetworkInterfacesOutput, error)
 }
 
+// ipRangesClient represents a IPRanges Client.
 type ipRangesClient interface {
 	GetPrefixes() (AWSPrefixes, error)
 }
 
+// Scanner represents a subdomain takeover scanner.
 type Scanner struct {
 	logger         *logrus.Entry
 	target         string
@@ -83,9 +87,11 @@ type Scanner struct {
 	ipRangesClient ipRangesClient
 }
 
+// aswConfig represents the AWS configuration.
 type awsConfig struct{}
 
-func NewScan(logger *logrus.Entry, target string) (Scanner, error) {
+// NewScanner creates a new instance of the Scanner.
+func NewScanner(logger *logrus.Entry, target string) (Scanner, error) {
 	cfg, err := awsConfig{}.getConfig(logger, target)
 	if err != nil {
 		return Scanner{}, fmt.Errorf("get config: %w", err)
@@ -99,6 +105,7 @@ func NewScan(logger *logrus.Entry, target string) (Scanner, error) {
 	}, nil
 }
 
+// Run executes the scan.
 func (s Scanner) Run() ([]string, error) {
 	dnsRecords, err := s.getRoute53ARecords()
 	if err != nil {
@@ -115,6 +122,7 @@ func (s Scanner) Run() ([]string, error) {
 	return takeovers, nil
 }
 
+// getConfig retrieves the AWS configuration to use with the AWS clients.
 func (ac awsConfig) getConfig(logger *logrus.Entry, target string) (aws.Config, error) {
 	if target == "" {
 		return aws.Config{}, errors.New("target missing")
@@ -172,11 +180,13 @@ func (ac awsConfig) getConfig(logger *logrus.Entry, target string) (aws.Config, 
 	return cfg, nil
 }
 
+// dnsRecord represents a subdomain.
 type dnsRecord struct {
 	name    string
 	records []string
 }
 
+// getRoute53ARecords retrieves the DNS A records.
 func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 	var dnsRecords []dnsRecord
 
@@ -191,7 +201,7 @@ func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 			return nil, fmt.Errorf("get zone records: %w", err)
 		}
 		for _, record := range zr {
-			if record.Type == "A" {
+			if record.Type == types.RRTypeA {
 				if record.AliasTarget != nil {
 					continue
 				} else {
@@ -275,6 +285,8 @@ func (s Scanner) getIPs() ([]string, error) {
 	return slices.Collect(maps.Keys(elasticIPs)), nil
 }
 
+// calculateTakeovers crosses the dnsRecords with the elasticIPs and determine which of the
+// dnsRecords are dangling.
 func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string) ([]string, error) {
 	// find all DNS records that point to EC2 IP addresses.
 	var dnsEC2IPs [][]string

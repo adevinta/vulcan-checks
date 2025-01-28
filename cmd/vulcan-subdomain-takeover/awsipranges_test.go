@@ -5,6 +5,7 @@ Copyright 2025 Adevinta
 package main
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -18,7 +19,7 @@ func (m mockAwsIpRangesClient) getAWSIPRanges() (AWSIPRanges, error) {
 	return m.retriever(), nil
 }
 
-func TestGetPrefixes(t *testing.T) {
+func TestAWSIPRanges_GetPrefixes(t *testing.T) {
 	tests := []struct {
 		name    string
 		ranges  AWSIPRanges
@@ -204,6 +205,62 @@ func TestProcessIPPrefixes(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unnexpected IPPrefixes: want %v, got = %v, ", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestAWSPrefixes_GetPrefixByIP(t *testing.T) {
+	iPPrefixes := []IPPrefix{
+		{
+			IPPrefix:           "3.4.12.4/32",
+			Region:             "eu-west-1",
+			Service:            "AMAZON",
+			NetworkBorderGroup: "eu-west-1",
+		},
+		{
+			IPPrefix:           "3.5.140.0/22",
+			Region:             "ap-northeast-2",
+			Service:            "AMAZON",
+			NetworkBorderGroup: "ap-northeast-2",
+		},
+	}
+
+	tests := []struct {
+		name    string
+		ip      string
+		want    IPPrefix
+		wantErr error
+	}{
+		{
+			name: "existing prefix",
+			ip:   "3.4.12.4",
+			want: IPPrefix{
+				IPPrefix:           "3.4.12.4/32",
+				Region:             "eu-west-1",
+				Service:            "AMAZON",
+				NetworkBorderGroup: "eu-west-1",
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "non existing prefix",
+			ip:      "3.4.12.5",
+			want:    IPPrefix{},
+			wantErr: ErrPrefixNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			awsPrefixes := &AWSPrefixes{
+				iPPrefixes: iPPrefixes,
+			}
+			got, err := awsPrefixes.GetPrefixByIP(tt.ip)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("unexpected error value: %v", err)
+			}
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unnexpected IPPrefix: want %v, got = %v, ", tt.want, got)
 			}
 		})
 	}
