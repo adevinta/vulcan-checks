@@ -106,7 +106,7 @@ func NewScanner(logger *logrus.Entry, target string) (Scanner, error) {
 }
 
 // Run executes the scan.
-func (s Scanner) Run() ([]string, error) {
+func (s Scanner) Run() (map[string]string, error) {
 	dnsRecords, err := s.getRoute53ARecords()
 	if err != nil {
 		return nil, fmt.Errorf("get DNS records: %w", err)
@@ -287,9 +287,9 @@ func (s Scanner) getIPs() ([]string, error) {
 
 // calculateTakeovers crosses the dnsRecords with the elasticIPs and determine which of the
 // dnsRecords are dangling.
-func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string) ([]string, error) {
+func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string) (map[string]string, error) {
 	// find all DNS records that point to EC2 IP addresses.
-	var dnsEC2IPs [][]string
+	dnsEC2IPs := make(map[string][]string)
 	aip, err := s.ipRangesClient.GetPrefixes()
 	if err != nil {
 		return nil, fmt.Errorf("get ip ranges: %w", err)
@@ -306,19 +306,19 @@ func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string)
 			}
 			for _, service := range strings.Split(awsMetadata.Service, ",") {
 				if service == "EC2" {
-					dnsEC2IPs = append(dnsEC2IPs, dnsr.records)
+					dnsEC2IPs[dnsr.name] = dnsr.records
 				}
 			}
 		}
 	}
 
-	var takeovers []string
+	takeovers := make(map[string]string)
 
 	// check to see if any of the record sets we have, we don't own the elastic IPs.
-	for _, dnsEC2IP := range dnsEC2IPs {
+	for name, dnsEC2IP := range dnsEC2IPs {
 		for _, record := range dnsEC2IP {
 			if !contains(elasticIPs, record) {
-				takeovers = append(takeovers, record)
+				takeovers[name] = record
 			}
 		}
 	}
@@ -336,13 +336,13 @@ func contains(s []string, str string) bool {
 }
 
 // addVulnsToState adds every takeover detected to the vulnerability report.
-func addVulnsToState(state checkstate.State, takeovers []string, target string) {
-	for _, takeover := range takeovers {
+func addVulnsToState(state checkstate.State, takeovers map[string]string, target string) {
+	for dns, ip := range takeovers {
 		state.AddVulnerabilities(
 			report.Vulnerability{
-				AffectedResource: takeover,
+				AffectedResource: dns,
 				Labels:           []string{"issue", "subdomain-takeover"},
-				Fingerprint:      helpers.ComputeFingerprint(target, takeover),
+				Fingerprint:      helpers.ComputeFingerprint(target, dns, ip),
 				Summary:          `AWS Route 53 record without Elastic IP (Subdomain Takeover)`,
 				Score:            report.SeverityThresholdHigh,
 				Description: "The Route 53 record is pointing to an Elastic IP that is not owned by the account. " +
@@ -365,11 +365,12 @@ func addVulnsToState(state checkstate.State, takeovers []string, target string) 
 				Resources: []report.ResourcesGroup{
 					{
 						Name:   `Instances`,
-						Header: []string{"Account", "Subdomain"},
+						Header: []string{"Account", "Subdomain", "PublicIP"},
 						Rows: []map[string]string{
 							{
 								"Account":   target,
-								"Subdomain": target,
+								"Subdomain": dns,
+								"PublicIP":  ip,
 							},
 						},
 					},

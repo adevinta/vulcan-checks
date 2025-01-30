@@ -510,7 +510,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 		elasticIPs  []string
 		dnsRecords  []dnsRecord
 		awsPrefixes AWSPrefixes
-		want        []string
+		want        map[string]string
 		wantErr     bool
 	}{
 		{
@@ -518,7 +518,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			elasticIPs:  nil,
 			dnsRecords:  nil,
 			awsPrefixes: AWSPrefixes{},
-			want:        nil,
+			want:        map[string]string{},
 			wantErr:     false,
 		},
 		{
@@ -541,7 +541,9 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			want:    []string{"1.2.3.5"},
+			want: map[string]string{
+				"dnsRecord1.example.com": "1.2.3.5",
+			},
 			wantErr: false,
 		},
 		{
@@ -565,7 +567,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
+			want:    map[string]string{},
 			wantErr: false,
 		},
 		{
@@ -589,7 +591,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
+			want:    map[string]string{},
 			wantErr: false,
 		},
 	}
