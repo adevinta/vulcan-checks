@@ -236,6 +236,13 @@ func main() {
 			return fmt.Errorf("running zap: %w", err)
 		}
 
+		select {
+		case <-ctx.Done():
+			logger.Warn("Context canceled or deadline exceeded")
+			return ctx.Err()
+		default:
+		}
+
 		// Exit codes:
 		// 0: Success
 		// 1: At least 1 FAIL
