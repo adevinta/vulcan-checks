@@ -16,6 +16,12 @@ updates:
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
+  directory: cmd/vulcan-govulncheck
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
   directory: cmd/vulcan-nuclei
   schedule:
     interval: "weekly"
