@@ -1,4 +1,4 @@
-FROM returntocorp/semgrep:1.104.0
+FROM returntocorp/semgrep:1.106.0
 
 # Override entrypoint
 ENTRYPOINT ["/usr/bin/env"]
