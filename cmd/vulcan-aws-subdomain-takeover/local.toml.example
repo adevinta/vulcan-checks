@@ -1,7 +1,10 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
 AssetType = "AWSAccount"
+Options = '{"global": true}'
 
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
 ROLE_NAME="SecurityAuditRole"
+CLOUD_INVENTORY_TOKEN=
+CLOUD_INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}

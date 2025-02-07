@@ -566,6 +566,19 @@ func TestScanner_getIPs(t *testing.T) {
 	}
 }
 
+type mockedCloudInventory struct {
+	publicIPs []string
+}
+
+func (m mockedCloudInventory) IsIPPublicInInventory(ip string) (bool, error) {
+	for _, publicIP := range m.publicIPs {
+		if publicIP == ip {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 type mockedIpRangesClient struct {
 	awsPrefixes AWSPrefixes
 }
@@ -575,11 +588,13 @@ func (mi mockedIpRangesClient) GetPrefixes() (AWSPrefixes, error) {
 }
 
 func TestScanner_calculateTakeovers(t *testing.T) {
+	publicIPs := []string{"1.2.3.4", "1.2.3.5", "1.2.3.6", "1.2.3.7"}
 	tests := []struct {
 		name        string
 		elasticIPs  []string
 		dnsRecords  []dnsRecord
 		awsPrefixes AWSPrefixes
+		global      bool
 		want        map[string]string
 		wantErr     bool
 	}{
@@ -588,8 +603,33 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			elasticIPs:  nil,
 			dnsRecords:  nil,
 			awsPrefixes: AWSPrefixes{},
+			global:      false,
 			want:        map[string]string{},
 			wantErr:     false,
+		},
+		{
+			name: "no takeover global",
+			dnsRecords: []dnsRecord{
+				{
+					name: "dnsRecord1.example.com",
+					records: []string{
+						"1.2.3.5",
+					},
+				},
+			},
+			awsPrefixes: AWSPrefixes{
+				iPPrefixes: []IPPrefix{
+					{
+						IPPrefix:           "1.2.3.5/32",
+						Region:             "eu-west-1",
+						Service:            "EC2",
+						NetworkBorderGroup: "eu-west-1",
+					},
+				},
+			},
+			global:  true,
+			want:    map[string]string{},
+			wantErr: false,
 		},
 		{
 			name: "takeover",
@@ -611,8 +651,35 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
+			global: false,
 			want: map[string]string{
 				"dnsRecord1.example.com": "1.2.3.5",
+			},
+			wantErr: false,
+		},
+		{
+			name: "takeover global",
+			dnsRecords: []dnsRecord{
+				{
+					name: "dnsRecord1.example.com",
+					records: []string{
+						"1.2.3.8",
+					},
+				},
+			},
+			awsPrefixes: AWSPrefixes{
+				iPPrefixes: []IPPrefix{
+					{
+						IPPrefix:           "1.2.3.8/32",
+						Region:             "eu-west-1",
+						Service:            "EC2",
+						NetworkBorderGroup: "eu-west-1",
+					},
+				},
+			},
+			global: true,
+			want: map[string]string{
+				"dnsRecord1.example.com": "1.2.3.8",
 			},
 			wantErr: false,
 		},
@@ -637,6 +704,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
+			global:  false,
 			want:    map[string]string{},
 			wantErr: false,
 		},
@@ -661,6 +729,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
+			global:  false,
 			want:    map[string]string{},
 			wantErr: false,
 		},
@@ -669,6 +738,10 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
 				logger: logger,
+				global: tt.global,
+				inventory: &mockedCloudInventory{
+					publicIPs: publicIPs,
+				},
 				ipRangesClient: &mockedIpRangesClient{
 					awsPrefixes: tt.awsPrefixes,
 				},
