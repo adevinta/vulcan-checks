@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -36,12 +37,23 @@ var logger = check.NewCheckLog(checkName)
 // ErrTargetUnreachable means that it couldn't possible to reach the AWS target account.
 var ErrTargetUnreachable = errors.New("target is Unreachable")
 
+type options struct {
+	Global bool `json:"global"`
+}
+
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		opt := options{}
+		if optJSON != "" {
+			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
+				return err
+			}
+		}
+
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
-		scan, err := NewScanner(logger, target)
+		scan, err := NewScanner(opt, logger, target)
 		if err != nil {
 			return fmt.Errorf("could not create scan: %w", err)
 		}
@@ -58,6 +70,9 @@ func main() {
 
 type awsConfigurator interface {
 	getConfig(logger *logrus.Entry, target string) (aws.Config, error)
+}
+type Inventory interface {
+	IsIPPublicInInventory(ip string) (bool, error)
 }
 
 // route53Client represents a AWS route 53 client.
@@ -80,6 +95,8 @@ type ipRangesClient interface {
 
 // Scanner represents a subdomain takeover scanner.
 type Scanner struct {
+	global         bool
+	inventory      Inventory
 	logger         *logrus.Entry
 	target         string
 	configurator   awsConfigurator
@@ -92,12 +109,22 @@ type Scanner struct {
 type awsConfig struct{}
 
 // NewScanner creates a new instance of the Scanner.
-func NewScanner(logger *logrus.Entry, target string) (Scanner, error) {
+func NewScanner(opt options, logger *logrus.Entry, target string) (Scanner, error) {
 	cfg, err := awsConfig{}.getConfig(logger, target)
 	if err != nil {
 		return Scanner{}, fmt.Errorf("get config: %w", err)
 	}
+	var inventory Inventory
+	if opt.Global {
+		inventory = NewCloudInventory(
+			os.Getenv("CLOUD_INVENTORY_TOKEN"),
+			os.Getenv("CLOUD_INVENTORY_ENDPOINT"),
+		)
+	}
+
 	return Scanner{
+		global:         opt.Global,
+		inventory:      inventory,
 		logger:         logger,
 		target:         target,
 		route53Client:  route53.NewFromConfig(cfg),
@@ -343,7 +370,17 @@ func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string)
 	for name, dnsEC2IP := range dnsEC2IPs {
 		for _, record := range dnsEC2IP {
 			if !contains(elasticIPs, record) {
-				takeovers[name] = record
+				if s.global {
+					inInventory, err := s.inventory.IsIPPublicInInventory(record)
+					if err != nil {
+						return nil, fmt.Errorf("inventory: %w", err)
+					}
+					if !inInventory {
+						takeovers[name] = record
+					}
+				} else {
+					takeovers[name] = record
+				}
 			}
 		}
 	}

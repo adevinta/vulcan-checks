@@ -1,3 +1,4 @@
 Description = "Detect dangling elastic IPs by performing analysis on your resources within all your AWS accounts"
 AssetTypes = ["AWSAccount"]
-RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME", "CLOUD_INVENTORY_TOKEN"]
+RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME", "CLOUD_INVENTORY_TOKEN", "CLOUD_INVENTORY_ENDPOINT"]
+Options = '{"global": true}'
