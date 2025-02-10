@@ -411,9 +411,7 @@ func addVulnsToState(state checkstate.State, takeovers map[string]string, target
 				Summary:          `AWS Route 53 record without Elastic IP (Subdomain Takeover)`,
 				Score:            report.SeverityThresholdHigh,
 				Description: "The Route 53 record is pointing to an Elastic IP that is not owned by the account. " +
-					"This could lead to a subdomain takeover if the Elastic IP is released and taken by someone else.\n" +
-					"LIMITATIONS: This check only search in the scope of the AWS account is being scanned. If a DNS record is " +
-					"pointing to an Elastic IP that is owned by other account inside the organization, you could have a false positive.",
+					"This could lead to a subdomain takeover if the Elastic IP is released and taken by someone else.",
 				References: []string{"https://www.owasp.org/index.php/Unvalidated_Redirects_and_Forwards_Cheat_Sheet"},
 				Recommendations: []string{
 					"Locate DNS records pointing to services or platforms that are no longer active or in use. \n" +
