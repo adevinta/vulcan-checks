@@ -79,10 +79,11 @@ log_msg "Downloaded go mod"
 # Generate a checktypes for the current tag.
 TEST_TAG="${IMAGE_TAGS[0]}"
 
+VULCAN_CHECKTYPES=$(mktemp -t checktypes-XXXXXXX.json)
 # Generate a checktypes.json that could be used later on for testint with vulcan-local.
-vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag "$TEST_TAG" -output checktypes.json cmd/
+vulcan-check-catalog -registry-url "$DKR_USERNAME" -tag "$TEST_TAG" -output "$VULCAN_CHECKTYPES" cmd/
 log_msg "Generated checktypes.json file with tags $TEST_TAG"
-export VULCAN_CHECKTYPES=./checktypes.json
+export VULCAN_CHECKTYPES
 
 BUILDX_ARGS=()
 BUILDX_ARGS+=("--label" "org.opencontainers.image.revision=$(git rev-parse --short HEAD)")
@@ -104,7 +105,7 @@ for check in "${CHECKS[@]}"; do
     for PLATFORM in $CHECK_PLATFORMS; do
         OS=$(echo "$PLATFORM" | cut -f1 -d/)
         ARCH=$(echo "$PLATFORM" | cut -f2 -d/)
-        CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -ldflags="-s -w" -o "cmd/$check/$OS/$ARCH/$check" "$PWD/cmd/$check"
+        CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build  -buildvcs=true -ldflags="-s -w" -o "cmd/$check/$OS/$ARCH/$check" "$PWD/cmd/$check"
         log_msg "Builded go $check:$PLATFORM"
     done
 
