@@ -73,7 +73,7 @@ type Result struct {
 }
 
 func runSemgrep(ctx context.Context, logger *logrus.Entry, timeout int, exclude []string, exclude_rule []string, ruleset []string, dir string) (*SemgrepOutput, error) {
-	var params = []string{"--json"}
+	params := []string{"--json"}
 	params = append(params, "--timeout", strconv.Itoa(timeout))
 	exclusions := append(AlwaysExcluded, exclude...)
 	for _, e := range exclusions {

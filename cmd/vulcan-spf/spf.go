@@ -43,11 +43,11 @@ func (spf *SPF) countDNSLookUps() int {
 	count += len(spf.Include)
 	count += len(spf.A)
 	count += len(spf.Mx)
-	count += len(spf.Ptr) //dont follow
+	count += len(spf.Ptr) // dont follow
 	count += len(spf.Exists)
 	count += len(spf.Redirect)
 
-	//parse includes
+	// parse includes
 	for _, include := range spf.Include {
 		if len(include.field) > len("include:") {
 			includeURL := include.field[9:]
@@ -62,7 +62,7 @@ func (spf *SPF) countDNSLookUps() int {
 
 func (spf *SPF) evaluate() {
 	if len(spf.All) == 0 && len(spf.Redirect) == 0 {
-		//there is no `all`
+		// there is no `all`
 		vuln := vulns["no-all-or-redirect"]
 		vuln.AffectedResource = spf.target
 		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
@@ -111,11 +111,10 @@ func (spf *SPF) evaluate() {
 		vuln.AffectedResource = spf.target
 		spf.vulnerabilities = append(spf.vulnerabilities, vuln)
 	}
-
 }
 
 func (spf *SPF) parse(domain string) bool {
-	//perform a TXT query on DNS
+	// perform a TXT query on DNS
 	records, _ := net.LookupTXT(domain)
 	return spf.parseTxtRecords(records)
 }
@@ -137,7 +136,7 @@ func (spf *SPF) parseTxtRecords(records []string) bool {
 		}
 	}
 
-	//no spf found
+	// no spf found
 	if !foundSPF {
 		vuln := vulns["spf-not-found"]
 		vuln.AffectedResource = spf.target
@@ -169,7 +168,7 @@ func parseField(field string, i int, spf *SPF) {
 	}
 	qualifierStr := string(qualifier)
 
-	//after that it`s just a matter of comparin fields and filling the spf struct
+	// after that it`s just a matter of comparin fields and filling the spf struct
 	if field == "all" {
 		spf.All = append(spf.All, spfField{field: qualifierStr + field, position: i})
 		return

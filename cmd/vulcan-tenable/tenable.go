@@ -204,7 +204,7 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 				"Service":  finding.Service,
 			}
 			vuln.Resources = []report.ResourcesGroup{
-				report.ResourcesGroup{
+				{
 					Name: "Network Resources",
 					Header: []string{
 						"Hostname",

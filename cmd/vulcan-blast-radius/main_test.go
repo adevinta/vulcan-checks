@@ -149,7 +149,6 @@ func TestRun(t *testing.T) {
 			if diff != "" {
 				t.Errorf("got vulns different to want vulns, diff: %s", diff)
 			}
-
 		})
 	}
 }

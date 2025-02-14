@@ -131,7 +131,7 @@ func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
 		},
 	}
 	res.Rows = []map[string]string{
-		map[string]string{
+		{
 			"Target":        target,
 			"RedirectingTo": redirectingTo,
 		},

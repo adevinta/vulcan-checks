@@ -15,9 +15,7 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-var (
-	checkName = "vulcan-sleep"
-)
+var checkName = "vulcan-sleep"
 
 type options struct {
 	SleepTime int `json:"sleep_time"`

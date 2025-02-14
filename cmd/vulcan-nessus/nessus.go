@@ -159,7 +159,8 @@ func (r *runner) launchScan(ctx context.Context, logger *logrus.Entry, target st
 				Name:     policy.Settings.Name + ": " + target,
 				Targets:  target,
 				PolicyID: policy.ID,
-			}})
+			},
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,6 @@ func (r *runner) launchScan(ctx context.Context, logger *logrus.Entry, target st
 	}
 
 	return nil, fmt.Errorf("Not possible to launch scan: %v", scan.ID)
-
 }
 
 func (r *runner) deleteScan(ctx context.Context, logger *logrus.Entry, scanID int64) error {
@@ -464,7 +464,7 @@ func (r *runner) translateFromNessusToVulcan(logger *logrus.Entry, hostID int64,
 					"Service":  parts[2],
 				}
 				v.Resources = []report.ResourcesGroup{
-					report.ResourcesGroup{
+					{
 						Name: "Network Resources",
 						Header: []string{
 							"Hostname",

@@ -78,7 +78,6 @@ func main() {
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
-
 }
 
 func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
@@ -282,7 +281,6 @@ func findScriptFiles(logger *logrus.Entry, target string) (int, error) {
 		}
 		if tag.DataAtom == atom.Link {
 			url = scrape.Attr(tag, "href")
-
 		}
 		if isRelativeUrl(url) {
 			url = getAbsoluteUrl(target, url)

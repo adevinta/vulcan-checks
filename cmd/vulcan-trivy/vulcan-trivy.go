@@ -509,11 +509,13 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 					References:       tv.References,
 					Score:            getScore(tv.Severity),
 					AffectedResource: computeAffectedResource(target, branch, tt.Target, 0),
-					Resources: []report.ResourcesGroup{{
-						Name:   "Occurrences",
-						Header: []string{"Link", "Message"},
+					Resources: []report.ResourcesGroup{
+						{
+							Name:   "Occurrences",
+							Header: []string{"Link", "Message"},
+						},
 					},
-					}}
+				}
 				m[key] = vuln
 			}
 			var sb strings.Builder

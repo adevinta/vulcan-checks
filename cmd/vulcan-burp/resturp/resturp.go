@@ -81,8 +81,7 @@ type GraphQLQueryTemplateParams struct {
 	QueryMutationFunction string
 }
 
-var (
-	GraphQLQueryTemplate = `{
+var GraphQLQueryTemplate = `{
 		"operationName":"{{.OperationName}}",
 		"variables":{
 			"input":{
@@ -91,7 +90,6 @@ var (
 		},
 		"query":"mutation {{.OperationName}}($input: {{.OperationName}}Input!) {\n  {{.QueryMutationFunction}}(input: $input) {\n    id\n    __typename\n  }\n}\n"
 	}`
-)
 
 // New returns a ready to use Burp REST client.
 // The burpRESTURL must have the form: https://hostname:port.
@@ -105,7 +103,8 @@ func New(d Doer, burpBaseURL string, APIKey string, logger *log.Entry) (*Resturp
 			restURL:    fmt.Sprintf("%s%s/%s%s", burpBaseURL, baseAPIPath, APIKey, restAPIPath),
 			graphQLURL: fmt.Sprintf("%s%s", burpBaseURL, graphQLAPIPath),
 			apiKey:     APIKey,
-			logger:     logger},
+			logger:     logger,
+		},
 		nil
 }
 

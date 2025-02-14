@@ -19,56 +19,58 @@ import (
 	version "github.com/hashicorp/go-version"
 )
 
-type result []sshScanReport
-type sshScanReport struct {
-	Fingerprints struct {
-		DSA struct {
-			KnownBad string `json:"known_bad"`
-			MD5      string `json:"md5"`
-			SHA1     string `json:"sha1"`
-			SHA256   string `json:"sha256"`
-		} `json:"dsa"`
-		RSA struct {
-			KnownBad string `json:"known_bad"`
-			MD5      string `json:"md5"`
-			SHA1     string `json:"sha1"`
-			SHA256   string `json:"sha256"`
-		} `json:"rsa"`
-	} `json:"fingerprints"`
-	Compliance struct {
-		Recommendations []string `json:"recommendations"`
-		References      []string `json:"references"`
-		Policy          string   `json:"policy"`
-		Grade           string   `json:"grade"`
-		Compliant       bool     `json:"compliant"`
-	} `json:"compliance"`
-	KeyAlgorithms            []string `json:"key_algorithms"`
-	ServerHostAlgorithms     []string `json:"server_host_key_algorithms"`
-	EncryptionAlgorithmsC2S  []string `json:"encryption_algorithms_client_to_server"`
-	EncryptionAlgorithmsS2C  []string `json:"encryption_algorithms_server_to_client"`
-	MACAlgorithmsC2S         []string `json:"mac_algorithms_client_to_server"`
-	MACAlgorithmsS2C         []string `json:"mac_algorithms_server_to_client"`
-	CompressionAlgorithmsC2S []string `json:"compression_algorithms_client_to_server"`
-	CompressionAlgorithmsS2C []string `json:"compression_algorithms_server_to_client"`
-	LanguagesC2S             []string `json:"languages_client_to_server"`
-	LanguagesS2C             []string `json:"languages_server_to_client"`
-	AuthenticationMethods    []string `json:"auth_methods"`
-	DuplicateHostKeyIPs      []string `json:"duplicate_host_key_ips"`
-	StartTime                string   `json:"start_time"`
-	EndTime                  string   `json:"end_time"`
-	Error                    string   `json:"error"`
-	ScanVersion              string   `json:"ssh_scan_version"`
-	Hostname                 string   `json:"hostname"`
-	IP                       string   `json:"ip"`
-	ServerBanner             string   `json:"server_banner"`
-	OS                       string   `json:"os"`
-	OSCPE                    string   `json:"os_cpe"`
-	SSHLib                   string   `json:"ssh_lib"`
-	SSHLibCPE                string   `json:"ssh_lib_cpe"`
-	Port                     int      `json:"port"`
-	ScanDurationInSeconds    float64  `json:"scan_duration_seconds"`
-	//SSHVersion               float64  `json:"ssh_version"`	// if port is closed this field is string e.g. "ssh_version": "unknown"
-}
+type (
+	result        []sshScanReport
+	sshScanReport struct {
+		Fingerprints struct {
+			DSA struct {
+				KnownBad string `json:"known_bad"`
+				MD5      string `json:"md5"`
+				SHA1     string `json:"sha1"`
+				SHA256   string `json:"sha256"`
+			} `json:"dsa"`
+			RSA struct {
+				KnownBad string `json:"known_bad"`
+				MD5      string `json:"md5"`
+				SHA1     string `json:"sha1"`
+				SHA256   string `json:"sha256"`
+			} `json:"rsa"`
+		} `json:"fingerprints"`
+		Compliance struct {
+			Recommendations []string `json:"recommendations"`
+			References      []string `json:"references"`
+			Policy          string   `json:"policy"`
+			Grade           string   `json:"grade"`
+			Compliant       bool     `json:"compliant"`
+		} `json:"compliance"`
+		KeyAlgorithms            []string `json:"key_algorithms"`
+		ServerHostAlgorithms     []string `json:"server_host_key_algorithms"`
+		EncryptionAlgorithmsC2S  []string `json:"encryption_algorithms_client_to_server"`
+		EncryptionAlgorithmsS2C  []string `json:"encryption_algorithms_server_to_client"`
+		MACAlgorithmsC2S         []string `json:"mac_algorithms_client_to_server"`
+		MACAlgorithmsS2C         []string `json:"mac_algorithms_server_to_client"`
+		CompressionAlgorithmsC2S []string `json:"compression_algorithms_client_to_server"`
+		CompressionAlgorithmsS2C []string `json:"compression_algorithms_server_to_client"`
+		LanguagesC2S             []string `json:"languages_client_to_server"`
+		LanguagesS2C             []string `json:"languages_server_to_client"`
+		AuthenticationMethods    []string `json:"auth_methods"`
+		DuplicateHostKeyIPs      []string `json:"duplicate_host_key_ips"`
+		StartTime                string   `json:"start_time"`
+		EndTime                  string   `json:"end_time"`
+		Error                    string   `json:"error"`
+		ScanVersion              string   `json:"ssh_scan_version"`
+		Hostname                 string   `json:"hostname"`
+		IP                       string   `json:"ip"`
+		ServerBanner             string   `json:"server_banner"`
+		OS                       string   `json:"os"`
+		OSCPE                    string   `json:"os_cpe"`
+		SSHLib                   string   `json:"ssh_lib"`
+		SSHLibCPE                string   `json:"ssh_lib_cpe"`
+		Port                     int      `json:"port"`
+		ScanDurationInSeconds    float64  `json:"scan_duration_seconds"`
+		// SSHVersion               float64  `json:"ssh_version"`	// if port is closed this field is string e.g. "ssh_version": "unknown"
+	}
+)
 
 var (
 	pathToScanner = "ssh_scan"

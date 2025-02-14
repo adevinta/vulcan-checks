@@ -8,9 +8,7 @@ import (
 	check "github.com/adevinta/vulcan-check-sdk"
 )
 
-var (
-	checkName = "vulcan-tenable"
-)
+var checkName = "vulcan-tenable"
 
 type options struct {
 	AssetTag  string `json:"asset_tag"` // Example: 'provider:vulcan'.

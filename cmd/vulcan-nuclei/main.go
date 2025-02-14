@@ -177,7 +177,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 				"Take a look to reference links (if any) for further details about the finding.",
 			}
 		}
-		var vuln = report.Vulnerability{
+		vuln := report.Vulnerability{
 			AffectedResource: v.Matched,
 			CWEID:            getCWEID(v.Info.Classification.CWEID),
 			Summary:          v.Info.Name,

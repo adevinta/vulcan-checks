@@ -327,7 +327,6 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			v, ok := uniqueVulns[uniqueVulnId]
 			if !ok {
 				v.Vuln = report.Vulnerability{
-
 					Fingerprint:      helpers.ComputeFingerprint(f.Score, cves),
 					Summary:          summary,
 					Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),

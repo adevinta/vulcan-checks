@@ -50,6 +50,7 @@ func testHeartbleed(host string) (string, error) {
 
 	return out, nil
 }
+
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
 		logger := check.NewCheckLogFromContext(ctx, checkName)

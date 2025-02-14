@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	os.Mkdir("temp", 0755)
+	os.Mkdir("temp", 0o755)
 }
 
 func TestRelativePathWithDotSlash(t *testing.T) {
@@ -61,6 +61,7 @@ func TestRelativePathNoSlash(t *testing.T) {
 		t.Fatalf("Not the correct url: %s", absoluteUrl)
 	}
 }
+
 func TestDownloadFromUrl(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ABCDE"))
@@ -71,7 +72,7 @@ func TestDownloadFromUrl(t *testing.T) {
 }
 
 func TestGetAffectedVersion(t *testing.T) {
-	var versions = []struct {
+	versions := []struct {
 		atOrAbove string
 		below     string
 		expected  string
@@ -106,6 +107,7 @@ func TestGetScoreMedium(t *testing.T) {
 		t.Fatalf("medium severity should map to Severity score medium")
 	}
 }
+
 func TestGetScoreLow(t *testing.T) {
 	if getScore("low") != report.SeverityThresholdLow {
 		t.Fatalf("low severity should map to Severity score low")
@@ -225,7 +227,7 @@ func TestResolveWebAddress(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	var paths = []struct {
+	paths := []struct {
 		provided string
 		expected string
 	}{

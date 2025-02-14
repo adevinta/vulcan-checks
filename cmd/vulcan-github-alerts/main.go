@@ -25,11 +25,12 @@ import (
 	semver "github.com/Masterminds/semver/v3"
 )
 
-const graphqlAPIPath = "/api/graphql"
-const graphqlDefaultElements = 100
-const graphqlNumberFilter = "first:%v"
-const graphqlPageFilter = `after:\"%v\"`
-const graphqlQuery = `
+const (
+	graphqlAPIPath         = "/api/graphql"
+	graphqlDefaultElements = 100
+	graphqlNumberFilter    = "first:%v"
+	graphqlPageFilter      = `after:\"%v\"`
+	graphqlQuery           = `
 query {
 	repository(owner:\"%v\", name:\"%v\") {
 		vulnerabilityAlerts(%v) {
@@ -51,6 +52,7 @@ query {
 	}
 }
 `
+)
 
 type alertsData struct {
 	Data struct {
@@ -334,7 +336,7 @@ func githubAlerts(graphqlURL string, org string, repo string, cursor string) ([]
 	}
 	cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, filter)
 
-	var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
+	jsonData := []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
 
 	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))

@@ -116,7 +116,6 @@ func addVulnsToState(state checkstate.State, r *WpScanReport) {
 			addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
 		}
 	}
-
 }
 
 func getImpact(summary string) (float32, string) {
@@ -126,7 +125,6 @@ func getImpact(summary string) (float32, string) {
 
 	if mediumImpactRe.MatchString(summary) {
 		return report.SeverityThresholdMedium, fmt.Sprintf("Matched with regexp: /%v/i.", mediumImpactRe.String())
-
 	}
 
 	if lowImpactRe.MatchString(summary) {
