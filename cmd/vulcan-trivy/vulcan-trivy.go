@@ -11,9 +11,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 )
 
@@ -35,18 +37,23 @@ const (
 	// defined in the manifest, to ensure the check will have a 'TIMEOUT'
 	// status when the execution takes longer than expected.
 	trivyTimeout = "2h"
+	// maxNonBinaryFile defines the maximum size of non binary files to be scanned for secrets.
+	// Files bigger than 20MB will be skipped.
+	maxNonBinaryFile = 1024 * 1024 * 20
 )
 
 var (
-	checkName        = "vulcan-trivy"
-	loggerr          = check.NewCheckLog(checkName)
-	reportOutputFile = "report.json"
-	localTargets     = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
+	checkName    = "vulcan-trivy"
+	localTargets = regexp.MustCompile(`https?://(localhost|host\.docker\.internal|172\.17\.0\.1)`)
 
 	FilePatterns = []string{
 		// trivy only detect requirements.txt files
 		`pip:/requirements/[^/]+\.txt`,    // All the .txt files in a requirements directory.
 		`pip:[^/]*requirements[^/]*\.txt`, // All the files .txt that contains requirements
+	}
+	ignoredPaths = []string{
+		// Paths to ignore while searching for big non binary files.
+		".git", // Already ignored by trivy.
 	}
 )
 
@@ -176,8 +183,65 @@ func checksToParam(c checks) string {
 	return strings.Join(checks, ",")
 }
 
+// isBinaryFile checks if a file is binary by reading the first few bytes.
+// From https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/utils/utils.go#L85
+func isBinaryFile(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 300)
+	_, err = file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	for _, b := range buf {
+		if b < 7 || b == 11 || (13 < b && b < 27) || (27 < b && b < 0x20) || b == 0x7f {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func findLargeNonBinaryFiles(rootPath string, excludeDirs []string) ([]string, error) {
+	var files []string
+	if !strings.HasSuffix(rootPath, "/") {
+		rootPath = rootPath + "/"
+	}
+	err := filepath.WalkDir(rootPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if slices.Contains(excludeDirs, filepath.Base(path)) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		if info.Size() > maxNonBinaryFile {
+			isBinary, err := isBinaryFile(path)
+			if err != nil {
+				return err
+			}
+			if !isBinary {
+				files = append(files, strings.TrimPrefix(path, rootPath))
+			}
+		}
+		return nil
+	})
+
+	return files, err
+}
+
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLogFromContext(ctx, checkName)
+	logger := check.NewCheckLog(checkName)
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options
@@ -256,7 +320,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			return checkstate.ErrAssetUnreachable
 		}
 
-		results, err := execTrivy(logger, opt, "image", append(trivyArgs, target))
+		results, err := execTrivy(ctx, logger, opt, "image", append(trivyArgs, target))
 		if err != nil {
 			return err
 		}
@@ -284,9 +348,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 			Labels: []string{"potential", "docker"},
 			// Finding attributes.
 		}
-		if err = processVulns(results.Results, vuln, state); err != nil {
-			logger.Errorf("processing image vuln results: %+v", err)
-		}
+		processVulns(results.Results, vuln, state)
 
 		vuln = report.Vulnerability{
 			Summary:       "Secret Leaked in DockerImage",
@@ -303,11 +365,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
 			},
 		}
-		if err := processSecrets(results.Results, vuln, target, "", state); err != nil {
-			logger.Errorf("processing image secret results: %+v", err)
-		}
-
-		return processMisconfigs(results.Results, target, "", state)
+		processSecrets(results.Results, vuln, target, "", state)
+		processMisconfigs(results.Results, target, "", state)
+		return nil
 	}
 
 	if assetType == "GitRepository" {
@@ -333,70 +393,79 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		}
 		defer os.RemoveAll(repoPath)
 
-		results, err := execTrivy(logger, opt, "fs", append(trivyArgs, repoPath))
-		if err != nil {
-			logger.Errorf("Can not execute trivy: %+v", err)
-		} else {
-			vuln := report.Vulnerability{
-				// Issue attributes.
-				Summary:     "Outdated Packages in Git repository",
-				Description: "Vulnerabilities have been found in outdated packages referenced in Git repository.",
-				Recommendations: []string{
-					"Update affected packages to the versions specified in the resources table or newer.",
-				},
-				Details: strings.Join([]string{
-					"Run the following command to obtain the full report in your computer.",
-					"If using a public git repository:",
-					fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
-					"If using a private repository clone first:",
-					fmt.Sprintf("\tgit clone %s repo", target),
-					"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
-				}, "\n"),
-				CWEID:  937,
-				Labels: []string{"potential", "git"},
-				// Finding attributes.
-			}
-			if err := processVulns(results.Results, vuln, state); err != nil {
-				logger.Errorf("processing fs results: %+v", err)
-			}
-
-			vuln = report.Vulnerability{
-				Summary:       "Secret Leaked In Git Repository",
-				Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
-				CWEID:         540,
-				Score:         8.9,
-				ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
-				Labels:        []string{"issue", "secret"},
-				Recommendations: []string{
-					"Completely remove the secrets from the repository as explained in the references.",
-					"It is recommended to utilize a tool such as AWS Secrets Manager or Vault, or follow the guidance provided by your CI/CD provider, to securely store confidential information.",
-				},
-				References: []string{
-					"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
-				},
-			}
-			if err := processSecrets(results.Results, vuln, target, branchName, state); err != nil {
-				logger.Errorf("processing fs results: %+v", err)
+		// Trivy warns to --skip-files for large nonbinary (20MB) files because scanning those files for secrets can be time consuming.
+		// As there is no flag to opt-in to automatically discard those files we implement it before.
+		// See https://github.com/aquasecurity/trivy/blob/f9fceb58bf64657dee92302df1ed97e597e474c9/pkg/fanal/analyzer/secret/secret.go#L105
+		if opt.GitChecks.Secret {
+			if files, err := findLargeNonBinaryFiles(repoPath, ignoredPaths); err == nil {
+				for _, f := range files {
+					logger.WithField("skipped", f).Warn("Skipping large non-binary file")
+					trivyArgs = append(trivyArgs, "--skip-files", f)
+				}
 			}
 		}
 
-		return processMisconfigs(results.Results, target, branchName, state)
+		results, err := execTrivy(ctx, logger, opt, "fs", append(trivyArgs, repoPath))
+		if err != nil {
+			logger.Errorf("Can not execute trivy: %+v", err)
+			return err
+		}
+		vuln := report.Vulnerability{
+			// Issue attributes.
+			Summary:     "Outdated Packages in Git repository",
+			Description: "Vulnerabilities have been found in outdated packages referenced in Git repository.",
+			Recommendations: []string{
+				"Update affected packages to the versions specified in the resources table or newer.",
+			},
+			Details: strings.Join([]string{
+				"Run the following command to obtain the full report in your computer.",
+				"If using a public git repository:",
+				fmt.Sprintf("\tdocker run -it --rm aquasec/trivy repository %s", target),
+				"If using a private repository clone first:",
+				fmt.Sprintf("\tgit clone %s repo", target),
+				"\tdocker run -it -v $PWD/repo:/repo --rm aquasec/trivy fs /repo",
+			}, "\n"),
+			CWEID:  937,
+			Labels: []string{"potential", "git"},
+			// Finding attributes.
+		}
+		processVulns(results.Results, vuln, state)
+
+		vuln = report.Vulnerability{
+			Summary:       "Secret Leaked In Git Repository",
+			Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
+			CWEID:         540,
+			Score:         8.9,
+			ImpactDetails: "Anyone with access to the repository could retrieve the leaked secret and use it in the future with malicious intent.",
+			Labels:        []string{"issue", "secret"},
+			Recommendations: []string{
+				"Completely remove the secrets from the repository as explained in the references.",
+				"It is recommended to utilize a tool such as AWS Secrets Manager or Vault, or follow the guidance provided by your CI/CD provider, to securely store confidential information.",
+			},
+			References: []string{
+				"https://help.github.com/en/articles/removing-sensitive-data-from-a-repository",
+			},
+		}
+		processSecrets(results.Results, vuln, target, branchName, state)
+		processMisconfigs(results.Results, target, branchName, state)
+		return nil
 	}
 
 	return fmt.Errorf("unknown assetType %s", assetType)
 }
 
-func execTrivy(logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
+func execTrivy(ctx context.Context, logger *logrus.Entry, opt options, action string, actionArgs []string) (*results, error) {
 	// Build trivy command with arguments.
 	trivyCmd := "trivy"
 	trivyArgs := []string{
 		action,
 		"-f", "json",
-		"-o", reportOutputFile,
 		// Indicate Trivy CLI to output just errors to have a cleaner
 		// 'check.Report.Error'.
 		"--quiet",
+		"--parallel", "0", // autodetect number of go routines.
 	}
+
 	// Show only vulnerabilities with specific severities.
 	if opt.Severities != "" {
 		severitiesFlag := []string{"--severity", opt.Severities}
@@ -406,24 +475,13 @@ func execTrivy(logger *logrus.Entry, opt options, action string, actionArgs []st
 	trivyArgs = append(trivyArgs, actionArgs...)
 
 	logger.Infof("running command: %s %s\n", trivyCmd, trivyArgs)
-
-	cmd := exec.Command(trivyCmd, trivyArgs...)
-	cmdOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("trivy command execution failed: %w. Command output: %s", err, string(cmdOutput))
-	}
-	logger.Infof("trivy command execution completed successfully")
-
-	byteValue, err := os.ReadFile(reportOutputFile)
-	if err != nil {
-		return nil, fmt.Errorf("trivy report output file read failed with error: %w", err)
-	}
-
 	var results results
-	err = json.Unmarshal(byteValue, &results)
+
+	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &results, trivyCmd, trivyArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal trivy output failed with error: %w", err)
+		return nil, err
 	}
+	logger.WithFields(logrus.Fields{"exit_code": exitCode}).Debug("trivy command finished")
 	return &results, nil
 }
 
@@ -538,7 +596,7 @@ func computeAffectedResource(target, branch string, file string, l int) string {
 	return s + fmt.Sprintf("#L%d", l)
 }
 
-func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) error {
+func processVulns(results scanResponse, vuln report.Vulnerability, state checkstate.State) {
 	outdatedPackageVulns := make(map[vulnKey]*vulnData)
 	for _, tt := range results {
 		for _, tv := range tt.Vulnerabilities {
@@ -664,11 +722,9 @@ func processVulns(results scanResponse, vuln report.Vulnerability, state checkst
 		// Build the vulnerability.
 		state.AddVulnerabilities(vuln)
 	}
-
-	return nil
 }
 
-func processSecrets(results scanResponse, vuln report.Vulnerability, target, branch string, state checkstate.State) error {
+func processSecrets(results scanResponse, vuln report.Vulnerability, target, branch string, state checkstate.State) {
 	for _, tt := range results {
 		for _, ts := range tt.Secrets {
 
@@ -709,8 +765,6 @@ func processSecrets(results scanResponse, vuln report.Vulnerability, target, bra
 			state.AddVulnerabilities(vuln)
 		}
 	}
-
-	return nil
 }
 
 func getScore(severity string) float32 {
