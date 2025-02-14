@@ -268,11 +268,30 @@ func main() {
 		// 2: At least one WARN and no FAILs
 		// 3: Any other failure
 		if exitCode != 0 {
-			logger.WithField("exitCode", exitCode).WithField("stdOut", string(out)).WithField("stdErr", string(outErr)).Info("Zap finished")
+			logger.WithField("exitCode", exitCode).Info("Zap finished")
+			logger := logger.WithField("dump", "zap.out")
+			for _, line := range strings.Split(string(out), "\n") {
+				logger.Info(line)
+			}
+			for _, line := range strings.Split(string(outErr), "\n") {
+				logger.Error(line)
+			}
 		}
 
 		res, err := os.ReadFile(fmt.Sprintf("%s/report.json", tempDir))
 		if err != nil {
+			if res, err := os.ReadFile(fmt.Sprintf("%s/zap.log", tempDir)); err != nil {
+				logger.Error("unable to read zap.log")
+			} else {
+				logger := logger.WithField("dump", "zap.log")
+				lines := strings.Split(string(res), "\n")
+				if len(lines) > 50 {
+					lines = lines[:50]
+				}
+				for _, line := range lines {
+					logger.Info(line)
+				}
+			}
 			return fmt.Errorf("unable to read report.json: %v", err)
 		}
 
