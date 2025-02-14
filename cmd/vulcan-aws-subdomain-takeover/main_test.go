@@ -136,7 +136,6 @@ func TestScanner_getRoute53ARecords(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
-				logger: logger,
 				route53Client: &mockedRoute53API{
 					listHostedZonesOutput:        tt.listHostedZonesOutput,
 					listResourceRecordSetsOutput: tt.listResourceRecordSetsOutput,
@@ -225,7 +224,6 @@ func TestScanner_getRoute53HostedZones(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
-				logger: logger,
 				route53Client: &mockedRoute53API{
 					listHostedZonesOutput: tt.listHostedZonesOutput,
 				},
@@ -345,7 +343,6 @@ func TestScanner_getRoute53ZoneRecords(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
-				logger: logger,
 				route53Client: &mockedRoute53API{
 					listResourceRecordSetsOutput: tt.listResourceRecordSetsOutput,
 				},
@@ -547,7 +544,6 @@ func TestScanner_getIPs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
-				logger: logger,
 				ec2Client: &mockedEC2Client{
 					describeAddressesAttributeOutput: tt.describeAddressesAttributeOutput,
 					describeNetworkInterfacesOutput:  tt.describeNetworkInterfacesOutput,
@@ -737,7 +733,6 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Scanner{
-				logger: logger,
 				global: tt.global,
 				inventory: &mockedCloudInventory{
 					publicIPs: publicIPs,

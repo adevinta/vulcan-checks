@@ -16,26 +16,17 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/awshelpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/sirupsen/logrus"
 )
 
 const checkName = "vulcan-aws-subdomain-takeover"
-
-var logger = check.NewCheckLog(checkName)
-
-// ErrTargetUnreachable means that it couldn't possible to reach the AWS target account.
-var ErrTargetUnreachable = errors.New("target is Unreachable")
 
 type options struct {
 	Global bool `json:"global"`
@@ -49,11 +40,11 @@ func main() {
 				return err
 			}
 		}
-
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
-		scan, err := NewScanner(opt, logger, target)
+		scan, err := NewScanner(ctx, opt, logger, target)
 		if err != nil {
 			return fmt.Errorf("could not create scan: %w", err)
 		}
@@ -109,8 +100,8 @@ type Scanner struct {
 type awsConfig struct{}
 
 // NewScanner creates a new instance of the Scanner.
-func NewScanner(opt options, logger *logrus.Entry, target string) (Scanner, error) {
-	cfg, err := awsConfig{}.getConfig(logger, target)
+func NewScanner(ctx context.Context, opt options, logger *logrus.Entry, target string) (Scanner, error) {
+	cfg, err := awsConfig{}.getConfig(ctx, logger, target)
 	if err != nil {
 		return Scanner{}, fmt.Errorf("get config: %w", err)
 	}
@@ -158,59 +149,23 @@ func (s Scanner) Run() (map[string]string, error) {
 }
 
 // getConfig retrieves the AWS configuration to use with the AWS clients.
-func (ac awsConfig) getConfig(logger *logrus.Entry, target string) (aws.Config, error) {
+func (ac awsConfig) getConfig(ctx context.Context, logger *logrus.Entry, target string) (aws.Config, error) {
 	if target == "" {
 		return aws.Config{}, errors.New("target missing")
 	}
 	assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
-	role := os.Getenv("ROLE_NAME")
-
-	parsedARN, err := arn.Parse(target)
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("parse ARN: %w", err)
-	}
+	roleName := os.Getenv("ROLE_NAME")
 	var cfg aws.Config
-	var creds aws.Credentials
-	if assumeRoleEndpoint != "" {
-		cs := NewCredentialsService(logger)
-		c, err := cs.GetCredentials(assumeRoleEndpoint, parsedARN.AccountID, role)
-		if err != nil {
-			if errors.Is(err, ErrNoCredentials) {
-				return aws.Config{}, ErrTargetUnreachable
-			}
-			return aws.Config{}, fmt.Errorf("get AWS credentials: %w", err)
-		}
-		creds = *c
+	var err error
+	if assumeRoleEndpoint == "" {
+		cfg, err = awshelpers.GetAwsConfig(ctx, target, roleName, 3600)
 	} else {
-		// try to access with the default credentials.
-		// TODO: Review when the error should be an checkstate.ErrAssetUnreachable (INCONCLUSIVE)
-		cfg, err = config.LoadDefaultConfig(context.Background(), config.WithRegion("eu-west-1"))
-		if err != nil {
-			return aws.Config{}, fmt.Errorf("unable to create AWS config: %w", err)
-		}
-		stsSvc := sts.NewFromConfig(cfg)
-		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", parsedARN.AccountID, role)
-		prov := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
-		creds, err = prov.Retrieve(context.Background())
-		if err != nil {
-			return aws.Config{}, fmt.Errorf("unable to assume role: %w", err)
-		}
+		cfg, err = awshelpers.GetAwsConfigWithVulcanAssumeRole(ctx, assumeRoleEndpoint, target, roleName, 3600)
 	}
 
-	credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-	cfg, err = config.LoadDefaultConfig(context.Background(),
-		config.WithRegion("eu-west-1"),
-		config.WithCredentialsProvider(credsProvider),
-	)
 	if err != nil {
-		return aws.Config{}, fmt.Errorf("unable to create AWS config: %w", err)
-	}
-
-	// Validate that the account id in the target ARN matches the account id in the credentials.
-	if req, err := sts.NewFromConfig(cfg).GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{}); err != nil {
-		return aws.Config{}, fmt.Errorf("unable to get caller identity: %w", err)
-	} else if *req.Account != parsedARN.AccountID {
-		return aws.Config{}, fmt.Errorf("account id in target ARN does not match the account id in the credentials (target ARN: %s, credentials account id: %s)", parsedARN.AccountID, *req.Account)
+		logger.Errorf("unable to get AWS config: %v", err)
+		return aws.Config{}, checkstate.ErrAssetUnreachable
 	}
 	return cfg, nil
 }
