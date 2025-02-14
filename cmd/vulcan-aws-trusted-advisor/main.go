@@ -4,13 +4,9 @@ Copyright 2019 Adevinta
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -18,15 +14,11 @@ import (
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/awshelpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/support"
 	"github.com/sirupsen/logrus"
 )
@@ -38,7 +30,6 @@ const (
 
 var (
 	checkName = "vulcan-aws-trusted-advisor"
-	logger    = check.NewCheckLog(checkName)
 
 	additionalResourcesPattern = regexp.MustCompile(`href=\"(?P<resource>.*?)\"`)
 	templateResource           = "$resource"
@@ -72,6 +63,7 @@ type options struct {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		opt.RefreshTimeout = 5
 		if optJSON != "" {
@@ -83,11 +75,10 @@ func main() {
 			return fmt.Errorf("check target missing")
 		}
 
-		return scanAccount(opt, target, assetType, logger, state)
+		return scanAccount(ctx, opt, target, assetType, logger, state)
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
-
 }
 
 func extractLinesFromHTML(htmlText string) []string {
@@ -105,50 +96,26 @@ func extractLinesFromHTML(htmlText string) []string {
 	return result
 }
 
-func scanAccount(opt options, target, _ string, logger *logrus.Entry, state checkstate.State) error {
+func scanAccount(ctx context.Context, opt options, target, _ string, logger *logrus.Entry, state checkstate.State) error {
 	assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
-	role := os.Getenv("ROLE_NAME")
+	roleName := os.Getenv("ROLE_NAME")
 
-	parsedARN, err := arn.Parse(target)
-	if err != nil {
-		return err
-	}
 	var cfg aws.Config
-	if assumeRoleEndpoint != "" {
-		creds, err := getCredentials(assumeRoleEndpoint, parsedARN.AccountID, role, logger)
-		if err != nil {
-			if errors.Is(err, errNoCredentials) {
-				return checkstate.ErrAssetUnreachable
-			}
-			return err
-		}
-		credsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-		cfg, err = config.LoadDefaultConfig(context.Background(),
-			config.WithRegion("us-east-1"),
-			config.WithCredentialsProvider(credsProvider),
-		)
-		if err != nil {
-			return fmt.Errorf("unable to create AWS config: %w", err)
-		}
+	var err error
+	if assumeRoleEndpoint == "" {
+		cfg, err = awshelpers.GetAwsConfig(ctx, target, roleName, 3600)
 	} else {
-		// try to access with the default credentials
-		cfg, err = config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
-		if err != nil {
-			return fmt.Errorf("unable to create AWS config: %w", err)
-		}
+		cfg, err = awshelpers.GetAwsConfigWithVulcanAssumeRole(ctx, assumeRoleEndpoint, target, roleName, 3600)
 	}
-
-	// Validate that the account id in the target ARN matches the account id in the credentials
-	if req, err := sts.NewFromConfig(cfg).GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{}); err != nil {
-		return fmt.Errorf("unable to get caller identity: %w", err)
-	} else if *req.Account != parsedARN.AccountID {
-		return fmt.Errorf("account id in target ARN does not match the account id in the credentials (target ARN: %s, credentials account id: %s)", parsedARN.AccountID, *req.Account)
+	if err != nil {
+		logger.Errorf("unable to get AWS config: %v", err)
+		return checkstate.ErrAssetUnreachable
 	}
 
 	s := support.NewFromConfig(cfg)
 	// Retrieve checks list
 	checks, err := s.DescribeTrustedAdvisorChecks(
-		context.TODO(),
+		ctx,
 		&support.DescribeTrustedAdvisorChecksInput{
 			Language: aws.String("en"),
 		})
@@ -170,7 +137,7 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 			continue
 		}
 		checkIds = append(checkIds, check.Id)
-		refreshed, err := s.RefreshTrustedAdvisorCheck(context.Background(), &support.RefreshTrustedAdvisorCheckInput{CheckId: check.Id})
+		refreshed, err := s.RefreshTrustedAdvisorCheck(ctx, &support.RefreshTrustedAdvisorCheckInput{CheckId: check.Id})
 		if err != nil {
 			// Haven't found a more elegant way to check for an
 			// InvalidParameterValueException. This error type is not defined in the
@@ -201,7 +168,7 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 				break LOOP
 			default:
 				checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
-					context.Background(),
+					ctx,
 					&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
 						CheckIds: checkIds,
 					},
@@ -212,7 +179,6 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 				// services.
 				if err != nil && !strings.Contains(err.Error(), "InvalidParameterValueException") {
 					return fmt.Errorf("unable to check the refresh statuses: %w", err)
-
 				}
 				var pending bool
 				for _, cs := range checkStatus.Statuses {
@@ -255,8 +221,9 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 
 		var checkSummaries *support.DescribeTrustedAdvisorCheckSummariesOutput
 		checkSummaries, err = s.DescribeTrustedAdvisorCheckSummaries(
-			context.Background(), &support.DescribeTrustedAdvisorCheckSummariesInput{
-				CheckIds: []*string{v.Id}})
+			ctx, &support.DescribeTrustedAdvisorCheckSummariesInput{
+				CheckIds: []*string{v.Id},
+			})
 		if err != nil {
 			return err
 		}
@@ -298,7 +265,7 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 			}
 
 			var checkResults *support.DescribeTrustedAdvisorCheckResultOutput
-			checkResults, err = s.DescribeTrustedAdvisorCheckResult(context.Background(), &support.DescribeTrustedAdvisorCheckResultInput{CheckId: v.Id})
+			checkResults, err = s.DescribeTrustedAdvisorCheckResult(ctx, &support.DescribeTrustedAdvisorCheckResultInput{CheckId: v.Id})
 			if err != nil {
 				return err
 			}
@@ -311,7 +278,7 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 				}
 				// Get the alias of the account only if we did not get previously.
 				if alias == nil {
-					res, err := accountAlias(cfg)
+					res, err := awshelpers.GetAccountAlias(ctx, cfg)
 					if err != nil {
 						return err
 					}
@@ -396,74 +363,4 @@ func scanAccount(opt options, target, _ string, logger *logrus.Entry, state chec
 		}
 	}
 	return err
-}
-
-// AssumeRoleResponse represent a response from vulcan-assume-role
-type AssumeRoleResponse struct {
-	AccessKey       string `json:"access_key"`
-	SecretAccessKey string `json:"secret_access_key"`
-	SessionToken    string `json:"session_token"`
-}
-
-var errNoCredentials = errors.New("unable to decode credentials")
-
-func getCredentials(url string, accountID, role string, logger *logrus.Entry) (*aws.Credentials, error) {
-	m := map[string]any{"account_id": accountID, "duration": 3600}
-	if role != "" {
-		m["role"] = role
-	}
-	jsonBody, err := json.Marshal(m)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshal assume role request body for account %s: %w", accountID, err)
-	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, fmt.Errorf("unable to create request for the assume role service: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Errorf("cannot do request: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close() // nolint
-
-	assumeRoleResponse := AssumeRoleResponse{}
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Errorf("can not read request body %s", err.Error())
-		return nil, err
-	}
-
-	err = json.Unmarshal(buf, &assumeRoleResponse)
-	if err != nil {
-		logger.Errorf("Cannot decode request: %s", err.Error())
-		logger.Errorf("ResponseBody: %s", string(buf))
-		return nil, errNoCredentials
-	}
-	return &aws.Credentials{
-		AccessKeyID:     assumeRoleResponse.AccessKey,
-		SecretAccessKey: assumeRoleResponse.SecretAccessKey,
-		SessionToken:    assumeRoleResponse.SessionToken,
-	}, nil
-}
-
-// accountAlias gets one of the current aliases of the account that the
-// credentials passed belong to.
-func accountAlias(cfg aws.Config) (string, error) {
-	svc := iam.NewFromConfig(cfg)
-	resp, err := svc.ListAccountAliases(context.Background(), &iam.ListAccountAliasesInput{})
-	if err != nil {
-		return "", err
-	}
-	if len(resp.AccountAliases) == 0 {
-		// No aliases found for the aws account.
-		return "", nil
-	}
-	if len(resp.AccountAliases) < 1 {
-		return "", errors.New("no result getting aliases for aws account")
-	}
-	a := resp.AccountAliases[0]
-	return a, nil
 }
