@@ -5,25 +5,19 @@ Copyright 2020 Adevinta
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/awshelpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 )
@@ -34,9 +28,6 @@ const (
 	defaultAPIRegion       = `eu-west-1`
 	defaultSessionDuration = 3600 // 1 hour.
 
-	envEndpoint = `VULCAN_ASSUME_ROLE_ENDPOINT`
-	envRole     = `ROLE_NAME`
-
 	envKeyID     = `AWS_ACCESS_KEY_ID`
 	envKeySecret = `AWS_SECRET_ACCESS_KEY`
 	envToken     = `AWS_SESSION_TOKEN`
@@ -44,7 +35,6 @@ const (
 
 var (
 	checkName = "vulcan-prowler"
-	logger    = check.NewCheckLog(checkName)
 
 	defaultGroups = []string{
 		"cislevel2",
@@ -206,52 +196,45 @@ func buildOptions(optJSON string) (options, error) {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		if target == "" {
-			return errors.New("check target missing")
+		logger := check.NewCheckLogFromContext(ctx, checkName)
+
+		assumeRoleEndpoint := os.Getenv("VULCAN_ASSUME_ROLE_ENDPOINT")
+		roleName := os.Getenv("ROLE_NAME")
+
+		var cfg aws.Config
+		var err error
+		if assumeRoleEndpoint == "" {
+			cfg, err = awshelpers.GetAwsConfig(ctx, target, roleName, 3600)
+		} else {
+			cfg, err = awshelpers.GetAwsConfigWithVulcanAssumeRole(ctx, assumeRoleEndpoint, target, roleName, 3600)
 		}
-		parsedARN, err := arn.Parse(target)
+		if err != nil {
+			logger.Errorf("unable to get AWS config: %v", err)
+			return checkstate.ErrAssetUnreachable
+		}
+
+		creds, err := cfg.Credentials.Retrieve(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to get AWS credentials: %w", err)
+		}
+
+		alias, err := awshelpers.GetAccountAlias(ctx, cfg)
 		if err != nil {
 			return err
 		}
+		logger.Infof("account alias: '%s'", alias)
 
 		opts, err := buildOptions(optJSON)
 		if err != nil {
 			return err
 		}
 
-		endpoint := os.Getenv(envEndpoint)
-		if endpoint == "" {
-			return fmt.Errorf("%s env var must have a non-empty value", envEndpoint)
-		}
-		role := os.Getenv(envRole)
-
-		logger.Infof("using endpoint '%s' and role '%s'", endpoint, role)
-
-		isReachable, err := helpers.IsReachable(target, assetType,
-			helpers.NewAWSCreds(endpoint, role))
-		if err != nil {
-			logger.Warnf("Can not check asset reachability: %v", err)
-		}
-		if !isReachable {
-			return checkstate.ErrAssetUnreachable
-		}
-
-		if err := loadCredentials(endpoint, parsedARN.AccountID, role, opts.SessionDuration); err != nil {
-			return fmt.Errorf("can not get credentials for the role '%s' from the endpoint '%s': %w", endpoint, role, err)
-		}
-
-		alias, err := accountAlias(credentials.NewEnvCredentials())
-		if err != nil {
-			return fmt.Errorf("can not retrieve account alias: %w", err)
-		}
-
-		logger.Infof("account alias: '%s'", alias)
 		groups, err := groupsFromOpts(opts)
 		if err != nil {
 			return err
 		}
 		// Load AWS CIS controls information.
-		content, err := os.ReadFile("cis_controls.json")
+		content, err := os.ReadFile("/cis_controls.json")
 		if err != nil {
 			return err
 		}
@@ -260,7 +243,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		r, err := runProwler(ctx, opts.Region, groups)
+		r, err := runProwler(ctx, logger, creds, opts.Region, groups)
 		if err != nil {
 			return err
 		}
@@ -268,7 +251,6 @@ func main() {
 		var v report.Vulnerability
 		if opts.SecurityLevel == nil {
 			v = CISCompliance
-
 		} else if *opts.SecurityLevel == 0 || *opts.SecurityLevel == 1 {
 			v = CISLevel1Compliance
 		} else {
@@ -302,7 +284,7 @@ func groupsFromOpts(opts options) ([]string, error) {
 		return opts.Groups, nil
 	}
 	level := *opts.SecurityLevel
-	if level < 0 || level > 2 {
+	if level > 2 {
 		return nil, errors.New("invalid security level value")
 	}
 
@@ -310,7 +292,6 @@ func groupsFromOpts(opts options) ([]string, error) {
 		return []string{"cislevel1"}, nil
 	}
 	return []string{"cislevel2"}, nil
-
 }
 
 func buildCISInfoVuln(r *prowlerReport, alias string, slevel *byte) (report.Vulnerability, error) {
@@ -449,74 +430,4 @@ func parseControl(raw string) (control string, description string, err error) {
 	// disabled (Scored)
 	description = strings.Replace(parts[1], "(Scored)", "", -1)
 	return
-}
-
-type assumeRoleResponse struct {
-	AccessKey       string `json:"access_key"`
-	SecretAccessKey string `json:"secret_access_key"`
-	SessionToken    string `json:"session_token"`
-}
-
-func loadCredentials(url string, accountID, role string, sessionDuration int) error {
-	m := map[string]interface{}{"account_id": accountID}
-	if role != "" {
-		m["role"] = role
-	}
-	if sessionDuration != 0 {
-		m["duration"] = sessionDuration
-	}
-	jsonBody, err := json.Marshal(m)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	var r assumeRoleResponse
-	err = json.Unmarshal(buf, &r)
-	if err != nil {
-		logger.Errorf("can not decode response body '%s'", string(buf))
-		return err
-	}
-
-	if err := os.Setenv(envKeyID, r.AccessKey); err != nil {
-		return err
-	}
-
-	if err := os.Setenv(envKeySecret, r.SecretAccessKey); err != nil {
-		return err
-	}
-
-	if err := os.Setenv(envToken, r.SessionToken); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// accountAlias gets one of the current aliases for the account that the
-// credentials passed belong to.
-func accountAlias(creds *credentials.Credentials) (string, error) {
-	svc := iam.New(session.New(&aws.Config{Credentials: creds}))
-	resp, err := svc.ListAccountAliases(&iam.ListAccountAliasesInput{})
-	if err != nil {
-		return "", err
-	}
-	if len(resp.AccountAliases) == 0 {
-		logger.Warn("No aliases found for the account")
-		return "", nil
-	}
-	a := resp.AccountAliases[0]
-	if a == nil {
-		return "", errors.New("unexpected nil getting aliases for aws account")
-	}
-	return *a, nil
 }
