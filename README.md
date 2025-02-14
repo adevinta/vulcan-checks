@@ -10,6 +10,7 @@ Currently there's no vendoring provided for this project.
 
 * **vulcan-aws-alerts** - Warns about CA issues in AWS RDS
 * **vulcan-aws-trusted-advisor** - Checks AWS Trusted Advisor for security findings
+* **vulcan-aws-subdomain-takeover** Detects dangling elastic IPs by performing analysis on your resources within all your AWS accounts
 * **vulcan-burp** - Runs a PortSwigger [Burp Enterprise](https://portswigger.net/burp/enterprise) scan
 * **vulcan-dmarc** - Checks if a domain (asset with a SOA record) have valid DNS configuration for DMARC
 * **vulcan-drupal** - Checks for vulnerabilities in Drupal CMS
