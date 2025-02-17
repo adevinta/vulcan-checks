@@ -48,7 +48,7 @@ func main() {
 		if err != nil {
 			return fmt.Errorf("could not create scan: %w", err)
 		}
-		takeovers, err := scan.Run()
+		takeovers, err := scan.Run(ctx)
 		if err != nil {
 			return fmt.Errorf("scan: %w", err)
 		}
@@ -59,23 +59,21 @@ func main() {
 	c.RunAndServe()
 }
 
-type awsConfigurator interface {
-	getConfig(logger *logrus.Entry, target string) (aws.Config, error)
-}
+// Inventory represents an inventory of public IPs.
 type Inventory interface {
-	IsIPPublicInInventory(ip string) (bool, error)
+	IsIPPublicInInventory(ctx context.Context, ip string) (bool, error)
 }
 
 // route53Client represents a AWS route 53 client.
 type route53Client interface {
-	ListHostedZones(context.Context, *route53.ListHostedZonesInput, ...func(*route53.Options)) (*route53.ListHostedZonesOutput, error)
+	ListHostedZones(ctx context.Context, params *route53.ListHostedZonesInput, optFns ...func(*route53.Options)) (*route53.ListHostedZonesOutput, error)
 	ListResourceRecordSets(ctx context.Context, params *route53.ListResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ListResourceRecordSetsOutput, error)
 }
 
 // ec2Client represents a AWS route EC2 client.
 type ec2Client interface {
 	DescribeRegions(ctx context.Context, params *ec2.DescribeRegionsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeRegionsOutput, error)
-	DescribeAddressesAttribute(context.Context, *ec2.DescribeAddressesAttributeInput, ...func(*ec2.Options)) (*ec2.DescribeAddressesAttributeOutput, error)
+	DescribeAddressesAttribute(ctx context.Context, params *ec2.DescribeAddressesAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeAddressesAttributeOutput, error)
 	DescribeNetworkInterfaces(ctx context.Context, params *ec2.DescribeNetworkInterfacesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeNetworkInterfacesOutput, error)
 }
 
@@ -90,7 +88,6 @@ type Scanner struct {
 	inventory      Inventory
 	logger         *logrus.Entry
 	target         string
-	configurator   awsConfigurator
 	route53Client  route53Client
 	ec2Client      ec2Client
 	ipRangesClient ipRangesClient
@@ -107,10 +104,13 @@ func NewScanner(ctx context.Context, opt options, logger *logrus.Entry, target s
 	}
 	var inventory Inventory
 	if opt.Global {
-		inventory = NewCloudInventory(
+		inventory, err = NewCloudInventory(
 			os.Getenv("CLOUD_INVENTORY_TOKEN"),
 			os.Getenv("CLOUD_INVENTORY_ENDPOINT"),
 		)
+		if err != nil {
+			return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
+		}
 	}
 
 	return Scanner{
@@ -125,23 +125,23 @@ func NewScanner(ctx context.Context, opt options, logger *logrus.Entry, target s
 }
 
 // Run executes the scan.
-func (s Scanner) Run() (map[string]string, error) {
-	dnsRecords, err := s.getRoute53ARecords()
+func (s Scanner) Run(ctx context.Context) (map[string]string, error) {
+	dnsRecords, err := s.getRoute53ARecords(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get DNS records: %w", err)
 	}
 	if len(dnsRecords) == 0 {
 		return nil, nil
 	}
-	regions, err := s.getRegions()
+	regions, err := s.getRegions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get regions: %w", err)
 	}
-	elasticIPs, err := s.getIPs(regions)
+	elasticIPs, err := s.getIPs(ctx, regions)
 	if err != nil {
 		return nil, fmt.Errorf("get Elastic IPs: %w", err)
 	}
-	takeovers, err := s.calculateTakeovers(dnsRecords, elasticIPs)
+	takeovers, err := s.calculateTakeovers(ctx, dnsRecords, elasticIPs)
 	if err != nil {
 		return nil, fmt.Errorf("calculate Takeovers: %w", err)
 	}
@@ -177,16 +177,16 @@ type dnsRecord struct {
 }
 
 // getRoute53ARecords retrieves the DNS A records.
-func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
+func (s Scanner) getRoute53ARecords(ctx context.Context) ([]dnsRecord, error) {
 	var dnsRecords []dnsRecord
 
-	hz, err := s.getRoute53HostedZones()
+	hz, err := s.getRoute53HostedZones(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get hosted zones: %w", err)
 	}
 
 	for _, hostedZone := range hz {
-		zr, err := s.getRoute53ZoneRecords(hostedZone.Id)
+		zr, err := s.getRoute53ZoneRecords(ctx, hostedZone.Id)
 		if err != nil {
 			return nil, fmt.Errorf("get zone records: %w", err)
 		}
@@ -194,19 +194,18 @@ func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 			if record.Type == types.RRTypeA {
 				if record.AliasTarget != nil {
 					continue
-				} else {
-					var aRecords []string
-					for _, rr := range record.ResourceRecords {
-						aRecords = append(aRecords, *rr.Value)
-					}
-					r53Object := []dnsRecord{
-						{
-							name:    *record.Name,
-							records: aRecords,
-						},
-					}
-					dnsRecords = append(dnsRecords, r53Object...)
 				}
+				var aRecords []string
+				for _, rr := range record.ResourceRecords {
+					aRecords = append(aRecords, *rr.Value)
+				}
+				r53Object := []dnsRecord{
+					{
+						name:    *record.Name,
+						records: aRecords,
+					},
+				}
+				dnsRecords = append(dnsRecords, r53Object...)
 			}
 		}
 	}
@@ -214,11 +213,11 @@ func (s Scanner) getRoute53ARecords() ([]dnsRecord, error) {
 }
 
 // getRoute53HostedZones retrieves all the hosted zones.
-func (s Scanner) getRoute53HostedZones() ([]types.HostedZone, error) {
+func (s Scanner) getRoute53HostedZones(ctx context.Context) ([]types.HostedZone, error) {
 	paginator := route53.NewListHostedZonesPaginator(s.route53Client, nil)
 	var hostedZones []types.HostedZone
 	for paginator.HasMorePages() {
-		resp, err := paginator.NextPage(context.Background())
+		resp, err := paginator.NextPage(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("list hosted zones: %w", err)
 		}
@@ -228,14 +227,14 @@ func (s Scanner) getRoute53HostedZones() ([]types.HostedZone, error) {
 }
 
 // getRoute53ZoneRecords retrieves all the Zone Records for a ZoneId.
-func (s Scanner) getRoute53ZoneRecords(zoneId *string) ([]types.ResourceRecordSet, error) {
+func (s Scanner) getRoute53ZoneRecords(ctx context.Context, zoneID *string) ([]types.ResourceRecordSet, error) {
 	listParams := &route53.ListResourceRecordSetsInput{
-		HostedZoneId: zoneId,
+		HostedZoneId: zoneID,
 	}
 	paginator := route53.NewListResourceRecordSetsPaginator(s.route53Client, listParams)
 	var zoneRecords []types.ResourceRecordSet
 	for paginator.HasMorePages() {
-		resp, err := paginator.NextPage(context.Background())
+		resp, err := paginator.NextPage(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("list resource record sets: %w", err)
 		}
@@ -244,9 +243,9 @@ func (s Scanner) getRoute53ZoneRecords(zoneId *string) ([]types.ResourceRecordSe
 	return zoneRecords, nil
 }
 
-func (s Scanner) getRegions() ([]string, error) {
+func (s Scanner) getRegions(ctx context.Context) ([]string, error) {
 	var regions []string
-	r, err := s.ec2Client.DescribeRegions(context.Background(), nil)
+	r, err := s.ec2Client.DescribeRegions(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("describe regions: %w", err)
 	}
@@ -257,7 +256,7 @@ func (s Scanner) getRegions() ([]string, error) {
 }
 
 // getIPs retrieve the public IPs.
-func (s Scanner) getIPs(regions []string) ([]string, error) {
+func (s Scanner) getIPs(ctx context.Context, regions []string) ([]string, error) {
 	var elasticIPs = make(map[string]interface{})
 	for _, region := range regions {
 		describeAddressesRegion := func(o *ec2.Options) {
@@ -266,7 +265,7 @@ func (s Scanner) getIPs(regions []string) ([]string, error) {
 		// Get the public IPs from the addresses.
 		paginatorAddresses := ec2.NewDescribeAddressesAttributePaginator(s.ec2Client, nil)
 		for paginatorAddresses.HasMorePages() {
-			resp, err := paginatorAddresses.NextPage(context.Background())
+			resp, err := paginatorAddresses.NextPage(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("describe addresses: %w", err)
 			}
@@ -278,7 +277,7 @@ func (s Scanner) getIPs(regions []string) ([]string, error) {
 		// Get the public IPs from the Network Interfaces.
 		paginatorNetworkInterfaces := ec2.NewDescribeNetworkInterfacesPaginator(s.ec2Client, nil)
 		for paginatorNetworkInterfaces.HasMorePages() {
-			resp, err := paginatorNetworkInterfaces.NextPage(context.Background(), describeAddressesRegion)
+			resp, err := paginatorNetworkInterfaces.NextPage(ctx, describeAddressesRegion)
 			if err != nil {
 				return nil, fmt.Errorf("describe network interfaces: %w", err)
 			}
@@ -295,7 +294,7 @@ func (s Scanner) getIPs(regions []string) ([]string, error) {
 
 // calculateTakeovers crosses the dnsRecords with the elasticIPs and determine which of the
 // dnsRecords are dangling.
-func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string) (map[string]string, error) {
+func (s Scanner) calculateTakeovers(ctx context.Context, dnsRecords []dnsRecord, elasticIPs []string) (map[string]string, error) {
 	// find all DNS records that point to EC2 IP addresses.
 	dnsEC2IPs := make(map[string][]string)
 	aip, err := s.ipRangesClient.GetPrefixes()
@@ -326,7 +325,7 @@ func (s Scanner) calculateTakeovers(dnsRecords []dnsRecord, elasticIPs []string)
 		for _, record := range dnsEC2IP {
 			if !contains(elasticIPs, record) {
 				if s.global {
-					inInventory, err := s.inventory.IsIPPublicInInventory(record)
+					inInventory, err := s.inventory.IsIPPublicInInventory(ctx, record)
 					if err != nil {
 						return nil, fmt.Errorf("inventory: %w", err)
 					}

@@ -1,17 +1,23 @@
+/*
+Copyright 2025 Adevinta
+*/
+
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"text/template"
 )
 
 func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 	tests := []struct {
 		name               string
 		token              string
-		endpoint           string
+		endpointTpl        string
 		ip                 string
 		endpointResponse   string
 		statusCodeResponse int
@@ -21,7 +27,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "no token",
 			token:              "",
-			endpoint:           "/{{.IP}}",
+			endpointTpl:        "/{{.IP}}",
 			ip:                 "1.2.3.4",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusUnauthorized,
@@ -31,7 +37,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "no ip",
 			token:              "token",
-			endpoint:           "/{{.IP}}",
+			endpointTpl:        "/{{.IP}}",
 			ip:                 "",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusBadRequest,
@@ -41,7 +47,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip found",
 			token:              "token",
-			endpoint:           "/{{.IP}}",
+			endpointTpl:        "/{{.IP}}",
 			ip:                 "1.2.3.4",
 			endpointResponse:   "{\"ip\": \"1.2.3.4\"\",\n  \"account_id\": \"aws_account\",\n  \"region\": \"aws_region\"}",
 			statusCodeResponse: http.StatusOK,
@@ -51,7 +57,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip not found 404",
 			token:              "token",
-			endpoint:           "/{{.IP}}",
+			endpointTpl:        "/{{.IP}}",
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusNotFound,
@@ -61,7 +67,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip not found 200",
 			token:              "token",
-			endpoint:           "/{{.IP}}",
+			endpointTpl:        "/{{.IP}}",
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "{}",
 			statusCodeResponse: http.StatusOK,
@@ -86,12 +92,17 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 			// Close the server when test finishes
 			defer server.Close()
 
-			ci := &CloudInventory{
-				client:   server.Client(),
-				token:    tt.token,
-				endpoint: fmt.Sprintf("%s%s", server.URL, tt.endpoint),
+			tpl, err := template.New("isInInventory").Parse(fmt.Sprintf("%s%s", server.URL, tt.endpointTpl))
+			if err != nil {
+				t.Errorf("parsing endpoint template: %v", err)
 			}
-			got, err := ci.IsIPPublicInInventory(tt.ip)
+
+			ci := &CloudInventory{
+				client:      server.Client(),
+				token:       tt.token,
+				endpointTpl: tpl,
+			}
+			got, err := ci.IsIPPublicInInventory(context.Background(), tt.ip)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}

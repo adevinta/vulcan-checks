@@ -1,3 +1,7 @@
+/*
+Copyright 2025 Adevinta
+*/
+
 package main
 
 import (
@@ -141,7 +145,7 @@ func TestScanner_getRoute53ARecords(t *testing.T) {
 					listResourceRecordSetsOutput: tt.listResourceRecordSetsOutput,
 				},
 			}
-			got, err := s.getRoute53ARecords()
+			got, err := s.getRoute53ARecords(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}
@@ -228,7 +232,7 @@ func TestScanner_getRoute53HostedZones(t *testing.T) {
 					listHostedZonesOutput: tt.listHostedZonesOutput,
 				},
 			}
-			got, err := s.getRoute53HostedZones()
+			got, err := s.getRoute53HostedZones(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}
@@ -347,7 +351,7 @@ func TestScanner_getRoute53ZoneRecords(t *testing.T) {
 					listResourceRecordSetsOutput: tt.listResourceRecordSetsOutput,
 				},
 			}
-			got, err := s.getRoute53ZoneRecords(nil)
+			got, err := s.getRoute53ZoneRecords(context.Background(), nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}
@@ -370,23 +374,23 @@ type mockedEC2Client struct {
 	describeNetworkInterfacesCount   int
 }
 
-func (me *mockedEC2Client) DescribeRegions(_ context.Context, _ *ec2.DescribeRegionsInput, _ ...func(*ec2.Options)) (*ec2.DescribeRegionsOutput, error) {
-	result := &me.describeRegionsOutput[me.describeRegionsCount]
-	me.describeRegionsCount++
+func (mec2 *mockedEC2Client) DescribeRegions(_ context.Context, _ *ec2.DescribeRegionsInput, _ ...func(*ec2.Options)) (*ec2.DescribeRegionsOutput, error) {
+	result := &mec2.describeRegionsOutput[mec2.describeRegionsCount]
+	mec2.describeRegionsCount++
 	return result, nil
 }
 
-func (me *mockedEC2Client) DescribeAddressesAttribute(
+func (mec2 *mockedEC2Client) DescribeAddressesAttribute(
 	_ context.Context, _ *ec2.DescribeAddressesAttributeInput, _ ...func(*ec2.Options)) (*ec2.DescribeAddressesAttributeOutput, error) {
-	result := &me.describeAddressesAttributeOutput[me.describeAddressAttributeCount]
-	me.describeAddressAttributeCount++
+	result := &mec2.describeAddressesAttributeOutput[mec2.describeAddressAttributeCount]
+	mec2.describeAddressAttributeCount++
 	return result, nil
 }
 
-func (me *mockedEC2Client) DescribeNetworkInterfaces(
+func (mec2 *mockedEC2Client) DescribeNetworkInterfaces(
 	_ context.Context, _ *ec2.DescribeNetworkInterfacesInput, _ ...func(*ec2.Options)) (*ec2.DescribeNetworkInterfacesOutput, error) {
-	result := &me.describeNetworkInterfacesOutput[me.describeNetworkInterfacesCount]
-	me.describeNetworkInterfacesCount++
+	result := &mec2.describeNetworkInterfacesOutput[mec2.describeNetworkInterfacesCount]
+	mec2.describeNetworkInterfacesCount++
 	return result, nil
 }
 
@@ -549,7 +553,7 @@ func TestScanner_getIPs(t *testing.T) {
 					describeNetworkInterfacesOutput:  tt.describeNetworkInterfacesOutput,
 				},
 			}
-			got, err := s.getIPs(tt.regions)
+			got, err := s.getIPs(context.Background(), tt.regions)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}
@@ -566,7 +570,7 @@ type mockedCloudInventory struct {
 	publicIPs []string
 }
 
-func (m mockedCloudInventory) IsIPPublicInInventory(ip string) (bool, error) {
+func (m mockedCloudInventory) IsIPPublicInInventory(_ context.Context, ip string) (bool, error) {
 	for _, publicIP := range m.publicIPs {
 		if publicIP == ip {
 			return true, nil
@@ -575,11 +579,11 @@ func (m mockedCloudInventory) IsIPPublicInInventory(ip string) (bool, error) {
 	return false, nil
 }
 
-type mockedIpRangesClient struct {
+type mockedIPRangesClient struct {
 	awsPrefixes AWSPrefixes
 }
 
-func (mi mockedIpRangesClient) GetPrefixes() (AWSPrefixes, error) {
+func (mi mockedIPRangesClient) GetPrefixes() (AWSPrefixes, error) {
 	return mi.awsPrefixes, nil
 }
 
@@ -737,11 +741,11 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 				inventory: &mockedCloudInventory{
 					publicIPs: publicIPs,
 				},
-				ipRangesClient: &mockedIpRangesClient{
+				ipRangesClient: &mockedIPRangesClient{
 					awsPrefixes: tt.awsPrefixes,
 				},
 			}
-			got, err := s.calculateTakeovers(tt.dnsRecords, tt.elasticIPs)
+			got, err := s.calculateTakeovers(context.Background(), tt.dnsRecords, tt.elasticIPs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error value: %v", err)
 			}

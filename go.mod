@@ -1,6 +1,6 @@
 module github.com/adevinta/vulcan-checks
 
-go 1.22.5
+go 1.23.5
 
 require (
 	github.com/FiloSottile/Heartbleed v0.2.1-0.20150408030656-4a3332ca1dc0
