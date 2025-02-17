@@ -17,7 +17,6 @@ import (
 
 var (
 	checkName  = "vulcan-heartbleed"
-	logger     = check.NewCheckLog(checkName)
 	payload    = []byte("VULCAN-PAYLOAD")
 	service    = "https"
 	skipVerify = true
@@ -54,6 +53,7 @@ func testHeartbleed(host string) (string, error) {
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}

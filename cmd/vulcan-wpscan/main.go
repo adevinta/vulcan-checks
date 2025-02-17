@@ -29,7 +29,7 @@ var (
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 
 		if target == "" {
 			return fmt.Errorf("check target missing")
@@ -116,7 +116,6 @@ func addVulnsToState(state checkstate.State, r *WpScanReport) {
 			addPluginVulns(state, pl.Vulnerabilities, name, pl.Version, r.EffectiveURL)
 		}
 	}
-
 }
 
 func getImpact(summary string) (float32, string) {
@@ -126,14 +125,13 @@ func getImpact(summary string) (float32, string) {
 
 	if mediumImpactRe.MatchString(summary) {
 		return report.SeverityThresholdMedium, fmt.Sprintf("Matched with regexp: /%v/i.", mediumImpactRe.String())
-
 	}
 
 	if lowImpactRe.MatchString(summary) {
 		return report.SeverityThresholdLow, fmt.Sprintf("Matched with regexp: /%v/i.", lowImpactRe.String())
 	}
 
-	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
+	return report.SeverityThresholdNone, "Did not match with any regexp of higher impact."
 }
 
 func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {

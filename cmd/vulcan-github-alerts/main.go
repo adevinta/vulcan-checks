@@ -25,11 +25,12 @@ import (
 	semver "github.com/Masterminds/semver/v3"
 )
 
-const graphqlAPIPath = "/api/graphql"
-const graphqlDefaultElements = 100
-const graphqlNumberFilter = "first:%v"
-const graphqlPageFilter = `after:\"%v\"`
-const graphqlQuery = `
+const (
+	graphqlAPIPath         = "/api/graphql"
+	graphqlDefaultElements = 100
+	graphqlNumberFilter    = "first:%v"
+	graphqlPageFilter      = `after:\"%v\"`
+	graphqlQuery           = `
 query {
 	repository(owner:\"%v\", name:\"%v\") {
 		vulnerabilityAlerts(%v) {
@@ -51,6 +52,7 @@ query {
 	}
 }
 `
+)
 
 type alertsData struct {
 	Data struct {
@@ -94,7 +96,6 @@ type Advisory struct {
 }
 
 type dependencyData struct {
-	version         string
 	ecosystem       string
 	vulnCount       int
 	maxSeverity     string
@@ -103,13 +104,11 @@ type dependencyData struct {
 	referencesCount int
 }
 
-var (
-	checkName = "vulcan-github-alerts"
-	logger    = check.NewCheckLog(checkName)
-)
+const checkName = "vulcan-github-alerts"
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return errors.New("check target missing")
 		}
@@ -336,9 +335,12 @@ func githubAlerts(graphqlURL string, org string, repo string, cursor string) ([]
 	}
 	cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, filter)
 
-	var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
+	jsonData := []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
 
 	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return []Details{}, false, "", err
+	}
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
 
 	client := &http.Client{}

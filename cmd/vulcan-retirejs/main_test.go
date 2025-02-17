@@ -22,10 +22,6 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-func init() {
-	os.Mkdir("temp", 0755)
-}
-
 func TestRelativePathWithDotSlash(t *testing.T) {
 	baseUrl := "http://host.tld/"
 	path := "./my/script.js"
@@ -61,17 +57,21 @@ func TestRelativePathNoSlash(t *testing.T) {
 		t.Fatalf("Not the correct url: %s", absoluteUrl)
 	}
 }
+
 func TestDownloadFromUrl(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ABCDE"))
 	}))
 	defer ts.Close()
-	downloadFromUrl(ts.URL)
-	os.Remove("temp")
+
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+
+	downloadFromUrl(check.NewCheckLogFromContext(context.Background(), checkName), ts.URL, jsPath)
 }
 
 func TestGetAffectedVersion(t *testing.T) {
-	var versions = []struct {
+	versions := []struct {
 		atOrAbove string
 		below     string
 		expected  string
@@ -106,6 +106,7 @@ func TestGetScoreMedium(t *testing.T) {
 		t.Fatalf("medium severity should map to Severity score medium")
 	}
 }
+
 func TestGetScoreLow(t *testing.T) {
 	if getScore("low") != report.SeverityThresholdLow {
 		t.Fatalf("low severity should map to Severity score low")
@@ -149,7 +150,9 @@ func TestFindScriptFiles(t *testing.T) {
 	localAddr = ts.URL
 
 	expected := 2
-	got, err := findScriptFiles(localAddr)
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+	got, err := findScriptFiles(check.NewCheckLogFromContext(context.Background(), checkName), localAddr, jsPath)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
@@ -166,7 +169,11 @@ func TestInlineScripts(t *testing.T) {
 	defer ts.Close()
 	localAddr = ts.URL
 	expected := 1
-	got, err := findInlineScripts(localAddr)
+
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+
+	got, err := findInlineScripts(check.NewCheckLogFromContext(context.Background(), checkName), localAddr, jsPath)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
@@ -211,7 +218,7 @@ func TestResolveTarget(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"), "Hostname")
+	targetResolved, _ := resolveTarget(strings.TrimPrefix(ts.URL, "http://"), "Hostname")
 	targetExpected := ts.URL + "/landing-page/?n=1"
 
 	if targetResolved != targetExpected {
@@ -224,7 +231,7 @@ func TestResolveWebAddress(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	var paths = []struct {
+	paths := []struct {
 		provided string
 		expected string
 	}{
@@ -277,7 +284,7 @@ func TestRunRetireJS(t *testing.T) {
 
 	ctx := context.Background()
 	args := []string{"echo", mockRetireOutput}
-	_, err := runRetireJs(ctx, args)
+	_, err := runRetireJs(ctx, check.NewCheckLogFromContext(context.Background(), checkName), args)
 	if err != nil {
 		t.Fatalf("Error when running runRetireJs: %v", err)
 	}
@@ -298,7 +305,7 @@ func TestScanTarget(t *testing.T) {
 	ctx := context.Background()
 	args := []string{"echo", mockRetireOutput}
 
-	l := check.NewCheckLog(checkName)
+	l := check.NewCheckLogFromContext(context.Background(), checkName)
 	var state state.State
 	err = scanTarget(ctx, target, assetType, l, state, args)
 	if err != nil {

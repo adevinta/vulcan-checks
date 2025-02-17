@@ -4,7 +4,8 @@ FROM returntocorp/semgrep:1.106.0
 ENTRYPOINT ["/usr/bin/env"]
 
 # Install check
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-semgrep /
 
 CMD ["/vulcan-semgrep"]

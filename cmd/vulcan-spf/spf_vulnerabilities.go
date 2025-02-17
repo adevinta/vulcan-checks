@@ -12,10 +12,10 @@ import (
 var vulns = map[string]report.Vulnerability{
 	// CVSS3    4.3      AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N
 	// https://github.com/bugcrowd/vulnerability-rating-taxonomy/blob/a6dcfb43cf26004ab20320071b84f59beda49e22/mappings/cvss_v3.json#L73
-	"spf-not-found": report.Vulnerability{
+	"spf-not-found": {
 		CWEID:   358,
 		Summary: "SPF Policy Not Found",
-		//discard records that do not begin with a version section of exactly "v=spf1"
+		// discard records that do not begin with a version section of exactly "v=spf1"
 		Description: "No SPF policy has been found for this domain.\nA SPF (Sender Policy Framework) " +
 			"policy allows you to detect and block email spoofing by providing a mechanism to allow " +
 			"receiving mail exchangers to verify that incoming mail from a domain comes from an IP address " +
@@ -39,10 +39,10 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"mechanisms-after-first-all-are-ignored": report.Vulnerability{
+	"mechanisms-after-first-all-are-ignored": {
 		CWEID:   358,
 		Summary: "SPF 'all' Is Not The Rightmost Mechanism",
-		//Mechanisms after "all" will never be tested.  Mechanisms listed after "all" MUST be ignored.
+		// Mechanisms after "all" will never be tested.  Mechanisms listed after "all" MUST be ignored.
 		Description: "The 'all' mechanism is a test that always matches. It is used as the rightmost " +
 			"mechanism in a policy to provide an explicit default. For example: [v=spf1 a mx -all] " +
 			"Mechanisms after 'all' will never be tested. Mechanisms listed after 'all' MUST be ignored. ",
@@ -58,7 +58,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"no-all-or-redirect": report.Vulnerability{
+	"no-all-or-redirect": {
 		CWEID:   358,
 		Summary: "SPF Missing 'all' And 'redirect'",
 		Description: "It is better to use either a 'redirect' modifier or an 'all' " +
@@ -78,7 +78,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"all-configured-as-PASS": report.Vulnerability{
+	"all-configured-as-PASS": {
 		CWEID:   358,
 		Summary: "SPF 'all' Configured As 'PASS'",
 		Description: "A 'pass' result is an explicit statement that the client is " +
@@ -100,7 +100,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"all-configured-as-NEUTRAL": report.Vulnerability{
+	"all-configured-as-NEUTRAL": {
 		CWEID:   358,
 		Summary: "SPF 'all' Configured As 'NEUTRAL'",
 		Description: "A 'neutral' result means the ADMD has explicitly stated that it is " +
@@ -119,7 +119,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"all-configured-as-SOFTFAIL": report.Vulnerability{
+	"all-configured-as-SOFTFAIL": {
 		CWEID:   358,
 		Summary: "SPF 'all' Mechanism Configured As 'SOFTFAIL'",
 		Description: "A 'softfail' result is a weak statement by the publishing ADMD that " +
@@ -139,7 +139,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"dns-queries-exceeded-limit": report.Vulnerability{
+	"dns-queries-exceeded-limit": {
 		CWEID:   358,
 		Summary: "SPF Queries Exceeded The Maximum Limit",
 		// SPF implementations MUST limit the total number of those terms to 10 during SPF evaluation
@@ -161,7 +161,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"multiple-spf-found": report.Vulnerability{
+	"multiple-spf-found": {
 		CWEID:   358,
 		Summary: "SPF Multiple Records Found",
 		// multiple SPF records are not permitted for the same owner name.

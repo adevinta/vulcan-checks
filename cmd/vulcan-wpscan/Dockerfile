@@ -6,6 +6,7 @@ FROM wpscanteam/wpscan
 ENTRYPOINT ["/usr/bin/env"]
 
 # Install check
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-wpscan /
 CMD ["/vulcan-wpscan"]

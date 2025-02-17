@@ -241,7 +241,7 @@ func findLargeNonBinaryFiles(rootPath string, excludeDirs []string) ([]string, e
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	// TODO: If options are "malformed" perhaps we should not return error
 	// but only log and error and return.
 	var opt options
@@ -386,7 +386,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 		if opt.Depth == 0 {
 			opt.Depth = DefaultDepth
 		}
-		repoPath, branchName, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+		repoPath, branchName, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 		if err != nil {
 			logger.Errorf("unable to clone repo: %+v", err)
 			return checkstate.ErrAssetUnreachable
@@ -509,11 +509,13 @@ func processMisconfigs(results scanResponse, target string, branch string, state
 					References:       tv.References,
 					Score:            getScore(tv.Severity),
 					AffectedResource: computeAffectedResource(target, branch, tt.Target, 0),
-					Resources: []report.ResourcesGroup{{
-						Name:   "Occurrences",
-						Header: []string{"Link", "Message"},
+					Resources: []report.ResourcesGroup{
+						{
+							Name:   "Occurrences",
+							Header: []string{"Link", "Message"},
+						},
 					},
-					}}
+				}
 				m[key] = vuln
 			}
 			var sb strings.Builder

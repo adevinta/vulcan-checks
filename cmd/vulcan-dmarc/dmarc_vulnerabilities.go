@@ -10,7 +10,7 @@ import (
 )
 
 var vulns = map[string]report.Vulnerability{
-	"dmarc-not-found": report.Vulnerability{
+	"dmarc-not-found": {
 		CWEID:   358,
 		Summary: "DMARC DNS Record Not Found",
 		Description: "No DMARC policy has been found for this domain.\nA DMARC " +
@@ -38,7 +38,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"multiple-dmarc-found": report.Vulnerability{
+	"multiple-dmarc-found": {
 		CWEID:   358,
 		Summary: "DMARC Multiple Records Found",
 		Description: "Multiple DMARC policy records have been found for this domain.\nIf a domain" +
@@ -58,7 +58,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"unable-to-parse-tags": report.Vulnerability{
+	"unable-to-parse-tags": {
 		CWEID:   358,
 		Summary: "DMARC Unable To Parse Tags",
 		Description: "Some tags present in the DMARC policy record for this domain are invalid.\nIf a domain" +
@@ -78,7 +78,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"v-and-p-invalid-or-missing": report.Vulnerability{
+	"v-and-p-invalid-or-missing": {
 		CWEID:   358,
 		Summary: "DMARC 'v' And 'p' Are Invalid",
 		Description: "Tags 'v' and 'p' are missing or are invalid. A DMARC policy record MUST comply with the formal specification " +
@@ -98,7 +98,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-v-wrong-value": report.Vulnerability{
+	"tag-v-wrong-value": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'v' Has Wrong Value",
 		Description: "Version (plain-text; REQUIRED). Identifies the record retrieved " +
@@ -121,7 +121,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-p-wrong-value": report.Vulnerability{
+	"tag-p-wrong-value": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'p' Has Wrong Value",
 		Description: "The value of tag 'p' is not a valid one. Requested Mail Receiver policy (plain-text; REQUIRED for policy " +
@@ -153,7 +153,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-p-is-none": report.Vulnerability{
+	"tag-p-is-none": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'p' Set To 'none'",
 		Description: "The value of tag 'p' is configured as 'none'. It should be set to 'reject'. " +
@@ -175,7 +175,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-p-is-quarantine": report.Vulnerability{
+	"tag-p-is-quarantine": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'p' Set To 'quarantine'",
 		Description: "The value of tag 'p' is configured as 'quarantine'. It should be set to 'reject'. " +
@@ -200,7 +200,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-rua-not-configured": report.Vulnerability{
+	"tag-rua-not-configured": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'rua' Missing",
 		Description: "The tag 'rua' is not explicitly configured. " +
@@ -218,7 +218,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-ruf-not-configured": report.Vulnerability{
+	"tag-ruf-not-configured": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'ruf' Missing",
 		Description: "The tag 'ruf' is not explicitly configured. " +
@@ -241,7 +241,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-pct-not-100": report.Vulnerability{
+	"tag-pct-not-100": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'pct' Is Not Set To '100'",
 		Description: "Selective DMARC policy 'pct' is not set to '100'. " +
@@ -260,7 +260,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-rua-not-valid-mailto": report.Vulnerability{
+	"tag-rua-not-valid-mailto": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'rua' Is Invalid",
 		Description: "The 'rua' tag has an invalid value. It should be a comma-separated plain-text list of DMARC URIs. " +
@@ -281,7 +281,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-ruf-not-valid-mailto": report.Vulnerability{
+	"tag-ruf-not-valid-mailto": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'ruf' Is Invalid",
 		Description: "The 'ruf' tag has an invalid value. It should be a comma-separated plain-text list of DMARC URIs." +
@@ -303,7 +303,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-adkim-not-valid": report.Vulnerability{
+	"tag-adkim-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'adkim' Is Invalid",
 		Description: "The 'adkim' tag has an invalid value. " +
@@ -325,7 +325,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-aspf-not-valid": report.Vulnerability{
+	"tag-aspf-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'aspf' Is Invalid",
 		Description: "The 'aspf' tag has an invalid value. " +
@@ -347,7 +347,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-sp-not-valid": report.Vulnerability{
+	"tag-sp-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'sp' Is Invalid",
 		Description: "The 'sp' tag has an invalid value. " +
@@ -378,7 +378,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-fo-not-valid": report.Vulnerability{
+	"tag-fo-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'fo' Is Invalid",
 		Description: "The 'fo' tag has an invalid value. " +
@@ -407,7 +407,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-rf-not-valid": report.Vulnerability{
+	"tag-rf-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'rf' Is Invalid",
 		Description: "The 'rf' tag has an invalid value. " +
@@ -433,7 +433,7 @@ var vulns = map[string]report.Vulnerability{
 		Labels:      []string{"issue", "dns"},
 		Fingerprint: helpers.ComputeFingerprint(),
 	},
-	"tag-ri-not-valid": report.Vulnerability{
+	"tag-ri-not-valid": {
 		CWEID:   358,
 		Summary: "DMARC Tag 'ri' Is Invalid",
 		Description: "The 'ri' tag has an invalid value. " +

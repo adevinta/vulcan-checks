@@ -14,11 +14,9 @@ import (
 	"net/url"
 )
 
-var (
-	// ErrAssetDoesNotExist is returned by the [Client] when there is no info
-	// about the asset in the Security Graph.
-	ErrAssetDoesNotExist = errors.New("asset does not exist in the Security Graph")
-)
+// ErrAssetDoesNotExist is returned by the [Client] when there is no info
+// about the asset in the Security Graph.
+var ErrAssetDoesNotExist = errors.New("asset does not exist in the Security Graph")
 
 // HTTPStatusError is returned by the method [IntelAPIClient.BlastRadius] when
 // it receives a response with a status code different to 200.
