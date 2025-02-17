@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -30,7 +32,14 @@ const (
 	contextName = "target"
 )
 
-var client zap.Interface
+type pool struct {
+	l []int
+	m sync.Mutex
+}
+
+// Create a pool of 5 ports starting from 13000.
+// 5 defines the max number of concurrent scans to allow before a "too many requests error"
+var portPool *pool = createPortPool(13000, 5)
 
 type options struct {
 	Depth    int     `json:"depth"`
@@ -70,14 +79,28 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		ctx, ctxCancel := context.WithCancel(context.Background())
+		zapPort, err := portPool.getPort()
+		if err != nil {
+			return fmt.Errorf("too many requests: %w", err)
+		}
+		defer portPool.releasePort(zapPort)
+
+		tempDir, err := os.MkdirTemp(os.TempDir(), "zap-")
+		if err != nil {
+			return fmt.Errorf("unable to create tmp dir: %w", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		ctx, ctxCancel := context.WithCancel(ctx)
+		defer ctxCancel()
 
 		// Execute ZAP daemon.
 		go func() {
 			logger.Print("Executing for ZAP daemon...")
-			out, err := exec.Command(
+			out, err := exec.CommandContext(ctx,
 				"/zap/zap.sh",
-				"-daemon", "-host", "127.0.0.1", "-port", "8080",
+				"-dir", tempDir,
+				"-daemon", "-host", "127.0.0.1", "-port", strconv.Itoa(zapPort),
 				"-config", "api.disablekey=true",
 				"-config", "database.recoverylog=false", // Reduce disk usage
 				"-notel",  // Disables telemetry
@@ -99,7 +122,7 @@ func main() {
 			case <-ctx.Done():
 				return errors.New("ZAP exited while waiting for proxy")
 			case <-ticker.C:
-				conn, _ := net.DialTimeout("tcp", "127.0.0.1:8080", time.Second)
+				conn, _ := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", zapPort), time.Second)
 				if conn != nil {
 					conn.Close()
 					break proxyLoop
@@ -110,16 +133,19 @@ func main() {
 		logger.Print("Initiating ZAP client...")
 
 		cfg := &zap.Config{
-			Proxy:     "http://127.0.0.1:8080",
-			Base:      "http://127.0.0.1:8080/JSON/",
-			BaseOther: "http://127.0.0.1:8080/OTHER/",
+			Proxy:     fmt.Sprintf("http://127.0.0.1:%d", zapPort),
+			Base:      fmt.Sprintf("http://127.0.0.1:%d/JSON/", zapPort),
+			BaseOther: fmt.Sprintf("http://127.0.0.1:%d/OTHER/", zapPort),
 		}
-		client, err = zap.NewClient(cfg)
+		client, err := zap.NewClient(cfg)
 		if err != nil {
 			return fmt.Errorf("error configuring the ZAP proxy client: %w", err)
 		}
 
-		client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner - vulcan@adevinta.com")
+		_, err = client.Core().SetOptionDefaultUserAgent("Vulcan - Security Scanner")
+		if err != nil {
+			return fmt.Errorf("error setting default user agent: %w", err)
+		}
 
 		targetURL, err := url.Parse(target)
 		if err != nil {
@@ -268,7 +294,10 @@ func main() {
 
 		logger.Printf("Running AJAX spider %v levels deep, max duration %v...", opt.Depth, opt.MaxSpiderDuration)
 
-		client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
+		_, err = client.AjaxSpider().SetOptionMaxCrawlDepth(opt.Depth)
+		if err != nil {
+			return fmt.Errorf("error setting ajaxSppider maxCrawlDept: %w", err)
+		}
 		_, err = client.AjaxSpider().Scan(targetURL.String(), "", contextName, "")
 		if err != nil {
 			return fmt.Errorf("error executing the AJAX spider: %w", err)
@@ -314,7 +343,7 @@ func main() {
 		// Scan actively only if explicitly indicated.
 		if opt.Active {
 			logger.Print("Running active scan...")
-			err := activeScan(ctx, logger, targetURL, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
+			err := activeScan(ctx, logger, client, state, disabledScanners, opt.MaxScanDuration, opt.MaxRuleDuration, contextID)
 			if err != nil {
 				return err
 			}
@@ -423,7 +452,7 @@ func fingerprintFromResources(resources []map[string]string) string {
 	return strings.Join(occurrences, "#")
 }
 
-func activeScan(ctx context.Context, logger *logrus.Entry, targetURL *url.URL, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
+func activeScan(ctx context.Context, logger *logrus.Entry, client zap.Interface, state checkstate.State, disabledScanners string, maxScanDuration, maxRuleDuration int, contextID string) error {
 	_, err := client.Ascan().DisableScanners(disabledScanners, "")
 	if err != nil {
 		return fmt.Errorf("error disabling scanners for active scan: %w", err)
@@ -510,4 +539,32 @@ func getStringAttribute(m map[string]any, name string) (string, error) {
 		return "", fmt.Errorf("%s value [%v] is not a string", name, v)
 	}
 	return str, nil
+}
+
+func createPortPool(first, count int) *pool {
+	pp := pool{
+		l: make([]int, count),
+		m: sync.Mutex{},
+	}
+	for i := range pp.l {
+		pp.l[i] = first + i
+	}
+	return &pp
+}
+
+func (p *pool) getPort() (int, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if len(p.l) == 0 {
+		return 0, fmt.Errorf("no ports available")
+	}
+	port := p.l[len(p.l)-1]
+	p.l = p.l[:len(p.l)-1]
+	return port, nil
+}
+
+func (p *pool) releasePort(port int) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.l = append(p.l, port)
 }
