@@ -13,8 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
-	"strconv"
 	"strings"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -32,6 +30,7 @@ const graphqlPageFilter = `after:\"%v\"`
 const graphqlQuery = `
 query {
 	repository(owner:\"%v\", name:\"%v\") {
+		defaultBranchRef { name }
 		vulnerabilityAlerts(%v) {
 			number: totalCount
 			pagination: pageInfo { endCursor hasNextPage }
@@ -55,6 +54,9 @@ query {
 type alertsData struct {
 	Data struct {
 		Repository struct {
+			DefaultBranchRef struct {
+				Name string `json:"name"`
+			} `json:"defaultBranchRef"`
 			VulnerabilityAlerts struct {
 				Number     int `json:"number"`
 				Pagination struct {
@@ -69,8 +71,11 @@ type alertsData struct {
 
 // Details contains the details of a security vulnerability.
 type Details struct {
-	State                 string `json:"state"`
-	SecurityVulnerability struct {
+	State                      string `json:"state"`
+	VulnerableManifestFilename string `json:"vulnerableManifestFilename"`
+	VulnerableManifestPath     string `json:"vulnerableManifestPath"`
+	VulnerableRequirements     string `json:"vulnerableRequirements"`
+	SecurityVulnerability      struct {
 		Advisory Advisory `json:"advisory"`
 		Package  struct {
 			Name      string `json:"name"`
@@ -101,6 +106,7 @@ type dependencyData struct {
 	fixedVersion    *semver.Version
 	references      string
 	referencesCount int
+	paths           map[string]string
 }
 
 var (
@@ -144,16 +150,9 @@ func main() {
 			return checkstate.ErrAssetUnreachable
 		}
 
-		var alerts []Details
-		cursor := ""
-		hasNextPage := true
-		for hasNextPage {
-			var alertsPage []Details
-			alertsPage, hasNextPage, cursor, err = githubAlerts(githubURL.String(), org, repo, cursor)
-			if err != nil {
-				return err
-			}
-			alerts = append(alerts, alertsPage...)
+		alerts, branch, err := githubAlerts(githubURL.String(), org, repo)
+		if err != nil {
+			return err
 		}
 
 		if len(alerts) < 1 {
@@ -181,12 +180,15 @@ func main() {
 				if advisoryScore > scoreSeverity(dependencies[vuln.Package.Name].maxSeverity) {
 					dependencies[vuln.Package.Name].maxSeverity = vuln.Advisory.Severity
 				}
+				dependencies[vuln.Package.Name].paths[alert.VulnerableManifestPath] = alert.VulnerableRequirements
 			} else {
 				dependencies[vuln.Package.Name] = &dependencyData{
+					version:      alert.VulnerableRequirements,
 					ecosystem:    vuln.Package.Ecosystem,
 					maxSeverity:  vuln.Advisory.Severity,
 					vulnCount:    1,
 					fixedVersion: &semver.Version{},
+					paths:        map[string]string{alert.VulnerableManifestPath: alert.VulnerableRequirements},
 				}
 			}
 
@@ -235,7 +237,6 @@ func main() {
 			}
 		}
 
-		rows := []map[string]string{}
 		for dependencyName, dependencyData := range dependencies {
 			var recommendedVersion string
 			// If we were not able to determine a fixed version, it wil have a nil value.
@@ -245,42 +246,17 @@ func main() {
 				recommendedVersion = dependencyData.fixedVersion.String()
 			}
 
-			rows = append(rows, map[string]string{
-				"Dependency":               dependencyName,
-				"Ecosystem":                dependencyData.ecosystem,
-				"Vulnerabilities":          fmt.Sprintf("%v", dependencyData.vulnCount),
-				"Max. Severity":            dependencyData.maxSeverity,
-				"Min. Recommended Version": recommendedVersion,
-				"References":               dependencyData.references,
-			})
-		}
-
-		// We sort the table first by maximum severity, then by number of vulnerabilities
-		// and finally by name of the vulnerable dependency in alphabetical order.
-		sort.Slice(rows, func(i, j int) bool {
-			si := scoreSeverity(rows[i]["Max. Severity"])
-			sj := scoreSeverity(rows[j]["Max. Severity"])
-			switch {
-			case si != sj:
-				return si > sj
-			case rows[i]["Vulnerabilities"] != rows[j]["Vulnerabilities"]:
-				// If for some reason not a number, then it is fine to sort it last.
-				vi, _ := strconv.Atoi(rows[i]["Vulnerabilities"])
-				vj, _ := strconv.Atoi(rows[j]["Vulnerabilities"])
-				return vi > vj
-			default:
-				return rows[i]["Dependency"] < rows[j]["Dependency"]
+			pathSlice := []string{}
+			for p, v := range dependencyData.paths {
+				pathSlice = append(pathSlice, fmt.Sprintf("[%s](%s/blob/%s/%s)", v, strings.TrimSuffix(target, ".git"), branch, p))
 			}
-		})
-
-		for _, r := range rows {
 			vulnerability := report.Vulnerability{
 				Summary: "Vulnerable Code Dependencies in Github Repository",
 				Description: `Dependencies used by the code in this Github repository have published security vulnerabilities. 
 You can find more specific information in the resources table for the repository.`,
-				Fingerprint:      helpers.ComputeFingerprint(r["Vulnerabilities"], r["Max. Severity"]),
-				AffectedResource: fmt.Sprintf("%s:%s", r["Ecosystem"], r["Dependency"]),
-				Score:            scoreSeverity(r["Max. Severity"]),
+				Fingerprint:      helpers.ComputeFingerprint(fmt.Sprintf("%v", dependencyData.vulnCount), dependencyData.maxSeverity),
+				AffectedResource: fmt.Sprintf("%s:%s", dependencyData.ecosystem, dependencyName),
+				Score:            scoreSeverity(dependencyData.maxSeverity),
 				Labels:           []string{"potential", "dependency", "code", "github"},
 				ImpactDetails:    "The vulnerable dependencies may be introducing vulnerabilities into the software that uses them.",
 				CWEID:            937,
@@ -289,14 +265,19 @@ You can find more specific information in the resources table for the repository
 					{
 						Name: "Vulnerable Dependencies",
 						Header: []string{
-							"Dependency",
-							"Ecosystem",
+							"Paths",
 							"Vulnerabilities",
 							"Max. Severity",
 							"Min. Recommended Version",
 							"References",
 						},
-						Rows: []map[string]string{r},
+						Rows: []map[string]string{{
+							"Paths":                    strings.Join(pathSlice, ", "),
+							"Vulnerabilities":          fmt.Sprintf("%v", dependencyData.vulnCount),
+							"Max. Severity":            dependencyData.maxSeverity,
+							"Min. Recommended Version": recommendedVersion,
+							"References":               dependencyData.references,
+						}},
 					},
 				},
 			}
@@ -326,40 +307,49 @@ func scoreSeverity(githubSeverity string) float32 {
 	}
 }
 
-func githubAlerts(graphqlURL string, org string, repo string, cursor string) ([]Details, bool, string, error) {
-	// We replace all whitespace with spaces to avoid errors.
-	cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
+func githubAlerts(graphqlURL string, org string, repo string) ([]Details, string, error) {
+	var alerts []Details
+	hasNextPage := true
+	branch := ""
+	cursor := ""
+	for hasNextPage {
+		// We replace all whitespace with spaces to avoid errors.
+		cleanGraphqlQuery := strings.Join(strings.Fields(graphqlQuery), " ")
 
-	filter := fmt.Sprintf(graphqlNumberFilter, graphqlDefaultElements)
-	if cursor != "" {
-		filter = fmt.Sprintf("%v, %v", filter, fmt.Sprintf(graphqlPageFilter, cursor))
+		filter := fmt.Sprintf(graphqlNumberFilter, graphqlDefaultElements)
+		if cursor != "" {
+			filter = fmt.Sprintf("%v, %v", filter, fmt.Sprintf(graphqlPageFilter, cursor))
+		}
+		cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, filter)
+
+		var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
+
+		req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return []Details{}, "", err
+		}
+		req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return []Details{}, "", err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 300 {
+			return []Details{}, "", fmt.Errorf("received status %v", resp.Status)
+		}
+
+		var alertsResponse alertsData
+		err = json.NewDecoder(resp.Body).Decode(&alertsResponse)
+		if err != nil {
+			return []Details{}, "", err
+		}
+		branch = alertsResponse.Data.Repository.DefaultBranchRef.Name
+		alerts = append(alerts, alertsResponse.Data.Repository.VulnerabilityAlerts.Details...)
+		hasNextPage = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.HasNextPage
+		cursor = alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.EndCursor
 	}
-	cleanGraphqlQuery = fmt.Sprintf(cleanGraphqlQuery, org, repo, filter)
-
-	var jsonData = []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
-
-	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return []Details{}, false, "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		return []Details{}, false, "", fmt.Errorf("received status %v", resp.Status)
-	}
-
-	var alertsResponse alertsData
-	err = json.NewDecoder(resp.Body).Decode(&alertsResponse)
-	if err != nil {
-		return []Details{}, false, "", err
-	}
-
-	alerts := alertsResponse.Data.Repository.VulnerabilityAlerts.Details
-	hasNextPage := alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.HasNextPage
-	endCursor := alertsResponse.Data.Repository.VulnerabilityAlerts.Pagination.EndCursor
-	return alerts, hasNextPage, endCursor, nil
+	return alerts, branch, nil
 }
