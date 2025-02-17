@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -86,6 +87,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	if err != nil {
 		return fmt.Errorf("clone git repository: %w", err)
 	}
+	defer os.RemoveAll(repoPath)
 
 	root := filepath.Join(repoPath, opt.Dir)
 
