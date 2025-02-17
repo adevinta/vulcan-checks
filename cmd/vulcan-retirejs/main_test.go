@@ -22,10 +22,6 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-func init() {
-	os.Mkdir("temp", 0o755)
-}
-
 func TestRelativePathWithDotSlash(t *testing.T) {
 	baseUrl := "http://host.tld/"
 	path := "./my/script.js"
@@ -67,8 +63,11 @@ func TestDownloadFromUrl(t *testing.T) {
 		w.Write([]byte("ABCDE"))
 	}))
 	defer ts.Close()
-	downloadFromUrl(check.NewCheckLogFromContext(context.Background(), checkName), ts.URL)
-	os.Remove("temp")
+
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+
+	downloadFromUrl(check.NewCheckLogFromContext(context.Background(), checkName), ts.URL, jsPath)
 }
 
 func TestGetAffectedVersion(t *testing.T) {
@@ -151,7 +150,9 @@ func TestFindScriptFiles(t *testing.T) {
 	localAddr = ts.URL
 
 	expected := 2
-	got, err := findScriptFiles(check.NewCheckLogFromContext(context.Background(), checkName), localAddr)
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+	got, err := findScriptFiles(check.NewCheckLogFromContext(context.Background(), checkName), localAddr, jsPath)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
@@ -169,7 +170,10 @@ func TestInlineScripts(t *testing.T) {
 	localAddr = ts.URL
 	expected := 1
 
-	got, err := findInlineScripts(check.NewCheckLogFromContext(context.Background(), checkName), localAddr)
+	jsPath, _ := os.MkdirTemp(os.TempDir(), "js-")
+	defer os.RemoveAll(jsPath)
+
+	got, err := findInlineScripts(check.NewCheckLogFromContext(context.Background(), checkName), localAddr, jsPath)
 	if err != nil {
 		t.Fatalf("expected no error but got: %v", err)
 	}
