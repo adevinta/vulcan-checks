@@ -2,6 +2,7 @@
 Copyright 2025 Adevinta
 */
 
+// Package main contains the main logic to detect subdomain takeovers.
 package main
 
 import (
@@ -51,15 +52,15 @@ type AWSPrefixes struct {
 	iPPrefixes []IPPrefix
 }
 
+// NewAWSIPRanges creates a new AWSIPRanges object.
 func NewAWSIPRanges() *AWSIPRanges {
 	if _, err := os.Stat(ipRangesFile); err == nil {
 		return &AWSIPRanges{
-			d: awsIpRangesFileClient{},
+			d: awsIPRangesFileClient{},
 		}
-	} else {
-		return &AWSIPRanges{
-			d: awsIpRangesURLClient{},
-		}
+	}
+	return &AWSIPRanges{
+		d: awsIPRangesURLClient{},
 	}
 }
 
@@ -76,11 +77,11 @@ func (ar AWSIPRanges) GetPrefixes() (AWSPrefixes, error) {
 	return *prefixes, err
 }
 
-// awsIpRangesURLClient represents a client that retrieve the IP Ranges from a file.
-type awsIpRangesFileClient struct{}
+// awsIPRangesURLClient represents a client that retrieve the IP Ranges from a file.
+type awsIPRangesFileClient struct{}
 
 // getAWSIPRanges returns the ranges contained in the AWS IP Ranges file.
-func (r awsIpRangesFileClient) getAWSIPRanges() (AWSIPRanges, error) {
+func (r awsIPRangesFileClient) getAWSIPRanges() (AWSIPRanges, error) {
 	jsonFile, err := os.Open(ipRangesFile)
 	if err != nil {
 		return AWSIPRanges{}, err
@@ -90,11 +91,11 @@ func (r awsIpRangesFileClient) getAWSIPRanges() (AWSIPRanges, error) {
 	return unmarshallRanges(jsonFile)
 }
 
-// awsIpRangesURLClient represents a client that retrieve the IP Ranges from a URL.
-type awsIpRangesURLClient struct{}
+// awsIPRangesURLClient represents a client that retrieve the IP Ranges from a URL.
+type awsIPRangesURLClient struct{}
 
 // getAWSIPRanges returns the ranges contained in the AWS IP Ranges file.
-func (r awsIpRangesURLClient) getAWSIPRanges() (AWSIPRanges, error) {
+func (r awsIPRangesURLClient) getAWSIPRanges() (AWSIPRanges, error) {
 	client := http.DefaultClient
 	res, err := client.Get(ipRangesURL)
 	if err != nil {
@@ -114,12 +115,11 @@ func unmarshallRanges(r io.Reader) (AWSIPRanges, error) {
 
 	if err != nil {
 		return AWSIPRanges{}, err
-	} else {
-		return data, nil
 	}
+	return data, nil
 }
 
-// FromRangesToPrefixes converts the AWS IP Ranges
+// FromRangesToPrefixes converts the AWS IP Ranges.
 func FromRangesToPrefixes(ranges AWSIPRanges) (*AWSPrefixes, error) {
 	prefixes, err := processIPPrefixes(ranges.IPPrefixes)
 	if err != nil {
@@ -168,9 +168,8 @@ func combineIPPrefixes(prefixes []IPPrefix) (IPPrefix, error) {
 			first.NetworkBorderGroup != prefix.NetworkBorderGroup {
 			return IPPrefix{},
 				errors.New("cannot combine prefixes with different prefix, region, or network_border_group values")
-		} else {
-			services[prefix.Service] = prefix.Service
 		}
+		services[prefix.Service] = prefix.Service
 	}
 	sortedServices := slices.Collect(maps.Keys(services))
 	sort.Strings(sortedServices)

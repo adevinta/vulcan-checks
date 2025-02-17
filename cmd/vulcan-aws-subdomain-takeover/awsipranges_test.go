@@ -11,11 +11,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-type mockAwsIpRangesClient struct {
+type mockAwsIPRangesClient struct {
 	retriever func() AWSIPRanges
 }
 
-func (m mockAwsIpRangesClient) getAWSIPRanges() (AWSIPRanges, error) {
+func (m mockAwsIPRangesClient) getAWSIPRanges() (AWSIPRanges, error) {
 	return m.retriever(), nil
 }
 
@@ -117,9 +117,8 @@ func TestAWSIPRanges_GetPrefixes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			ar := &AWSIPRanges{
-				d: mockAwsIpRangesClient{
+				d: mockAwsIPRangesClient{
 					retriever: func() AWSIPRanges {
 						return tt.ranges
 					},
