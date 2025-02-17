@@ -16,26 +16,24 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-var (
-	checkName = "vulcan-ipv6"
+const checkName = "vulcan-ipv6"
 
-	// IPv6IsPresent is a check name
-	IPv6IsPresent = report.Vulnerability{
-		Summary: "IPv6 presence",
-		Description: "This check tests for IPv6 presence on domain names. If AAAA DNS RR is present, people should be aware of that." +
-			"It also serves as a way to monitor IPv6 deployed state.",
-		Score:         report.SeverityThresholdNone,
-		ImpactDetails: "IPv6 is present and attacks can be carried out over IPv6 connectivity",
-		Recommendations: []string{
-			"Having IPv6 present is not a security vulnerability, just extra care has to be taken to also consider security services available over IPv6",
-		},
-		References: []string{
-			"https://www.ietf.org/rfc/rfc2460.txt",
-		},
-		Labels:      []string{"issue", "discovery"},
-		Fingerprint: helpers.ComputeFingerprint(),
-	}
-)
+// IPv6IsPresent is a check name
+var IPv6IsPresent = report.Vulnerability{
+	Summary: "IPv6 presence",
+	Description: "This check tests for IPv6 presence on domain names. If AAAA DNS RR is present, people should be aware of that." +
+		"It also serves as a way to monitor IPv6 deployed state.",
+	Score:         report.SeverityThresholdNone,
+	ImpactDetails: "IPv6 is present and attacks can be carried out over IPv6 connectivity",
+	Recommendations: []string{
+		"Having IPv6 present is not a security vulnerability, just extra care has to be taken to also consider security services available over IPv6",
+	},
+	References: []string{
+		"https://www.ietf.org/rfc/rfc2460.txt",
+	},
+	Labels:      []string{"issue", "discovery"},
+	Fingerprint: helpers.ComputeFingerprint(),
+}
 
 func lookupAAAA(host string) ([]net.IP, error) {
 	resolvedIps, err := net.LookupIP(host)
