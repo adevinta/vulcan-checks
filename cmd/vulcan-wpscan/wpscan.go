@@ -181,7 +181,7 @@ func RunWpScan(ctx context.Context, logger *logrus.Entry, target, url string) (*
 	params = append(params, wpscanUserAgent...)
 
 	// Print the wpscan version used.
-	output, _, _ := command.Execute(ctx, logger, pathToRuby, append([]string{rubyArgs, wpscanFile, "--version", "--no-banner"})...)
+	output, _, _ := command.Execute(ctx, logger, pathToRuby, rubyArgs, wpscanFile, "--version", "--no-banner")
 	logger.Infof("wpscan version: %s", output)
 
 	return runWpScanCmd(ctx, logger, pathToRuby, params)

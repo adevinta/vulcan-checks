@@ -11,18 +11,11 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/adevinta/restuss"
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
-)
-
-const (
-	// Default asset tag.
-	assetTag = `provider:vulcan`
 )
 
 // Runner executes a Tenable check.
@@ -53,9 +46,6 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 
 	basicAuth := opt.BasicAuth
 
-	logger = logger.WithFields(log.Fields{
-		"target": target,
-	})
 	err = r.auth(basicAuth)
 	if err != nil {
 		return err

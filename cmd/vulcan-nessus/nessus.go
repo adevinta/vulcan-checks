@@ -176,8 +176,6 @@ func (r *runner) launchScan(ctx context.Context, logger *logrus.Entry, target st
 		Jitter: true,
 	}
 
-	rand.Seed(time.Now().UnixNano())
-
 	// Try 20 times then return an error
 	for i := 0; i < 20; i++ {
 		err = r.nessusCli.LaunchScan(scan.ID)
@@ -394,9 +392,7 @@ func (r *runner) translateFromNessusToVulcan(logger *logrus.Entry, hostID int64,
 		vulcanVulnerability.ImpactDetails = syn[0]
 	}
 
-	for _, sol := range attributesMap["solution"] {
-		vulcanVulnerability.Recommendations = append(vulcanVulnerability.Recommendations, sol)
-	}
+	vulcanVulnerability.Recommendations = append(vulcanVulnerability.Recommendations, attributesMap["solution"]...)
 
 	for _, ref := range attributesMap["see_also"] {
 		references := strings.Split(ref, "\n")

@@ -214,7 +214,7 @@ func TestResolveTarget(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	targetResolved, _ := resolveTarget(strings.TrimLeft(ts.URL, "http://"), "Hostname")
+	targetResolved, _ := resolveTarget(strings.TrimPrefix(ts.URL, "http://"), "Hostname")
 	targetExpected := ts.URL + "/landing-page/?n=1"
 
 	if targetResolved != targetExpected {

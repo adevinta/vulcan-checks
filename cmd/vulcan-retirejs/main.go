@@ -317,15 +317,9 @@ func scriptMatcher(n *html.Node) bool {
 }
 
 func getAbsoluteUrl(targetUrl string, url string) string {
-	if strings.HasPrefix(url, "./") {
-		url = strings.TrimLeft(url, "./")
-	}
-	if strings.HasPrefix(url, "//") {
-		url = strings.TrimLeft(url, "//")
-	}
-	if strings.HasPrefix(url, "/") {
-		url = strings.TrimLeft(url, "/")
-	}
+	url = strings.TrimPrefix(url, "./")
+	url = strings.TrimPrefix(url, "//")
+	url = strings.TrimPrefix(url, "/")
 	return targetUrl + url
 }
 

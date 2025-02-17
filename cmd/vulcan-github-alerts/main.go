@@ -96,7 +96,6 @@ type Advisory struct {
 }
 
 type dependencyData struct {
-	version         string
 	ecosystem       string
 	vulnCount       int
 	maxSeverity     string
@@ -339,6 +338,9 @@ func githubAlerts(graphqlURL string, org string, repo string, cursor string) ([]
 	jsonData := []byte(fmt.Sprintf(`{"query": "%s"}`, cleanGraphqlQuery))
 
 	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return []Details{}, false, "", err
+	}
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("GITHUB_ENTERPRISE_TOKEN"))
 
 	client := &http.Client{}

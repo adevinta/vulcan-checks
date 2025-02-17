@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 
@@ -92,7 +91,7 @@ func main() {
 			}
 			for _, ip := range ips {
 				row := map[string]string{
-					"Address": fmt.Sprintf("%s", ip),
+					"Address": ip.String(),
 				}
 				gr.Rows = append(gr.Rows, row)
 			}

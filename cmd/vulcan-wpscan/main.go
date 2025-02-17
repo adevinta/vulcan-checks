@@ -131,7 +131,7 @@ func getImpact(summary string) (float32, string) {
 		return report.SeverityThresholdLow, fmt.Sprintf("Matched with regexp: /%v/i.", lowImpactRe.String())
 	}
 
-	return report.SeverityThresholdNone, fmt.Sprintf("Did not match with any regexp of higher impact.")
+	return report.SeverityThresholdNone, "Did not match with any regexp of higher impact."
 }
 
 func addVersionInfoVuln(state checkstate.State, r *WpScanReport) {

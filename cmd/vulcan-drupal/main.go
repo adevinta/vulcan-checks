@@ -131,7 +131,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	var drupal bool
 	var version string
-	err = nil
 	for _, scheme := range []string{"http", "https"} {
 		u.Scheme = scheme
 		drupal, version, err = checkVersion(u.String(), logger)

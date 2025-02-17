@@ -156,7 +156,7 @@ func isMemcachedExposed(proto, data, target string, port int) (exposed bool, ver
 		return false, "", err
 	}
 
-	fmt.Fprintf(conn, data)
+	fmt.Fprint(conn, data)
 
 	res, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {

@@ -43,9 +43,6 @@ var (
 
 	defaultTiming = 3
 
-	whitelistedTCPPorts = []uint16{}
-	whitelistedUDPPorts = []uint16{}
-
 	exposedVuln = report.Vulnerability{
 		Summary:       "Exposed Services",
 		Description:   "At least one non-whitelisted port of the host is accessible from the public Internet.",

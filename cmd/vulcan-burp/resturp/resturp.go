@@ -61,7 +61,7 @@ func (r *Resturp) doWithRetry(req *http.Request, expectedStatusCode int, statusC
 
 	var errTokenRedacted error
 	if err != nil {
-		errTokenRedacted = errors.New(fmt.Sprintf(strings.Replace(err.Error(), r.apiKey, "<REDACTED>", -1)))
+		errTokenRedacted = errors.New(fmt.Sprint(strings.Replace(err.Error(), r.apiKey, "<REDACTED>", -1)))
 	}
 	return resp, errTokenRedacted
 }

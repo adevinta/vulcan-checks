@@ -16,6 +16,8 @@ import (
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -42,6 +44,7 @@ var (
 	}
 
 	CWERegex = regexp.MustCompile(CWERegexStr)
+	caser    = cases.Title(language.English)
 )
 
 type options struct {
@@ -227,7 +230,7 @@ func vuln(logger *logrus.Entry, result Result, filepath string, vulns map[string
 		cweID, _ = strconv.Atoi(matches[1])
 	}
 
-	summary = strings.Title(summary)
+	summary = caser.String(summary)
 
 	key := fmt.Sprintf("%s - %s", summary, filepath)
 	v, ok := vulns[key]
