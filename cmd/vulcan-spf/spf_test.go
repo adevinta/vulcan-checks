@@ -143,7 +143,8 @@ func TestSPF_DNS_QueriesExceededLimit(t *testing.T) {
 func TestSPF_MultipleSPFFound(t *testing.T) {
 	txtRecords := []string{
 		"v=spf1 ~all",
-		"v=spf1 ~all"}
+		"v=spf1 ~all",
+	}
 
 	spf := SPF{}
 	spf.parseTxtRecords(txtRecords)

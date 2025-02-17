@@ -40,12 +40,8 @@ type options struct {
 
 var (
 	checkName = "vulcan-exposed-services"
-	logger    = check.NewCheckLog(checkName)
 
 	defaultTiming = 3
-
-	whitelistedTCPPorts = []uint16{}
-	whitelistedUDPPorts = []uint16{}
 
 	exposedVuln = report.Vulnerability{
 		Summary:       "Exposed Services",
@@ -120,6 +116,7 @@ func exposedPorts(target string, nmapReport *gonmap.NmapRun) []report.Vulnerabil
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		var opt options
 		if optJSON != "" {
 			if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {

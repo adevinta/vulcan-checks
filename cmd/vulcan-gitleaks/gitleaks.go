@@ -13,7 +13,7 @@ import (
 
 const Cmd = `gitleaks`
 
-var params = []string{"detect", "/tmp/repo", "-f", "json", "-r", reportOutputFile, "--no-git"}
+var params = []string{"detect", "-f", "json", "--no-git", "--no-banner", "--no-color", "-r", "-"}
 
 type Finding struct {
 	Description string `json:"Description"`
@@ -46,14 +46,15 @@ type Finding struct {
 	RuleID string `json:"RuleID"`
 }
 
-func runGitleaks(ctx context.Context, logger *logrus.Entry, dir string) error {
+func runGitleaks(ctx context.Context, logger *logrus.Entry, dir string) ([]Finding, error) {
 	params = append(params, "-s", dir)
 
-	_, _, exitCode, err := command.ExecuteWithStdErr(ctx, logger, Cmd, params...)
+	var findings []Finding
+	exitCode, err := command.ExecuteAndParseJSON(ctx, logger, &findings, Cmd, params...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	logger.WithFields(logrus.Fields{"exit_code": exitCode}).Debug("gitleaks command finished")
-	return nil
+	return findings, nil
 }

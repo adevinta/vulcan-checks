@@ -17,6 +17,7 @@ RUN apk --no-cache add --virtual mydeps git build-base linux-headers && \
 WORKDIR /
 
 # Install check
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-http-headers /
 CMD ["/vulcan-http-headers"]

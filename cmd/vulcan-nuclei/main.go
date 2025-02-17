@@ -9,31 +9,30 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	report "github.com/adevinta/vulcan-report"
+	"github.com/sirupsen/logrus"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
+	"github.com/adevinta/vulcan-check-sdk/helpers/command"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
-	"github.com/avast/retry-go"
 )
 
-var (
+const (
 	checkName              = "vulcan-nuclei"
-	logger                 = check.NewCheckLog(checkName)
 	userAgent              = "x-vulcan-nuclei"
 	nucleiCmd              = "nuclei"
 	nucleiTemplatePath     = "/root/nuclei-templates/"
 	nucleiTemplateListJSON = "TEMPLATES-STATS.json"
+)
 
+var (
 	defaultTagExclusionList = []string{
 		"intrusive",
 		"fuzz",
@@ -71,31 +70,21 @@ func main() {
 	c.RunAndServe()
 }
 
-func runNucleiCmd(args []string) ([]byte, error) {
+func runNucleiCmd(ctx context.Context, logger *logrus.Entry, args []string) ([]byte, error) {
 	var err error
 	var cmdOutput []byte
-	err = retry.Do(
-		func() error {
-			cmd := exec.Command(nucleiCmd, args...)
-			cmdOutput, err = cmd.Output()
-			if err != nil {
-				logger.Errorf("exec.Command() with args [%s] failed with %s\nCommand output: %s\n", args, err, string(cmdOutput))
-				return errors.New("nuclei command execution failed")
-			}
-			logger.Infof("nuclei command with args [%s] execution completed successfully", args)
-			return nil
-		},
-		retry.Attempts(3),
-		retry.DelayType(retry.RandomDelay),
-		retry.MaxJitter(5*time.Second),
-	)
+
+	cmdOutput, _, err = command.Execute(ctx, logger, nucleiCmd, args...)
 	if err != nil {
+		logger.Errorf("unable to run the commad with the provided params: %s", err)
 		return []byte{}, err
 	}
 	return cmdOutput, nil
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+
 	var opt options
 	if optJSON != "" {
 		if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -106,7 +95,7 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	// Update templates at runtime only if specified.
 	if opt.UpdateTemplates {
 		logger.Infof("updating templates to their latest version")
-		_, err := runNucleiCmd([]string{"-ut"})
+		_, err := runNucleiCmd(ctx, logger, []string{"-ut"})
 		if err != nil {
 			logger.Warnf("nuclei failed updating templates: %v", err)
 		}
@@ -137,9 +126,9 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 	logger.Infof("included tags: %+v", opt.TagInclusionList)
 	logger.Infof("excluded tags: %+v", opt.TagExclusionList)
 
-	nucleiArgs := buildNucleiScanCmdArgs(target, opt)
+	nucleiArgs := buildNucleiScanCmdArgs(logger, target, opt)
 
-	nucleiFindings, err := runNuclei(nucleiArgs)
+	nucleiFindings, err := runNuclei(ctx, logger, nucleiArgs)
 	if err != nil {
 		return err
 	}
@@ -188,7 +177,7 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 				"Take a look to reference links (if any) for further details about the finding.",
 			}
 		}
-		var vuln = report.Vulnerability{
+		vuln := report.Vulnerability{
 			AffectedResource: v.Matched,
 			CWEID:            getCWEID(v.Info.Classification.CWEID),
 			Summary:          v.Info.Name,
@@ -257,10 +246,10 @@ func processNucleiFindings(target string, nucleiFindings []ResultEvent) []*repor
 	return vulnerabilities
 }
 
-func runNuclei(nucleiArgs []string) ([]ResultEvent, error) {
+func runNuclei(ctx context.Context, logger *logrus.Entry, nucleiArgs []string) ([]ResultEvent, error) {
 	cmdSucceed := []bool{}
 	nucleiFindings := []ResultEvent{}
-	output, err := runNucleiCmd(nucleiArgs)
+	output, err := runNucleiCmd(ctx, logger, nucleiArgs)
 	if err != nil {
 		return nucleiFindings, fmt.Errorf("nuclei execution failed: %w", err)
 	}
@@ -292,7 +281,7 @@ func runNuclei(nucleiArgs []string) ([]ResultEvent, error) {
 	return nucleiFindings, nil
 }
 
-func buildNucleiScanCmdArgs(target string, opt options) []string {
+func buildNucleiScanCmdArgs(logger *logrus.Entry, target string, opt options) []string {
 	// Build arguments.
 	nucleiArgs := []string{
 		"-duc", // Disable automatic updates.

@@ -24,10 +24,9 @@ import (
 	report "github.com/adevinta/vulcan-report"
 )
 
-var (
-	checkName     = "vulcan-drupal"
-	drupalVersion = regexp.MustCompile("Drupal (.+?),")
-)
+const checkName = "vulcan-drupal"
+
+var drupalVersion = regexp.MustCompile("Drupal (.+?),")
 
 func detectVulnerabilities(versionString string, u url.URL) ([]report.Vulnerability, error) {
 	var vulnerabilities []report.Vulnerability
@@ -116,7 +115,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-	logger := check.NewCheckLog(checkName)
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 
 	isReachable, err := helpers.IsReachable(target, assetType, nil)
 	if err != nil {
@@ -132,7 +131,6 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	var drupal bool
 	var version string
-	err = nil
 	for _, scheme := range []string{"http", "https"} {
 		u.Scheme = scheme
 		drupal, version, err = checkVersion(u.String(), logger)

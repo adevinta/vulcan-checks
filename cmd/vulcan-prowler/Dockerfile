@@ -11,7 +11,8 @@ ENTRYPOINT ["/usr/bin/env"]
 COPY cis_controls.json /cis_controls.json
 
 # Install check
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-prowler /
 
 CMD ["/vulcan-prowler"]

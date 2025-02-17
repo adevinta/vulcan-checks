@@ -6,16 +6,14 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
-
-	"crypto/sha256"
 
 	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
@@ -25,15 +23,13 @@ import (
 )
 
 const (
+	checkName    = "vulcan-gitleaks"
 	DefaultDepth = 1
 )
 
 var (
-	checkName        = "vulcan-gitleaks"
-	logger           = check.NewCheckLog(checkName)
-	reportOutputFile = filepath.Join(os.TempDir(), "report.json")
-	localTargets     = []string{"localhost", "host.docker.internal", "172.17.0.1", "172.18.0.1"}
-	leakedSecret     = report.Vulnerability{
+	localTargets = []string{"localhost", "host.docker.internal", "172.17.0.1", "172.18.0.1"}
+	leakedSecret = report.Vulnerability{
 		Summary:       "Secret Leaked in Git Repository",
 		Description:   "A secret has been found stored in the Git repository. This secret may be in any historical commit and could be retrieved by anyone with read access to the repository. Test data and false positives can be marked as such.",
 		CWEID:         540,
@@ -77,6 +73,8 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
+
 	if target == "" {
 		return errors.New("check target missing")
 	}
@@ -99,28 +97,16 @@ func run(ctx context.Context, target, assetType, optJSON string, state checkstat
 
 	logger.WithFields(logrus.Fields{"options": opt}).Debug("using options")
 
-	repoPath, branch, err := helpers.CloneGitRepository(target, opt.Branch, opt.Depth)
+	repoPath, branch, err := helpers.CloneGitRepositoryContext(ctx, target, opt.Branch, opt.Depth)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(repoPath)
 
 	// Run gitleaks.
-	err = runGitleaks(ctx, logger, repoPath)
+	results, err := runGitleaks(ctx, logger, repoPath)
 	if err != nil {
 		return err
-	}
-
-	// Read the results file
-	byteValue, err := os.ReadFile(reportOutputFile)
-	if err != nil {
-		logger.Errorf("gitleaks report output file read failed with error: %s\n", err)
-		return errors.New("gitleaks report output file read failed")
-	}
-
-	var results []Finding
-	err = json.Unmarshal(byteValue, &results)
-	if err != nil {
-		return errors.New("unmarshal gitleaks output failed")
 	}
 
 	// Process the secrets found by gitleaks.

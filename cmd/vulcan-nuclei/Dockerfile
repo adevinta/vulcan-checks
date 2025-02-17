@@ -6,6 +6,7 @@ ENTRYPOINT []
 WORKDIR /
 RUN nuclei -v -update-templates
 COPY templates /root/nuclei-templates
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-nuclei .
 CMD ["/vulcan-nuclei"]

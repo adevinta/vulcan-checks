@@ -44,7 +44,7 @@ var behindOktaVuln = report.Vulnerability{
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		logger := check.NewCheckLog(checkName)
+		logger := check.NewCheckLogFromContext(ctx, checkName)
 		e := logger.WithFields(logrus.Fields{"target": target, "options": optJSON})
 
 		if target == "" {
@@ -131,7 +131,7 @@ func buildBehindOktaVuln(target, redirectingTo string) report.Vulnerability {
 		},
 	}
 	res.Rows = []map[string]string{
-		map[string]string{
+		{
 			"Target":        target,
 			"RedirectingTo": redirectingTo,
 		},

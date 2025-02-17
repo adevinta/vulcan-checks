@@ -38,8 +38,10 @@ type DMARC struct {
 
 // Domain Owner DMARC preferences are stored as DNS TXT records in subdomains named "_dmarc".
 // https://tools.ietf.org/html/rfc7489#section-6.1
-const prefix = "_dmarc."
-const sep = ";"
+const (
+	prefix = "_dmarc."
+	sep    = ";"
+)
 
 func (dmarc *DMARC) evaluate() {
 	if dmarc.request == "none" {
@@ -122,7 +124,6 @@ func (dmarc *DMARC) evaluate() {
 		vuln.AffectedResource = dmarc.target
 		dmarc.vulnerabilities = append(dmarc.vulnerabilities, vuln)
 	}
-
 }
 
 func (dmarc *DMARC) validateEmailList(list, vulnerabilityName string) {

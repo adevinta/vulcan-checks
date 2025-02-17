@@ -15,10 +15,7 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/state"
 )
 
-var (
-	checkName = "vulcan-sleep"
-	logger    = check.NewCheckLog(checkName)
-)
+var checkName = "vulcan-sleep"
 
 type options struct {
 	SleepTime int `json:"sleep_time"`
@@ -30,6 +27,7 @@ func main() {
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state state.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	var opt options
 	logger.Printf("Starting the %v check", checkName)
 	logger.Printf("Validating params. Target: %v Options: %v ...", target, optJSON)

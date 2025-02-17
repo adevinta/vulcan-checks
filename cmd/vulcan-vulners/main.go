@@ -327,7 +327,6 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 			v, ok := uniqueVulns[uniqueVulnId]
 			if !ok {
 				v.Vuln = report.Vulnerability{
-
 					Fingerprint:      helpers.ComputeFingerprint(f.Score, cves),
 					Summary:          summary,
 					Description:      fmt.Sprintf(vulnersVuln.Description, port.Service.Product),
@@ -363,7 +362,7 @@ func analyzeReport(target string, nmapReport *gonmap.NmapRun) ([]report.Vulnerab
 }
 
 func run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
-	l := check.NewCheckLog(checkName)
+	l := check.NewCheckLogFromContext(ctx, checkName)
 	logger = l.WithFields(logrus.Fields{"target": target, "assetType": assetType, "options": optJSON})
 
 	if cpeRegex, err = regexp.Compile(cpeRegexStr); err != nil {

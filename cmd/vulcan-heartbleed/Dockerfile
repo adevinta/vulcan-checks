@@ -1,6 +1,7 @@
 # Copyright 2019 Adevinta
 
 FROM alpine
-ARG TARGETOS TARGETARCH
+ARG TARGETOS
+ARG TARGETARCH
 COPY ${TARGETOS}/${TARGETARCH}/vulcan-heartbleed /
 CMD ["/vulcan-heartbleed"]

@@ -30,36 +30,27 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-const (
-	jsPath = "temp"
-)
+const checkName = "vulcan-retirejs"
 
 var (
-	checkName  = "vulcan-retirejs"
-	logger     = check.NewCheckLog(checkName)
 	retireArgs = []string{
 		"retire",
 		"--exitwith", "0",
 		"--outputformat", "json",
-		"--jspath", jsPath,
 		"--jsrepo", "jsrepository.json",
 	}
-	client *http.Client
-)
-
-func init() {
-	timeout := 5 * time.Second
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	client = &http.Client{
-		Transport: tr,
-		Timeout:   timeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Timeout: 5 * time.Second,
 	}
-}
+)
 
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
+		logger := check.NewCheckLogFromContext(ctx, checkName)
+
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
@@ -77,7 +68,6 @@ func main() {
 	}
 	c := check.NewCheckFromHandler(checkName, run)
 	c.RunAndServe()
-
 }
 
 func scanTarget(ctx context.Context, target, assetType string, logger *logrus.Entry, state checkstate.State, args []string) error {
@@ -92,19 +82,26 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 
 	logger.Infof("Downloading javascript sources from %s", target)
 
-	os.RemoveAll(jsPath)
-	os.MkdirAll(jsPath, os.ModePerm)
+	jsPath, err := os.MkdirTemp(os.TempDir(), "js-")
+	if err != nil {
+		return fmt.Errorf("unable to create tmp dir: %w", err)
+	}
+
 	defer os.RemoveAll(jsPath)
 
-	_, err = findScriptFiles(target)
+	_, err = findScriptFiles(logger, target, jsPath)
 	if err != nil {
 		return err
 	}
-	_, err = findInlineScripts(target)
+	_, err = findInlineScripts(logger, target, jsPath)
 	if err != nil {
 		return err
 	}
-	retireJsReport, err := runRetireJs(ctx, args)
+
+	if len(args) == 0 {
+		args = append(retireArgs, "--jspath", jsPath)
+	}
+	retireJsReport, err := runRetireJs(ctx, logger, args)
 	if err != nil {
 		return err
 	}
@@ -114,10 +111,7 @@ func scanTarget(ctx context.Context, target, assetType string, logger *logrus.En
 	return nil
 }
 
-func runRetireJs(ctx context.Context, args []string) ([]RetireJsFileResult, error) {
-	if len(args) == 0 {
-		args = retireArgs
-	}
+func runRetireJs(ctx context.Context, logger *logrus.Entry, args []string) ([]RetireJsFileResult, error) {
 	var report RetireJsReport
 	_, err := command.ExecuteAndParseJSON(ctx, logger, &report, args[0], args[1:]...)
 	if perr, ok := (err).(*command.ParseError); ok {
@@ -267,7 +261,7 @@ type RetireJsVulnerability struct {
 	Severity    string           `json:"severity"`
 }
 
-func findScriptFiles(target string) (int, error) {
+func findScriptFiles(logger *logrus.Entry, target, jsPath string) (int, error) {
 	htmlNode, err := getTargetHTML(target)
 	if err != nil {
 		return 0, err
@@ -281,12 +275,11 @@ func findScriptFiles(target string) (int, error) {
 		}
 		if tag.DataAtom == atom.Link {
 			url = scrape.Attr(tag, "href")
-
 		}
 		if isRelativeUrl(url) {
 			url = getAbsoluteUrl(target, url)
 		}
-		if err := downloadFromUrl(url); err != nil {
+		if err := downloadFromUrl(logger, url, jsPath); err != nil {
 			return 0, err
 		}
 		count++
@@ -318,15 +311,9 @@ func scriptMatcher(n *html.Node) bool {
 }
 
 func getAbsoluteUrl(targetUrl string, url string) string {
-	if strings.HasPrefix(url, "./") {
-		url = strings.TrimLeft(url, "./")
-	}
-	if strings.HasPrefix(url, "//") {
-		url = strings.TrimLeft(url, "//")
-	}
-	if strings.HasPrefix(url, "/") {
-		url = strings.TrimLeft(url, "/")
-	}
+	url = strings.TrimPrefix(url, "./")
+	url = strings.TrimPrefix(url, "//")
+	url = strings.TrimPrefix(url, "/")
 	return targetUrl + url
 }
 
@@ -336,7 +323,7 @@ func isRelativeUrl(url string) bool {
 
 // findInlineScripts downloads all inline scripts inside a given target HTML
 // it returns the number of dowloaded files
-func findInlineScripts(target string) (int, error) {
+func findInlineScripts(logger *logrus.Entry, target, jsPath string) (int, error) {
 	inlineMather := func(n *html.Node) bool {
 		if n.DataAtom == atom.Script {
 			return len(scrape.Attr(n, "src")) <= 0
@@ -375,7 +362,7 @@ func writeFile(fileName string, contents string) error {
 	return nil
 }
 
-func downloadFromUrl(URL string) error {
+func downloadFromUrl(logger *logrus.Entry, URL, jsPath string) error {
 	u, err := url.ParseRequestURI(URL)
 	if err != nil {
 		return fmt.Errorf("error invalid url %s: %w", URL, err)

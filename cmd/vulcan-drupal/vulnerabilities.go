@@ -22,7 +22,7 @@ var (
 	}
 
 	drupalVulnerabilities = []drupalVulnerability{
-		drupalVulnerability{
+		{
 			Constraints: []string{"<7", ">=8,<8.9", ">=9,<9.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:         "Drupal - End-of-Life",
@@ -33,7 +33,7 @@ var (
 				Labels:          []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-010 - Access Bypass",
@@ -52,7 +52,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-009 - Access bypass",
@@ -72,7 +72,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-008 - Access bypass",
@@ -91,7 +91,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-007 - Cross Site Request Forgery",
@@ -111,7 +111,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.19", ">=9,<9.1.13", ">=9.2,<9.2.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-006 - Cross Site Request Forgery",
@@ -130,7 +130,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.18", ">=9,<9.1.12", ">=9.2,<9.2.4"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-005 - Third-party libraries",
@@ -149,7 +149,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.82", ">=8,<8.9.17", ">=9,<9.1.11", ">=9.2,<9.2.2"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-004 - Third-party libraries",
@@ -168,7 +168,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.9.16", ">=9,<9.0.14", ">=9.1,<9.1.9"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-003 - Cross-site scripting",
@@ -186,7 +186,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.80", ">=8,<8.9.14", ">=9,<9.0.12", ">=9.1,<9.1.7"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-002 - Cross-site scripting",
@@ -205,7 +205,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.78", ">=8,<8.9.13", ">=9,<9.0.11", ">=9.1,<9.1.3"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2021-001 - Third-party libraries",
@@ -225,7 +225,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.75", ">=8,<8.8.12", ">=8.9,<8.9.10", ">=9,<9.0.9"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-013 - Arbitrary PHP code execution",
@@ -245,7 +245,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.74", ">=8,<8.8.11", ">=8.9,<8.9.9", ">=9,<9.0.8"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-012 - Remote code execution",
@@ -276,7 +276,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.10", ">=8.9,<8.9.6", ">=9,<9.0.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-011 - Information disclosure",
@@ -294,7 +294,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.10", ">=8.9,<8.9.6", ">=9,<9.0.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-010 - Cross-site scripting",
@@ -312,7 +312,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.10", ">=8.9,<8.9.6", ">=9,<9.0.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-009 - Cross-site scripting",
@@ -331,7 +331,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.10", ">=8.9,<8.9.6", ">=9,<9.0.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-008 - Access bypass",
@@ -351,7 +351,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.73", ">=8,<8.8.10", ">=8.9,<8.9.6", ">=9,<9.0.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-007 - Cross-site scripting",
@@ -372,7 +372,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.8", ">=8.9,<8.9.1", ">=9,<9.0.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-006 - Access bypass",
@@ -390,7 +390,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.8.8", ">=8.9,<8.9.1", ">=9,<9.0.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-005 - Arbitrary PHP code execution",
@@ -408,7 +408,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.72", ">=8,<8.8.8", ">=8.9,<8.9.1", ">=9,<9.0.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-004 - Cross Site Request Forgery",
@@ -427,7 +427,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.70"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-003 - Open Redirect",
@@ -442,7 +442,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.70", ">=8,<8.7.14", ">=8.8,<8.8.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-002 - Cross Site Scripting",
@@ -461,7 +461,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.7.12", ">=8.8,<8.8.4"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2020-001 - Third-party library",
@@ -479,7 +479,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.69", ">=8,<8.7.11", ">=8.8,<8.8.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-012 - Multiple vulnerabilities",
@@ -497,7 +497,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.7.11", ">=8.8,<8.8.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-011 - Access bypass",
@@ -515,7 +515,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.7.11", ">=8.8,<8.8.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-010 - Multiple vulnerabilities",
@@ -532,7 +532,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.7.11", ">=8.8,<8.8.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-009 - Denial of Service",
@@ -550,7 +550,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8.7.4,<8.7.5"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-008 - Access bypass",
@@ -564,7 +564,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.67", ">=8,<8.6.16", ">=8.7,<8.7.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-007 - Third-party libraries",
@@ -582,7 +582,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.66", ">=8,<8.5.15", ">=8.6,<8.6.15"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-006 - Cross Site Scripting",
@@ -600,7 +600,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.5.15", ">=8.6,<8.6.15"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-005 - Multiple Vulnerabilities",
@@ -617,7 +617,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.65", ">=8,<8.5.14", ">=8.6,<8.6.13"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-004 - Cross Site Scripting",
@@ -634,7 +634,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.5.11", ">=8.6,<8.6.10"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-003 - Remote Code Execution",
@@ -652,7 +652,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.62", ">=8,<8.5.9", ">=8.6,<8.6.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-002 - Arbitrary PHP code execution",
@@ -669,7 +669,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.62", ">=8,<8.5.9", ">=8.6,<8.6.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2019-001 - Third Party Libraries",
@@ -686,7 +686,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.60", ">=8,<8.5.8", ">=8.6,<8.6.2"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-006 - Multiple Vulnerabilities",
@@ -704,7 +704,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.5.6"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-005 - 3rd-party libraries",
@@ -719,7 +719,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.59", ">=8,<8.4.8", ">=8.5,<8.5.3"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-004 - Remote Code Execution",
@@ -736,7 +736,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=8,<8.5.2"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-003 - Cross-Site Scripting",
@@ -752,7 +752,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{"<7.58", ">=8,<8.3.9", ">=8.4,<8.4.6", ">=8.5,<8.5.1"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-002 - Remote Code Execution",
@@ -773,7 +773,7 @@ var (
 				Labels: []string{"issue"},
 			},
 		},
-		drupalVulnerability{
+		{
 			Constraints: []string{">=7,<7.57", ">=8,<8.4.5"},
 			Vulnerability: report.Vulnerability{
 				Summary:     "Drupal - SA-CORE-2018-001 - Multiple Vulnerabilities",

@@ -26,11 +26,10 @@ import (
 const (
 	tagRecommendedAction   = `<h4 class='headerBodyStyle'>Recommended Action</h4>`
 	tagAdditionalResources = `<h4 class='headerBodyStyle'>Additional Resources</h4>`
+	checkName              = "vulcan-aws-trusted-advisor"
 )
 
 var (
-	checkName = "vulcan-aws-trusted-advisor"
-
 	additionalResourcesPattern = regexp.MustCompile(`href=\"(?P<resource>.*?)\"`)
 	templateResource           = "$resource"
 

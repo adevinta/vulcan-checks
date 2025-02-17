@@ -11,17 +11,11 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/adevinta/restuss"
+	check "github.com/adevinta/vulcan-check-sdk"
 	"github.com/adevinta/vulcan-check-sdk/helpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
-)
-
-const (
-	// Default asset tag.
-	assetTag = `provider:vulcan`
 )
 
 // Runner executes a Tenable check.
@@ -34,6 +28,7 @@ type runner struct {
 }
 
 func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, state checkstate.State) (err error) {
+	logger := check.NewCheckLogFromContext(ctx, checkName)
 	var opt options
 	if optJSON != "" {
 		if err = json.Unmarshal([]byte(optJSON), &opt); err != nil {
@@ -51,9 +46,6 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 
 	basicAuth := opt.BasicAuth
 
-	logger = logger.WithFields(log.Fields{
-		"target": target,
-	})
 	err = r.auth(basicAuth)
 	if err != nil {
 		return err
@@ -202,7 +194,7 @@ func (r *runner) addVulnerabilities(target string, findings []restuss.Finding) (
 				"Service":  finding.Service,
 			}
 			vuln.Resources = []report.ResourcesGroup{
-				report.ResourcesGroup{
+				{
 					Name: "Network Resources",
 					Header: []string{
 						"Hostname",
