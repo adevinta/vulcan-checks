@@ -6,5 +6,22 @@ Options = '{"global": true}'
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
 ROLE_NAME="SecurityAuditRole"
-CLOUD_INVENTORY_TOKEN=
-CLOUD_INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}
+CLOUD_INVENTORY_SCRIPT="""
+package inventory
+
+import (
+	"strings"
+	"context"
+	"fmt"
+)
+
+var ips = " 1.2.3.4 "
+
+func Check(ctx context.Context, ip string) (bool, error) { 
+	if ip == "" {
+		return false, fmt.Errorf("no ip provided")
+	}
+	return strings.Contains(ips, " " + ip + " "), nil
+}
+"""
+CLOUD_INVENTORY_FUNCTION=inventory.Check

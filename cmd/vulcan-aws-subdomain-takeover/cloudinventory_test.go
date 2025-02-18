@@ -6,101 +6,63 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
-	"text/template"
 )
 
 func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
+	const script = `
+package inventory
+
+import (
+	"strings"
+	"context"
+	"fmt"
+)
+
+var ips = " 1.2.3.4 5.6.7.8 "
+
+func Check(ctx context.Context, ip string) (bool, error) {
+	if ip == "" {
+		return false, fmt.Errorf("no ip provided")
+	}
+	return strings.Contains(ips, " "+ip+" "), nil
+}`
+
+	a := strings.ReplaceAll(script, "\n", "\\n")
+	t.Log(a)
 	tests := []struct {
-		name               string
-		token              string
-		endpointTpl        string
-		ip                 string
-		endpointResponse   string
-		statusCodeResponse int
-		want               bool
-		wantErr            bool
+		name    string
+		script  string
+		ip      string
+		want    bool
+		wantErr bool
 	}{
 		{
-			name:               "no token",
-			token:              "",
-			endpointTpl:        "/{{.IP}}",
-			ip:                 "1.2.3.4",
-			endpointResponse:   "",
-			statusCodeResponse: http.StatusUnauthorized,
-			want:               false,
-			wantErr:            true,
+			name:    "no ip",
+			ip:      "",
+			want:    false,
+			wantErr: true,
 		},
 		{
-			name:               "no ip",
-			token:              "token",
-			endpointTpl:        "/{{.IP}}",
-			ip:                 "",
-			endpointResponse:   "",
-			statusCodeResponse: http.StatusBadRequest,
-			want:               false,
-			wantErr:            true,
+			name:    "ip found",
+			ip:      "1.2.3.4",
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name:               "ip found",
-			token:              "token",
-			endpointTpl:        "/{{.IP}}",
-			ip:                 "1.2.3.4",
-			endpointResponse:   "{\"ip\": \"1.2.3.4\"\",\n  \"account_id\": \"aws_account\",\n  \"region\": \"aws_region\"}",
-			statusCodeResponse: http.StatusOK,
-			want:               true,
-			wantErr:            false,
-		},
-		{
-			name:               "ip not found 404",
-			token:              "token",
-			endpointTpl:        "/{{.IP}}",
-			ip:                 "1.2.3.4,",
-			endpointResponse:   "",
-			statusCodeResponse: http.StatusNotFound,
-			want:               false,
-			wantErr:            false,
-		},
-		{
-			name:               "ip not found 200",
-			token:              "token",
-			endpointTpl:        "/{{.IP}}",
-			ip:                 "1.2.3.4,",
-			endpointResponse:   "{}",
-			statusCodeResponse: http.StatusOK,
-			want:               false,
-			wantErr:            false,
+			name:    "ip not found",
+			ip:      "1.2.3.6",
+			want:    false,
+			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Start a local HTTP server
-			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				if req.URL.Path != fmt.Sprintf("/%s", tt.ip) {
-					t.Errorf("wrong path: got %s, want %s", req.URL.Path, fmt.Sprintf("/%s", tt.ip))
-				}
-				// Test request parameters
-				rw.WriteHeader(tt.statusCodeResponse)
-				_, err := rw.Write([]byte(tt.endpointResponse))
-				if err != nil {
-					t.Fatal(err)
-				}
-			}))
-			// Close the server when test finishes
-			defer server.Close()
-
-			tpl, err := template.New("isInInventory").Parse(fmt.Sprintf("%s%s", server.URL, tt.endpointTpl))
+			ci, err := NewCloudInventory(script, "inventory.Check")
 			if err != nil {
-				t.Errorf("parsing endpoint template: %v", err)
-			}
-
-			ci := &CloudInventory{
-				client:      server.Client(),
-				token:       tt.token,
-				endpointTpl: tpl,
+				t.Fatalf("unexpected error: %v", err)
 			}
 			got, err := ci.IsIPPublicInInventory(context.Background(), tt.ip)
 			if (err != nil) != tt.wantErr {

@@ -105,8 +105,8 @@ func NewScanner(ctx context.Context, opt options, logger *logrus.Entry, target s
 	var inventory Inventory
 	if opt.Global {
 		inventory, err = NewCloudInventory(
-			os.Getenv("CLOUD_INVENTORY_TOKEN"),
-			os.Getenv("CLOUD_INVENTORY_ENDPOINT"),
+			os.Getenv("CLOUD_INVENTORY_SCRIPT"),
+			os.Getenv("CLOUD_INVENTORY_FUNCTION"),
 		)
 		if err != nil {
 			return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
