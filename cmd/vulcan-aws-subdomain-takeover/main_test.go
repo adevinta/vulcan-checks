@@ -620,10 +620,8 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			awsPrefixes: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "1.2.3.5/32",
-						Region:             "eu-west-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "1.2.3.5/32",
+						ipNet:    getIPNet("1.2.3.5/32"),
 					},
 				},
 			},
@@ -644,10 +642,8 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			awsPrefixes: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "1.2.3.5/32",
-						Region:             "eu-west-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "1.2.3.5/32",
+						ipNet:    getIPNet("1.2.3.5/32"),
 					},
 				},
 			},
@@ -670,10 +666,8 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			awsPrefixes: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "1.2.3.8/32",
-						Region:             "eu-west-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "1.2.3.8/32",
+						ipNet:    getIPNet("1.2.3.8/32"),
 					},
 				},
 			},
@@ -697,10 +691,8 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			awsPrefixes: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "1.2.3.4/32",
-						Region:             "eu-west-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "1.2.3.4/32",
+						ipNet:    getIPNet("1.2.3.4/32"),
 					},
 				},
 			},
@@ -722,10 +714,8 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			awsPrefixes: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "1.2.3.4/32",
-						Region:             "eu-west-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "1.2.3.4/32",
+						ipNet:    getIPNet("1.2.3.4/32"),
 					},
 				},
 			},

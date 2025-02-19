@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"regexp"
 	"slices"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -301,20 +300,17 @@ func (s Scanner) calculateTakeovers(ctx context.Context, dnsRecords []dnsRecord,
 	if err != nil {
 		return nil, fmt.Errorf("get ip ranges: %w", err)
 	}
-	r := regexp.MustCompile("EC2")
 
 	for _, dnsr := range dnsRecords {
 		for _, record := range dnsr.records {
-			awsMetadata, err := aip.GetPrefixByIP(record)
+			_, err = aip.GetPrefixByIP(record)
 			if err != nil {
 				if errors.Is(err, ErrPrefixNotFound) {
 					continue
 				}
 				return nil, fmt.Errorf("getting AWS metadata for %s: %w", record, err)
 			}
-			if r.MatchString(awsMetadata.Service) {
-				dnsEC2IPs[dnsr.name] = dnsr.records
-			}
+			dnsEC2IPs[dnsr.name] = dnsr.records
 		}
 	}
 

@@ -6,6 +6,7 @@ package main
 
 import (
 	"errors"
+	"net"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -31,44 +32,29 @@ func TestAWSIPRanges_GetPrefixes(t *testing.T) {
 			ranges: AWSIPRanges{
 				IPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "eu-west-1",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "3.4.12.4/32",
+						Service:  "EC2",
 					},
 					{
-						IPPrefix:           "3.5.140.0/22",
-						Region:             "ap-northeast-2",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "ap-northeast-2",
+						IPPrefix: "3.5.140.0/22",
+						Service:  "EC2",
 					},
 					{
-						IPPrefix:           "15.190.244.0/22",
-						Region:             "ap-east-2",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "ap-east-2",
+						IPPrefix: "15.190.244.0/22",
+						Service:  "EC2",
 					},
 				},
 			},
 			want: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "eu-west-1",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "eu-west-1",
+						IPPrefix: "3.4.12.4/32",
 					},
 					{
-						IPPrefix:           "3.5.140.0/22",
-						Region:             "ap-northeast-2",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "ap-northeast-2",
+						IPPrefix: "3.5.140.0/22",
 					},
 					{
-						IPPrefix:           "15.190.244.0/22",
-						Region:             "ap-east-2",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "ap-east-2",
+						IPPrefix: "15.190.244.0/22",
 					},
 				},
 			},
@@ -78,38 +64,28 @@ func TestAWSIPRanges_GetPrefixes(t *testing.T) {
 			ranges: AWSIPRanges{
 				IPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "us-east-1",
-						Service:            "EC2",
-						NetworkBorderGroup: "NBG",
+						IPPrefix: "3.4.12.4/32",
+						Service:  "EC2",
 					},
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "us-east-1",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "NBG",
+						IPPrefix: "3.4.12.4/32",
+						Service:  "AMAZON",
 					},
 					{
-						IPPrefix:           "15.190.244.0/22",
-						Region:             "ap-east-2",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "ap-east-2",
+						IPPrefix: "15.190.244.0/22",
+						Service:  "AMAZON",
 					},
 				},
 			},
 			want: AWSPrefixes{
 				iPPrefixes: []IPPrefix{
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "us-east-1",
-						Service:            "AMAZON,EC2",
-						NetworkBorderGroup: "NBG",
+						IPPrefix: "3.4.12.4/32",
+						Service:  "AMAZON,EC2",
 					},
 					{
-						IPPrefix:           "3.4.12.4/32",
-						Region:             "us-east-1",
-						Service:            "AMAZON",
-						NetworkBorderGroup: "NBG",
+						IPPrefix: "3.4.12.4/32",
+						Service:  "AMAZON",
 					},
 				},
 			},
@@ -153,18 +129,14 @@ func TestProcessIPPrefixes(t *testing.T) {
 			name: "single prefix",
 			prefixes: []IPPrefix{
 				{
-					IPPrefix:           "3.4.12.4/32",
-					Region:             "us-east-1",
-					Service:            "EC2",
-					NetworkBorderGroup: "NBG",
+					IPPrefix: "3.4.12.4/32",
+					Service:  "EC2",
 				},
 			},
 			want: []IPPrefix{
 				{
-					IPPrefix:           "3.4.12.4/32",
-					Region:             "us-east-1",
-					Service:            "EC2",
-					NetworkBorderGroup: "NBG",
+					IPPrefix: "3.4.12.4/32",
+					ipNet:    func() *net.IPNet { _, ipNet, _ := net.ParseCIDR("3.4.12.4/32"); return ipNet }(),
 				},
 			},
 			wantErr: false,
@@ -173,24 +145,18 @@ func TestProcessIPPrefixes(t *testing.T) {
 			name: "combine prefixes",
 			prefixes: []IPPrefix{
 				{
-					IPPrefix:           "3.4.12.4/32",
-					Region:             "us-east-1",
-					Service:            "EC2",
-					NetworkBorderGroup: "NBG",
+					IPPrefix: "3.4.12.4/32",
+					Service:  "EC2",
 				},
 				{
-					IPPrefix:           "3.4.12.4/32",
-					Region:             "us-east-1",
-					Service:            "AMAZON",
-					NetworkBorderGroup: "NBG",
+					IPPrefix: "3.4.12.4/32",
+					Service:  "AMAZON",
 				},
 			},
 			want: []IPPrefix{
 				{
-					IPPrefix:           "3.4.12.4/32",
-					Region:             "us-east-1",
-					Service:            "AMAZON,EC2",
-					NetworkBorderGroup: "NBG",
+					IPPrefix: "3.4.12.4/32",
+					ipNet:    getIPNet("3.4.12.4/32"),
 				},
 			},
 			wantErr: false,
@@ -198,11 +164,11 @@ func TestProcessIPPrefixes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := processIPPrefixes(tt.prefixes)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("unexpected error value: %v", err)
+			got := processIPPrefixes(tt.prefixes)
+			opts := []cmp.Option{
+				cmp.AllowUnexported(IPPrefix{}),
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got, opts...); diff != "" {
 				t.Errorf("unnexpected IPPrefixes: want %v, got = %v, ", tt.want, got)
 			}
 		})
@@ -212,16 +178,12 @@ func TestProcessIPPrefixes(t *testing.T) {
 func TestAWSPrefixes_GetPrefixByIP(t *testing.T) {
 	iPPrefixes := []IPPrefix{
 		{
-			IPPrefix:           "3.4.12.4/32",
-			Region:             "eu-west-1",
-			Service:            "AMAZON",
-			NetworkBorderGroup: "eu-west-1",
+			IPPrefix: "3.4.12.4/32",
+			ipNet:    getIPNet("3.4.12.4/32"),
 		},
 		{
-			IPPrefix:           "3.5.140.0/22",
-			Region:             "ap-northeast-2",
-			Service:            "AMAZON",
-			NetworkBorderGroup: "ap-northeast-2",
+			IPPrefix: "3.5.140.0/22",
+			ipNet:    getIPNet("3.4.12.4/32"),
 		},
 	}
 
@@ -235,10 +197,8 @@ func TestAWSPrefixes_GetPrefixByIP(t *testing.T) {
 			name: "existing prefix",
 			ip:   "3.4.12.4",
 			want: IPPrefix{
-				IPPrefix:           "3.4.12.4/32",
-				Region:             "eu-west-1",
-				Service:            "AMAZON",
-				NetworkBorderGroup: "eu-west-1",
+				IPPrefix: "3.4.12.4/32",
+				ipNet:    getIPNet("3.4.12.4/32"),
 			},
 			wantErr: nil,
 		},
@@ -258,9 +218,17 @@ func TestAWSPrefixes_GetPrefixByIP(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("unexpected error value: %v", err)
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			opts := []cmp.Option{
+				cmp.AllowUnexported(IPPrefix{}),
+			}
+			if diff := cmp.Diff(tt.want, got, opts...); diff != "" {
 				t.Errorf("unnexpected IPPrefix: want %v, got = %v, ", tt.want, got)
 			}
 		})
 	}
+}
+
+func getIPNet(prefix string) *net.IPNet {
+	_, ipNet, _ := net.ParseCIDR(prefix)
+	return ipNet
 }
