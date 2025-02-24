@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.93.12
 	github.com/aws/aws-sdk-go-v2/service/support v1.26.14
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/jroimartin/sarif v0.1.0
