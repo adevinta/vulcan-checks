@@ -594,7 +594,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 		elasticIPs  []string
 		dnsRecords  []dnsRecord
 		awsPrefixes AWSPrefixes
-		global      bool
+		env         map[string]string
 		want        map[string]string
 		wantErr     bool
 	}{
@@ -603,7 +603,6 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			elasticIPs:  nil,
 			dnsRecords:  nil,
 			awsPrefixes: AWSPrefixes{},
-			global:      false,
 			want:        map[string]string{},
 			wantErr:     false,
 		},
@@ -625,7 +624,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			global:  true,
+			env:     map[string]string{"INVENTORY_ENDPOINT": "http://localhost:8081/api/publicips/{{.IP}}"},
 			want:    map[string]string{},
 			wantErr: false,
 		},
@@ -647,7 +646,6 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			global: false,
 			want: map[string]string{
 				"dnsRecord1.example.com": "1.2.3.5",
 			},
@@ -671,7 +669,7 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			global: true,
+			env: map[string]string{"INVENTORY_ENDPOINT": "http://localhost:8081/api/publicips/{{.IP}}"},
 			want: map[string]string{
 				"dnsRecord1.example.com": "1.2.3.8",
 			},
@@ -696,7 +694,6 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			global:  false,
 			want:    map[string]string{},
 			wantErr: false,
 		},
@@ -719,15 +716,16 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 					},
 				},
 			},
-			global:  false,
 			want:    map[string]string{},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
 			s := Scanner{
-				global: tt.global,
 				inventory: &mockedCloudInventory{
 					publicIPs: publicIPs,
 				},

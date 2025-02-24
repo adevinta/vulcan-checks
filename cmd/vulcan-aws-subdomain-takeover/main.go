@@ -27,23 +27,13 @@ import (
 
 const checkName = "vulcan-aws-subdomain-takeover"
 
-type options struct {
-	Global bool `json:"global"`
-}
-
 func main() {
 	run := func(ctx context.Context, target, assetType, optJSON string, state checkstate.State) error {
-		opt := options{}
-		if optJSON != "" {
-			if err := json.Unmarshal([]byte(optJSON), &opt); err != nil {
-				return err
-			}
-		}
 		logger := check.NewCheckLogFromContext(ctx, checkName)
 		if target == "" {
 			return fmt.Errorf("check target missing")
 		}
-		scan, err := NewScanner(ctx, opt, logger, target)
+		scan, err := NewScanner(ctx, logger, target)
 		if err != nil {
 			return fmt.Errorf("could not create scan: %w", err)
 		}
@@ -83,7 +73,6 @@ type ipRangesClient interface {
 
 // Scanner represents a subdomain takeover scanner.
 type Scanner struct {
-	global         bool
 	inventory      Inventory
 	logger         *logrus.Entry
 	target         string
@@ -96,24 +85,32 @@ type Scanner struct {
 type awsConfig struct{}
 
 // NewScanner creates a new instance of the Scanner.
-func NewScanner(ctx context.Context, opt options, logger *logrus.Entry, target string) (Scanner, error) {
+func NewScanner(ctx context.Context, logger *logrus.Entry, target string) (Scanner, error) {
 	cfg, err := awsConfig{}.getConfig(ctx, logger, target)
 	if err != nil {
 		return Scanner{}, fmt.Errorf("get config: %w", err)
 	}
+
 	var inventory Inventory
-	if opt.Global {
-		inventory, err = NewCloudInventory(
-			os.Getenv("CLOUD_INVENTORY_TOKEN"),
-			os.Getenv("CLOUD_INVENTORY_ENDPOINT"),
-		)
-		if err != nil {
-			return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
+	var headers []string
+	if os.Getenv("INVENTORY_HEADERS") != "" {
+		envHeaders := os.Getenv("INVENTORY_HEADERS")
+		if err = json.Unmarshal([]byte(envHeaders), &headers); err != nil {
+			return Scanner{}, fmt.Errorf("parsing INVENTORY_HEADERS: %w", err)
 		}
+	}
+	inventoryEndpoint := os.Getenv("INVENTORY_ENDPOINT")
+	inventoryNotFoundBody := os.Getenv("INVENTORY_NOTFOUND_BODY")
+	inventory, err = NewCloudInventory(
+		inventoryEndpoint,
+		headers,
+		inventoryNotFoundBody,
+	)
+	if err != nil {
+		return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
 	}
 
 	return Scanner{
-		global:         opt.Global,
 		inventory:      inventory,
 		logger:         logger,
 		target:         target,
@@ -320,7 +317,7 @@ func (s Scanner) calculateTakeovers(ctx context.Context, dnsRecords []dnsRecord,
 	for name, dnsEC2IP := range dnsEC2IPs {
 		for _, record := range dnsEC2IP {
 			if !contains(elasticIPs, record) {
-				if s.global {
+				if os.Getenv("INVENTORY_ENDPOINT") != "" {
 					inInventory, err := s.inventory.IsIPPublicInInventory(ctx, record)
 					if err != nil {
 						return nil, fmt.Errorf("inventory: %w", err)

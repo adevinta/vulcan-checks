@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -16,63 +17,74 @@ import (
 func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 	tests := []struct {
 		name               string
-		token              string
 		endpointTpl        string
+		headers            []string
+		notFoundBody       string
 		ip                 string
 		endpointResponse   string
 		statusCodeResponse int
 		want               bool
-		wantErr            bool
+		wantErr            error
 	}{
 		{
-			name:               "no token",
-			token:              "",
+			name:               "no headers",
 			endpointTpl:        "/{{.IP}}",
+			notFoundBody:       "{}",
 			ip:                 "1.2.3.4",
 			endpointResponse:   "",
-			statusCodeResponse: http.StatusUnauthorized,
-			want:               false,
-			wantErr:            true,
+			statusCodeResponse: http.StatusOK,
+			want:               true,
+			wantErr:            nil,
+		},
+		{
+			name:             "wrong headers",
+			endpointTpl:      "/{{.IP}}",
+			headers:          []string{"Authorization"},
+			ip:               "1.2.3.4",
+			endpointResponse: "",
+			want:             false,
+			wantErr:          ErrInvalidHeader,
 		},
 		{
 			name:               "no ip",
-			token:              "token",
 			endpointTpl:        "/{{.IP}}",
+			headers:            []string{"Authorization: Bearer token"},
 			ip:                 "",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusBadRequest,
 			want:               false,
-			wantErr:            true,
+			wantErr:            ErrResponseError,
 		},
 		{
 			name:               "ip found",
-			token:              "token",
 			endpointTpl:        "/{{.IP}}",
+			headers:            []string{"Authorization: Bearer token"},
 			ip:                 "1.2.3.4",
 			endpointResponse:   "{\"ip\": \"1.2.3.4\"\",\n  \"account_id\": \"aws_account\",\n  \"region\": \"aws_region\"}",
 			statusCodeResponse: http.StatusOK,
 			want:               true,
-			wantErr:            false,
+			wantErr:            nil,
 		},
 		{
 			name:               "ip not found 404",
-			token:              "token",
 			endpointTpl:        "/{{.IP}}",
+			headers:            []string{"Authorization: Bearer token"},
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusNotFound,
 			want:               false,
-			wantErr:            false,
+			wantErr:            nil,
 		},
 		{
 			name:               "ip not found 200",
-			token:              "token",
 			endpointTpl:        "/{{.IP}}",
+			headers:            []string{"Authorization: Bearer token"},
+			notFoundBody:       "{}",
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "{}",
 			statusCodeResponse: http.StatusOK,
 			want:               false,
-			wantErr:            false,
+			wantErr:            nil,
 		},
 	}
 	for _, tt := range tests {
@@ -98,13 +110,14 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 			}
 
 			ci := &CloudInventory{
-				client:      server.Client(),
-				token:       tt.token,
-				endpointTpl: tpl,
+				client:       server.Client(),
+				endpointTpl:  tpl,
+				headers:      tt.headers,
+				notFoundBody: tt.notFoundBody,
 			}
 			got, err := ci.IsIPPublicInInventory(context.Background(), tt.ip)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("unexpected error value: %v", err)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("unexpected error: got: %v, want: %v", err, tt.wantErr)
 			}
 			if got != tt.want {
 				t.Errorf("unnexpected response: want %v, got = %v", tt.want, got)

@@ -1,10 +1,10 @@
 [Check]
 Target = "arn:aws:iam::123456789012:root"
 AssetType = "AWSAccount"
-Options = '{"global": true}'
 
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
 ROLE_NAME="SecurityAuditRole"
-CLOUD_INVENTORY_TOKEN=
-CLOUD_INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}
+INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}" # Optional and I would remove the Global option.
+INVENTORY_HEADERS='["token: MYSECRETTOKEN", "Content-Type: application/json"]'    # Optional headers
+INVENTORY_NOTFOUND_BODY='{}'    # Optional regex for not found. If empty just rely on the status.
