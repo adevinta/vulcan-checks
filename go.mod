@@ -10,8 +10,8 @@ require (
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
 	github.com/aws/aws-sdk-go-v2 v1.36.2
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.203.1
-	github.com/aws/aws-sdk-go-v2/service/rds v1.93.13
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.205.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.93.14
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.48.8
 	github.com/aws/aws-sdk-go-v2/service/support v1.26.16
 	github.com/cenkalti/backoff/v4 v4.3.0
