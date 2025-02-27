@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,6 +96,10 @@ func NewScanner(ctx context.Context, logger *logrus.Entry, target string) (Scann
 	var inventory Inventory
 	var headers map[string]string
 	if inventoryEndpoint := os.Getenv("INVENTORY_ENDPOINT"); inventoryEndpoint != "" {
+		decodedEndpoint, err := base64.StdEncoding.DecodeString(inventoryEndpoint)
+		if err != nil {
+			return Scanner{}, fmt.Errorf("decoding INVENTORY_ENDPOINT: %w", err)
+		}
 		if os.Getenv("INVENTORY_HEADERS") != "" {
 			envHeaders := os.Getenv("INVENTORY_HEADERS")
 			if err = json.Unmarshal([]byte(envHeaders), &headers); err != nil {
@@ -107,7 +112,7 @@ func NewScanner(ctx context.Context, logger *logrus.Entry, target string) (Scann
 		}
 
 		inventory, err = NewCloudInventory(
-			inventoryEndpoint,
+			string(decodedEndpoint),
 			headers,
 			inventoryNotFoundBody,
 		)
