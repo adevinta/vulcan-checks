@@ -1,0 +1,10 @@
+[Check]
+Target = "arn:aws:iam::123456789012:root"
+AssetType = "AWSAccount"
+
+[RequiredVars]
+VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
+ROLE_NAME="SecurityAuditRole"
+INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}" # Optional.
+INVENTORY_HEADERS='{"token": "MYSECRETTOKEN", "Content-Type": "application/json"}' # Optional headers.
+INVENTORY_NOTFOUND_BODY='{}' # Optional regex for not found. If empty just rely on the status.
