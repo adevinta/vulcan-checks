@@ -14,6 +14,22 @@
 			]
 		},
 		{
+			"name": "vulcan-aws-subdomain-takeover",
+			"description": "Detect dangling elastic IPs by performing analysis on your resources within all your AWS accounts",
+			"image": "vulcansec/vulcan-aws-subdomain-takeover:edge",
+			"timeout": 0,
+			"required_vars": [
+				"VULCAN_ASSUME_ROLE_ENDPOINT",
+				"ROLE_NAME",
+				"INVENTORY_ENDPOINT",
+				"INVENTORY_HEADERS",
+				"INVENTORY_NOTFOUND_BODY"
+			],
+			"assets": [
+				"AWSAccount"
+			]
+		},
+		{
 			"name": "vulcan-aws-trusted-advisor",
 			"description": "Runs an AWS Trusted Advisor check against an AWS account",
 			"image": "vulcansec/vulcan-aws-trusted-advisor:edge",
