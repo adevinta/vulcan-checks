@@ -5,6 +5,10 @@ AssetType = "AWSAccount"
 [RequiredVars]
 VULCAN_ASSUME_ROLE_ENDPOINT="http://localhost:8080/assume"
 ROLE_NAME="SecurityAuditRole"
-INVENTORY_ENDPOINT="http://localhost:8081/api/publicips/{{.IP}}" # Optional.
-INVENTORY_HEADERS='{"token": "MYSECRETTOKEN", "Content-Type": "application/json"}' # Optional headers.
-INVENTORY_NOTFOUND_BODY='{}' # Optional regex for not found. If empty just rely on the status.
+
+# Optional. A Go template, encoded in base64, that representing and endpoint will be rendered with the IP.
+INVENTORY_ENDPOINT="aHR0cDovL2xvY2FsaG9zdDo4MDgxL2FwaS9wdWJsaWNpcHMve3suSVB9fQ=="
+# Optional headers.
+INVENTORY_HEADERS='{"token": "MYSECRETTOKEN", "Content-Type": "application/json"}'
+# Optional regex for not found. If empty just rely on the status.
+INVENTORY_NOTFOUND_BODY='{}'
