@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"regexp"
 	"text/template"
 )
 
@@ -24,23 +24,23 @@ var (
 
 // CloudInventory is a client to interact with the CloudInventory service.
 type CloudInventory struct {
-	client       *http.Client
-	headers      []string
-	notFoundBody string
-	endpointTpl  *template.Template
+	client        *http.Client
+	headers       map[string]string
+	notFoundRegex *regexp.Regexp
+	endpointTpl   *template.Template
 }
 
 // NewCloudInventory creates a new CloudInventory object.
-func NewCloudInventory(endpoint string, headers []string, notFoundBody string) (*CloudInventory, error) {
+func NewCloudInventory(endpoint string, headers map[string]string, notFoundRegex *regexp.Regexp) (*CloudInventory, error) {
 	t, err := template.New("isInInventory").Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("parsing endpoint template: %w", err)
 	}
 	return &CloudInventory{
-		client:       &http.Client{},
-		headers:      headers,
-		notFoundBody: notFoundBody,
-		endpointTpl:  t,
+		client:        &http.Client{},
+		headers:       headers,
+		notFoundRegex: notFoundRegex,
+		endpointTpl:   t,
 	}, nil
 }
 
@@ -59,8 +59,11 @@ func (ci *CloudInventory) IsIPPublicInInventory(ctx context.Context, ip string) 
 	if err != nil {
 		return false, fmt.Errorf("creating request: %w", err)
 	}
-	if err = addHeaders(req, ci.headers); err != nil {
-		return false, fmt.Errorf("adding headers: %w", err)
+	for k, v := range ci.headers {
+		if k == "" || v == "" {
+			return false, ErrInvalidHeader
+		}
+		req.Header.Add(k, v)
 	}
 	res, err := ci.client.Do(req)
 	if err != nil {
@@ -74,7 +77,7 @@ func (ci *CloudInventory) IsIPPublicInInventory(ctx context.Context, ip string) 
 	}
 
 	if res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusMultipleChoices {
-		if string(resBody) == ci.notFoundBody {
+		if ci.notFoundRegex != nil && ci.notFoundRegex.Match(resBody) {
 			return false, nil
 		}
 		return true, nil
@@ -82,15 +85,4 @@ func (ci *CloudInventory) IsIPPublicInInventory(ctx context.Context, ip string) 
 		return false, nil
 	}
 	return false, fmt.Errorf("%w: %s", ErrResponseError, res.Status)
-}
-
-func addHeaders(req *http.Request, headers []string) error {
-	for _, h := range headers {
-		parts := strings.SplitN(h, ":", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("%w: %s", ErrInvalidHeader, h)
-		}
-		req.Header.Add(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
-	}
-	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"regexp"
 	"slices"
 
 	check "github.com/adevinta/vulcan-check-sdk"
@@ -92,24 +93,28 @@ func NewScanner(ctx context.Context, logger *logrus.Entry, target string) (Scann
 	}
 
 	var inventory Inventory
-	var headers []string
-	if os.Getenv("INVENTORY_HEADERS") != "" {
-		envHeaders := os.Getenv("INVENTORY_HEADERS")
-		if err = json.Unmarshal([]byte(envHeaders), &headers); err != nil {
-			return Scanner{}, fmt.Errorf("parsing INVENTORY_HEADERS: %w", err)
+	var headers map[string]string
+	if inventoryEndpoint := os.Getenv("INVENTORY_ENDPOINT"); inventoryEndpoint != "" {
+		if os.Getenv("INVENTORY_HEADERS") != "" {
+			envHeaders := os.Getenv("INVENTORY_HEADERS")
+			if err = json.Unmarshal([]byte(envHeaders), &headers); err != nil {
+				return Scanner{}, fmt.Errorf("parsing INVENTORY_HEADERS: %w", err)
+			}
+		}
+		inventoryNotFoundBody, err := regexp.Compile(os.Getenv("INVENTORY_NOTFOUND_BODY"))
+		if err != nil {
+			return Scanner{}, fmt.Errorf("compiling INVENTORY_NOTFOUND_BODY: %w", err)
+		}
+
+		inventory, err = NewCloudInventory(
+			inventoryEndpoint,
+			headers,
+			inventoryNotFoundBody,
+		)
+		if err != nil {
+			return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
 		}
 	}
-	inventoryEndpoint := os.Getenv("INVENTORY_ENDPOINT")
-	inventoryNotFoundBody := os.Getenv("INVENTORY_NOTFOUND_BODY")
-	inventory, err = NewCloudInventory(
-		inventoryEndpoint,
-		headers,
-		inventoryNotFoundBody,
-	)
-	if err != nil {
-		return Scanner{}, fmt.Errorf("new cloud inventory: %w", err)
-	}
-
 	return Scanner{
 		inventory:      inventory,
 		logger:         logger,
@@ -317,7 +322,7 @@ func (s Scanner) calculateTakeovers(ctx context.Context, dnsRecords []dnsRecord,
 	for name, dnsEC2IP := range dnsEC2IPs {
 		for _, record := range dnsEC2IP {
 			if !contains(elasticIPs, record) {
-				if os.Getenv("INVENTORY_ENDPOINT") != "" {
+				if s.inventory != nil {
 					inInventory, err := s.inventory.IsIPPublicInInventory(ctx, record)
 					if err != nil {
 						return nil, fmt.Errorf("inventory: %w", err)

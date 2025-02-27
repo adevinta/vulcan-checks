@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"text/template"
 )
@@ -18,8 +19,8 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 	tests := []struct {
 		name               string
 		endpointTpl        string
-		headers            []string
-		notFoundBody       string
+		headers            map[string]string
+		notFoundRegex      *regexp.Regexp
 		ip                 string
 		endpointResponse   string
 		statusCodeResponse int
@@ -29,7 +30,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "no headers",
 			endpointTpl:        "/{{.IP}}",
-			notFoundBody:       "{}",
+			notFoundRegex:      regexp.MustCompile("{}"),
 			ip:                 "1.2.3.4",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusOK,
@@ -39,7 +40,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:             "wrong headers",
 			endpointTpl:      "/{{.IP}}",
-			headers:          []string{"Authorization"},
+			headers:          map[string]string{"Authorization": ""},
 			ip:               "1.2.3.4",
 			endpointResponse: "",
 			want:             false,
@@ -48,7 +49,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "no ip",
 			endpointTpl:        "/{{.IP}}",
-			headers:            []string{"Authorization: Bearer token"},
+			headers:            map[string]string{"Authorization": "Bearer token"},
 			ip:                 "",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusBadRequest,
@@ -58,7 +59,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip found",
 			endpointTpl:        "/{{.IP}}",
-			headers:            []string{"Authorization: Bearer token"},
+			headers:            map[string]string{"Authorization": "Bearer token"},
 			ip:                 "1.2.3.4",
 			endpointResponse:   "{\"ip\": \"1.2.3.4\"\",\n  \"account_id\": \"aws_account\",\n  \"region\": \"aws_region\"}",
 			statusCodeResponse: http.StatusOK,
@@ -68,7 +69,7 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip not found 404",
 			endpointTpl:        "/{{.IP}}",
-			headers:            []string{"Authorization: Bearer token"},
+			headers:            map[string]string{"Authorization": "Bearer token"},
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "",
 			statusCodeResponse: http.StatusNotFound,
@@ -78,8 +79,8 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 		{
 			name:               "ip not found 200",
 			endpointTpl:        "/{{.IP}}",
-			headers:            []string{"Authorization: Bearer token"},
-			notFoundBody:       "{}",
+			headers:            map[string]string{"Authorization": "Bearer token"},
+			notFoundRegex:      regexp.MustCompile("{}"),
 			ip:                 "1.2.3.4,",
 			endpointResponse:   "{}",
 			statusCodeResponse: http.StatusOK,
@@ -110,10 +111,10 @@ func TestCloudInventory_IsIPPublicInInventory(t *testing.T) {
 			}
 
 			ci := &CloudInventory{
-				client:       server.Client(),
-				endpointTpl:  tpl,
-				headers:      tt.headers,
-				notFoundBody: tt.notFoundBody,
+				client:        server.Client(),
+				endpointTpl:   tpl,
+				headers:       tt.headers,
+				notFoundRegex: tt.notFoundRegex,
 			}
 			got, err := ci.IsIPPublicInInventory(context.Background(), tt.ip)
 			if !errors.Is(err, tt.wantErr) {

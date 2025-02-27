@@ -725,10 +725,14 @@ func TestScanner_calculateTakeovers(t *testing.T) {
 			for k, v := range tt.env {
 				t.Setenv(k, v)
 			}
-			s := Scanner{
-				inventory: &mockedCloudInventory{
+			var inventory Inventory
+			if tt.env["INVENTORY_ENDPOINT"] != "" {
+				inventory = &mockedCloudInventory{
 					publicIPs: publicIPs,
-				},
+				}
+			}
+			s := Scanner{
+				inventory: inventory,
 				ipRangesClient: &mockedIPRangesClient{
 					awsPrefixes: tt.awsPrefixes,
 				},
