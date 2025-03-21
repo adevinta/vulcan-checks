@@ -1,0 +1,7 @@
+[Check]
+# The Github user used by Vulcan needs to be administrator of the repository or its organization.
+# Additionally, the Github token that Vulcan uses requires "repo:public_repo" permissions.
+# In order to work with private repositories, the token requires full "repo" permissions.
+# Alternativly the user needs to be added as a Security manager to the organization.
+Target = "https://github.com/adevinta/vulcan-checks.git"
+AssetType = "GitRepository"
