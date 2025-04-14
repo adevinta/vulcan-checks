@@ -1,6 +1,6 @@
 # Copyright 2022 Adevinta
 
-FROM projectdiscovery/nuclei:v3.3.8
+FROM projectdiscovery/nuclei:v3.4.2
 ENTRYPOINT []
 
 WORKDIR /
