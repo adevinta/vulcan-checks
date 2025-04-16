@@ -14,7 +14,7 @@ AssetType = "WebAddress"
 [RequiredVars]
 BURP_BASE_URL = "http://localhost:1337"
 BURP_API_TOKEN = "supersecrettoken"
-BURP_SCAN_CONFIG = "Crawl strategy - fastest;Audit checks - all except time-based detection methods;Audit checks - light active;Never stop audit due to application errors"
+BURP_SCAN_CONFIG = "2f86a479-6ed4-4751-a64e-af38b9c567c6;ca5770fc-6cd0-403e-b1b8-436e30611b59"
 BURP_INSECURE_SKIP_VERIFY = "false"
 # If you are exposing Burp Suite Enterprise Edition API using a self-signed
 # certificate you can set BURP_INSECURE_SKIP_VERIFY to true.
