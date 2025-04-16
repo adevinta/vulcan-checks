@@ -133,7 +133,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 		return err
 	}
 
-	var s *resturp.ScanStatus
+	var s *resturp.ScanStatusGraphQL
 	if opt.ScanID != 0 {
 		// If a scan ID is specified try to generate the vulns from the
 		// given existing Burp scan ID.
@@ -157,21 +157,17 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	defs, err := r.burpCli.GetIssueDefinitions(ctx)
-	if err != nil {
-		return err
-	}
-	vulns := fillVulns(logger, s.IssueEvents, defs)
+	vulns := fillVulns(logger, s.Issues)
 	state.AddVulnerabilities(vulns...)
 
 	return nil
 }
 
-func (r *runner) WaitScanFinished(ctx context.Context, logger *logrus.Entry) (*resturp.ScanStatus, error) {
+func (r *runner) WaitScanFinished(ctx context.Context, logger *logrus.Entry) (*resturp.ScanStatusGraphQL, error) {
 	t := time.NewTicker(scanPollingInterval * time.Second)
 	var (
 		err error
-		s   *resturp.ScanStatus
+		s   *resturp.ScanStatusGraphQL
 	)
 
 LOOP:
@@ -206,45 +202,33 @@ LOOP:
 	return s, err
 }
 
-func fillVulns(logger *logrus.Entry, ievents []resturp.IssueEvent, defs []resturp.IssueDefinition) []report.Vulnerability {
-	// Index definitions by issue type ID.
-	defsIndex := map[string]resturp.IssueDefinition{}
-	for _, d := range defs {
-		defsIndex[d.IssueTypeID] = d
-	}
+func fillVulns(logger *logrus.Entry, ievents []resturp.IssueGraphql) []report.Vulnerability {
 
 	vulnsMap := make(map[string]report.Vulnerability)
 	for _, i := range ievents {
-		issueId := strconv.FormatInt(i.Issue.TypeIndex, 10)
-		issueDefinition, found := defsIndex[issueId]
-		if !found {
-			logger.Errorf("Burp issue [%s] not found in Burp issue definition list", issueId)
-			continue
-		}
-
-		if v, ok := vulnsMap[issueDefinition.Name]; ok {
+		if v, ok := vulnsMap[i.IssueType.Name]; ok {
 			// Vulnerability already exists in vulnsMap.
-			score := severityToScore(i.Issue.Severity)
+			score := severityToScore(i.Severity)
 			if v.Score < score {
 				v.Score = score
 			}
 			row := map[string]string{
-				"Path":       i.Issue.Path,
-				"Confidence": i.Issue.Confidence,
-				"CWEs":       issueDefinition.VulnerabilityClassifications,
+				"Path":       i.Path,
+				"Confidence": i.Confidence,
+				"CWEs":       i.IssueType.VulnerabilityClassifications,
 			}
 			v.Resources[0].Rows = append(v.Resources[0].Rows, row)
-			vulnsMap[issueDefinition.Name] = v
+			vulnsMap[i.IssueType.Name] = v
 			continue
 		}
 		// New vulnerability in vulnsMap.
 		vuln := report.Vulnerability{
-			Summary:         issueDefinition.Name,
-			Description:     issueDefinition.Description,
-			Recommendations: []string{issueDefinition.Remediation},
-			Score:           severityToScore(i.Issue.Severity),
+			Summary:         i.IssueType.Name,
+			Description:     i.IssueType.Description,
+			Recommendations: []string{i.IssueType.Remediation},
+			Score:           severityToScore(i.Severity),
 			Labels:          []string{"issue", "web", "burp"},
-			Details:         i.Issue.Description,
+			Details:         i.IssueType.Description,
 			Resources: []report.ResourcesGroup{
 				{
 					Name: "Found In",
@@ -258,25 +242,25 @@ func fillVulns(logger *logrus.Entry, ievents []resturp.IssueEvent, defs []restur
 			},
 		}
 		row := map[string]string{
-			"Path":       i.Issue.Path,
-			"Confidence": i.Issue.Confidence,
-			"CWEs":       issueDefinition.VulnerabilityClassifications,
+			"Path":       i.Path,
+			"Confidence": i.Confidence,
+			"CWEs":       i.IssueType.VulnerabilityClassifications,
 		}
 		vuln.Resources[0].Rows = append(vuln.Resources[0].Rows, row)
-		if issueDefinition.References != "" {
+		if i.IssueType.References != "" {
 			hrefRegExp := regexp.MustCompile(`<a href="([^"]*)"`)
-			referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(issueDefinition.References), -1)
+			referenceLinkList := hrefRegExp.FindAllSubmatch([]byte(i.IssueType.References), -1)
 			for _, r := range referenceLinkList {
 				if len(r) > 1 {
 					vuln.References = append(vuln.References, string(r[1]))
 				}
 			}
 		}
-		vulnsMap[issueDefinition.Name] = vuln
+		vulnsMap[i.IssueType.Name] = vuln
 	}
 
 	// Target vulnerability array.
-	vulns := []report.Vulnerability{}
+	var vulns []report.Vulnerability
 	for _, v := range vulnsMap {
 		// Compute fingerprint.
 		affectedPaths := []string{}

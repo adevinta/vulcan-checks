@@ -75,13 +75,18 @@ type Resturp struct {
 	logger     *log.Entry
 }
 
-type GraphQLQueryTemplateParams struct {
+type GraphQLMutationTemplateParams struct {
 	OperationName         string
 	VariablesInputID      uint
 	QueryMutationFunction string
 }
 
-var GraphQLQueryTemplate = `{
+type GraphQLQueryTemplateParams struct {
+	OperationName string
+	QueryFunction string
+}
+
+var GraphQLMutationTemplate = `{
 		"operationName":"{{.OperationName}}",
 		"variables":{
 			"input":{
@@ -108,127 +113,160 @@ func New(d Doer, burpBaseURL string, APIKey string, logger *log.Entry) (*Resturp
 		nil
 }
 
+func (r *Resturp) getSiteID(ctx context.Context, targetURL string) (uint, error) {
+	var parsedID uint
+	payload := fmt.Sprintf(`{
+        "operationName": "SitesAndFolderInfo",
+        "query":"query SitesAndFolderInfo { site_tree {sites { id scope_v2 { start_urls } } } }" 
+    }`)
+
+	body, err := r.gDo(ctx, payload)
+	if err != nil {
+		return 0, err
+	}
+
+	var response GetSiteID
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return parsedID, err
+	}
+
+	// Look for site with matching URL
+	for _, site := range response.Data.SiteTree.Sites {
+		if site.ScopeV2.StartURLs[0] == targetURL {
+			r.logger.Infof("found existing site with ID: %s", site.ID)
+			parsedUint64, err := strconv.ParseUint(site.ID, 10, 32)
+			if err != nil {
+				return parsedID, fmt.Errorf("error parsing site ID: %w", err)
+			}
+			parsedID = uint(parsedUint64)
+			return parsedID, nil
+		}
+	}
+
+	return parsedID, nil
+}
+
+func (r *Resturp) createSite(ctx context.Context, targetURL string) (uint, error) {
+	// Create mutation payload with URL in variables
+	payload := fmt.Sprintf(`{
+        "operationName": "CreateSite",
+        "variables": {
+            "input": {
+                "name": "%s","parent_id": "0","scope_v2": {"start_urls": ["%s"],"protocol_options": "USE_SPECIFIED_PROTOCOLS"},"confirm_permission_to_scan": true}},
+        "query": "mutation CreateSite($input: CreateSiteInput!) { create_site(input: $input) { site { id } } }"
+    }`, targetURL, targetURL)
+
+	body, err := r.gDo(ctx, payload)
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse response to get site ID
+	var response CreateSite
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing response: %w", err)
+	}
+
+	if response.Data.CreateSite.Site.ID == "" {
+		return 0, fmt.Errorf("no site ID returned in response")
+	}
+
+	siteID, err := strconv.ParseUint(response.Data.CreateSite.Site.ID, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("error converting site ID: %w", err)
+	}
+
+	r.logger.Infof("site created with Burp site ID [%d]", siteID)
+	return uint(siteID), nil
+}
+
 // LaunchScan runs a new scan using the specified configurations against the
 // given target url. The configurations must exist in the Burp library, for
 // instance: "Minimize false positives". It returns the id of the created scan.
 func (r *Resturp) LaunchScan(ctx context.Context, targetURL string, configs []string) (uint, error) {
-	sURL := fmt.Sprintf("%s/scan", r.restURL)
-	var sconfigs []ScanConfiguration
-	for _, s := range configs {
-		sconfigs = append(sconfigs, ScanConfiguration{
-			Type: "NamedConfiguration",
-			Name: s,
-		})
-	}
-	s := Scan{
-		ScanConfigurations: sconfigs,
-		Urls:               []string{targetURL},
-	}
-	payload, err := json.Marshal(s)
+	var siteID uint
+	// First check if site exists
+	siteID, err := r.getSiteID(ctx, targetURL)
 	if err != nil {
-		return 0, err
-	}
-	preader := strings.NewReader(string(payload))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sURL, preader)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := r.doWithRetry(req, http.StatusCreated, false)
-	if err != nil {
-		return 0, err
+		return siteID, fmt.Errorf("error checking for existing site: %w", err)
 	}
 
-	if resp.StatusCode == http.StatusCreated {
-		loc, ok := resp.Header["Location"]
-		if !ok || len(loc) < 1 {
-			return 0, ErrNoLocationHeader
-		}
-		id, err := strconv.Atoi(loc[0])
+	if siteID == 0 {
+		// Site doesn't exist, create it
+		siteID, err = r.createSite(ctx, targetURL)
 		if err != nil {
-			return 0, fmt.Errorf("parsing returned task id: %w", err)
+			return siteID, fmt.Errorf("error creating site: %w", err)
 		}
-		r.logger.Infof("scan created with Burp scan ID [%d]", id)
-		uid := uint(id)
-		return uid, nil
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	quotedConfigs := make([]string, len(configs))
+	for i, s := range configs {
+		quotedConfigs[i] = strconv.Quote(s)
+	}
+	payload := fmt.Sprintf(`{
+        "operationName": "CreateScheduleItem",
+        "variables": {
+            "input": {
+                "site_id": %d,"scan_configuration_ids": [%s]}},
+        "query": "mutation CreateScheduleItem($input: CreateScheduleItemInput!) { create_schedule_item(input: $input) { schedule_item { id } } }"
+    }`, siteID, strings.Join(quotedConfigs, ", "))
+
+	body, err := r.gDo(ctx, payload)
 	if err != nil {
 		return 0, err
 	}
-
-	if resp.StatusCode == http.StatusBadRequest {
-		scanErr := new(ScanPayloadError)
-		err = json.Unmarshal(body, scanErr)
-		if err != nil {
-			return 0, err
-		}
-		return 0, scanErr
+	// Parse response to get scan ID
+	var response CreateScan
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing response: %w", err)
+	}
+	if response.Data.CreateScheduleItem.ScheduleItem.ID == "" {
+		return 0, fmt.Errorf("no site ID returned in response")
 	}
 
-	return 0, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
+	scanID, err := strconv.ParseUint(response.Data.CreateScheduleItem.ScheduleItem.ID, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("error converting scan ID: %w", err)
+	}
+
+	r.logger.Infof("site created with Burp site ID [%d]", scanID)
+	return uint(scanID), nil
 }
 
 // GetScanStatus returns the status of a scan.
-func (r *Resturp) GetScanStatus(ctx context.Context, ID uint) (*ScanStatus, error) {
-	sURL := fmt.Sprintf("%s/scan/%d", r.restURL, ID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := r.doWithRetry(req, http.StatusOK, false)
+func (r *Resturp) getScanStatus(ctx context.Context, ID uint) (*ScanStatusGraphQL, error) {
+	payload := fmt.Sprintf(`{
+        "operationName": "GetScan",
+        "variables": {
+            "scan_id": "%d"
+         },
+        "query":"query GetScan ($scan_id: ID!) {scan(id: $scan_id) {id status issues(start: 0, count: 1000) { confidence severity path issue_type { name description_html remediation_html vulnerability_classifications_html references_html } } } }" 
+    }`, ID)
+
+	body, err := r.gDo(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	var response ScanStatusGraphQL
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
 	}
-
-	if resp.StatusCode == http.StatusOK {
-		stat := new(ScanStatus)
-		err = json.Unmarshal(body, stat)
-		if err != nil {
-			return nil, err
-		}
-		return stat, nil
-	}
-
-	return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
+	return &response, nil
 }
 
-// GetIssueDefinitions gets the current defined issues in burp.
-func (r *Resturp) GetIssueDefinitions(ctx context.Context) ([]IssueDefinition, error) {
-	sURL := fmt.Sprintf("%s/knowledge_base/issue_definitions", r.restURL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := r.doWithRetry(req, http.StatusOK, false)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %s, response: %s", resp.Status, string(body))
-	}
-
-	var defs []IssueDefinition
-	err = json.Unmarshal(body, &defs)
-	if err != nil {
-		return nil, err
-	}
-	return defs, nil
+// GetScanStatus returns the status of a scan.
+func (r *Resturp) GetScanStatus(ctx context.Context, ID uint) (*ScanStatusGraphQL, error) {
+	//return r.getScanStatusREST(ctx, ID)
+	return r.getScanStatus(ctx, ID)
 }
 
-func graphQLPayloadGenerator(params GraphQLQueryTemplateParams) (string, error) {
-	tmpl := template.Must(template.New("").Parse(GraphQLQueryTemplate))
+func graphQLMutationPayloadGenerator(params GraphQLMutationTemplateParams) (string, error) {
+	tmpl := template.Must(template.New("").Parse(GraphQLMutationTemplate))
 	var payload bytes.Buffer
 	if err := tmpl.Execute(&payload, params); err != nil {
 		return "", err
@@ -238,12 +276,18 @@ func graphQLPayloadGenerator(params GraphQLQueryTemplateParams) (string, error) 
 
 // DeleteScan deletes the scan with the given id.
 func (r *Resturp) DeleteScan(ctx context.Context, ID uint) {
-	params := GraphQLQueryTemplateParams{
+	// TODO: this mutation always fails because the api user doen't have permission to delete scans.
+	params := GraphQLMutationTemplateParams{
 		OperationName:         "DeleteScan",
 		VariablesInputID:      ID,
 		QueryMutationFunction: "delete_scan",
 	}
-	err := r.gDo(ctx, params)
+	payload, err := graphQLMutationPayloadGenerator(params)
+	if err != nil {
+		r.logger.Errorf("unable to generate payload for Burp scan ID [%d] report: %s", ID, err)
+		return
+	}
+	_, err = r.gDo(ctx, payload)
 	if err != nil {
 		r.logger.Errorf("unable to delete Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -253,12 +297,17 @@ func (r *Resturp) DeleteScan(ctx context.Context, ID uint) {
 
 // CancelScan cancels the scan with the given id.
 func (r *Resturp) CancelScan(ctx context.Context, ID uint) {
-	params := GraphQLQueryTemplateParams{
+	params := GraphQLMutationTemplateParams{
 		OperationName:         "CancelScan",
 		VariablesInputID:      ID,
 		QueryMutationFunction: "cancel_scan",
 	}
-	err := r.gDo(ctx, params)
+	payload, err := graphQLMutationPayloadGenerator(params)
+	if err != nil {
+		r.logger.Errorf("unable to generate payload for Burp scan ID [%d] report: %s", ID, err)
+		return
+	}
+	_, err = r.gDo(ctx, payload)
 	if err != nil {
 		r.logger.Errorf("unable to cancel Burp scan ID [%d] report: %s", ID, err)
 		return
@@ -266,38 +315,35 @@ func (r *Resturp) CancelScan(ctx context.Context, ID uint) {
 	r.logger.Infof("Burp scan ID [%d] cancelled successfully", ID)
 }
 
-func (r *Resturp) gDo(ctx context.Context, params GraphQLQueryTemplateParams) error {
-	payload, err := graphQLPayloadGenerator(params)
-	if err != nil {
-		return err
-	}
-	preader := strings.NewReader(string(payload))
+func (r *Resturp) gDo(ctx context.Context, payload string) ([]byte, error) {
+	var body []byte
+	preader := strings.NewReader(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.graphQLURL, preader)
 	if err != nil {
-		return err
+		return body, err
 	}
 	req.Header.Add("authorization", r.apiKey)
 	req.Header.Add("content-type", "application/json")
 	resp, err := r.doWithRetry(req, http.StatusOK, false)
 	if err != nil {
-		return err
+		return body, err
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return body, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		r.logger.Errorf("unexpected response body: %s", body)
-		return ErrUnexpectedStatusCodeReceived
+		return body, ErrUnexpectedStatusCodeReceived
 	}
 	var errorResponse GraphQLErrorResponse
 	err = json.Unmarshal(body, &errorResponse)
 	if err != nil {
-		return err
+		return body, err
 	}
 	if len(errorResponse.Errors) > 0 {
 		r.logger.Errorf("response error: %+v", errorResponse.Errors)
-		return ErrGraphQLResponse
+		return body, ErrGraphQLResponse
 	}
-	return nil
+	return body, nil
 }
