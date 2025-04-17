@@ -69,7 +69,7 @@ func (r *runner) CleanUp(ctx context.Context, target, assetType, opts string) {
 
 	// If we reach here and the scan is not in a terminal status something went
 	// wrong and we should try to cancel the scan in Burp.
-	if !scanTerminalStatus[scanStatus.Status] {
+	if !scanTerminalStatus[scanStatus.Data.Scan.Status] {
 		r.burpCli.CancelScan(ctx, r.burpScanID)
 	}
 }
@@ -157,7 +157,7 @@ func (r *runner) Run(ctx context.Context, target, assetType, optJSON string, sta
 	if err != nil {
 		return err
 	}
-	vulns := fillVulns(logger, s.Issues)
+	vulns := fillVulns(logger, s.Data.Scan.Issues)
 	state.AddVulnerabilities(vulns...)
 
 	return nil
@@ -182,8 +182,8 @@ LOOP:
 			if err != nil {
 				break LOOP
 			}
-			logger.Infof("polling. Scan status [%s]", s.Status)
-			if s.Status == "succeeded" {
+			logger.Infof("polling. Scan status [%s]", s.Data.Scan.Status)
+			if s.Data.Scan.Status == "succeeded" {
 				break LOOP
 			}
 			// TODO: A failed scan provides a "partial" vulnerability summary.
@@ -191,7 +191,7 @@ LOOP:
 			// is better to consider always only complete/successfully scans.
 			// For the sake of consistency for now we are considering only
 			// complete/successfully scans.
-			if s.Status == "failed" {
+			if s.Data.Scan.Status == "failed" {
 				err = errors.New("scan finished unsuccessfully")
 				logger.Errorf("Burp scan ID [%d]: %s", r.burpScanID, err)
 				break LOOP

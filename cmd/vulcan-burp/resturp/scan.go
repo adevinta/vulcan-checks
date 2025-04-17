@@ -3,9 +3,13 @@ package resturp
 // ScanStatusGraphQL defines the info returned by the Burp API when querying the status
 // of a scan.
 type ScanStatusGraphQL struct {
-	ScanID string         `json:"id"`
-	Status string         `json:"status"`
-	Issues []IssueGraphql `json:"issues"`
+	Data struct {
+		Scan struct {
+			ScanID string         `json:"id"`
+			Status string         `json:"status"`
+			Issues []IssueGraphql `json:"issues"`
+		} `json:"scan"`
+	} `json:"data"`
 }
 
 // GraphQLErrorResponse defines the Burp GrapQL API error response structure.
