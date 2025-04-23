@@ -228,7 +228,7 @@ func fillVulns(logger *logrus.Entry, ievents []resturp.IssueGraphql) []report.Vu
 			Recommendations: []string{i.IssueType.Remediation},
 			Score:           severityToScore(i.Severity),
 			Labels:          []string{"issue", "web", "burp"},
-			Details:         i.IssueType.Description,
+			Details:         i.Description,
 			Resources: []report.ResourcesGroup{
 				{
 					Name: "Found In",

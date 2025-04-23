@@ -1,10 +1,11 @@
 package resturp
 
 type IssueGraphql struct {
-	Confidence string    `json:"confidence"`
-	Severity   string    `json:"severity"`
-	Path       string    `json:"path"`
-	IssueType  IssueType `json:"issue_type"`
+	Description string    `json:"description_html"`
+	Confidence  string    `json:"confidence"`
+	Severity    string    `json:"severity"`
+	Path        string    `json:"path"`
+	IssueType   IssueType `json:"issue_type"`
 }
 
 type IssueType struct {
