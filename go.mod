@@ -13,7 +13,7 @@ require (
 	github.com/adevinta/vulcan-types v1.2.21
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.212.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.94.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.95.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.51.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.27.0
 	github.com/cenkalti/backoff/v4 v4.3.0
