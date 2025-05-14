@@ -34,8 +34,7 @@ var (
 			"If you don't have any default scanner, consider using Lava action in your CI/CD pipeline.",
 		},
 		References: []string{
-			"https://github.mpi-internal.com/adevinta/lava-action",
-			"https://github.mpi-internal.com/spt-security/lava-internal-action",
+			"https://github.com/adevinta/lava-action",
 		},
 		Labels: []string{"potential", "security-control", "repository"},
 	}
