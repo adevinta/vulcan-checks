@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.224.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.96.0
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.51.0
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.52.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.27.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/go-cmp v0.7.0
