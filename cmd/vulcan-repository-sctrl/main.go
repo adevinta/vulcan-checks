@@ -114,7 +114,7 @@ func main() {
 		dependabotTS := time.Now().Unix()
 		dependabotResource, err := checkDependabot(ctx, logger, target)
 		if err != nil {
-			logger.WithError(err).Error("could not get repository security information")
+			logger.WithError(err).Error("could not get repository dependabot status")
 			if len(v.Resources[0].Rows) > 0 {
 				logger.Warn("dependabot check failed, but skipping error because other security controls were found")
 			} else {
