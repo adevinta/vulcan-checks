@@ -17,6 +17,9 @@ import (
 	"github.com/adevinta/vulcan-check-sdk/helpers/awshelpers"
 	checkstate "github.com/adevinta/vulcan-check-sdk/state"
 	report "github.com/adevinta/vulcan-report"
+	awsRetry "github.com/aws/aws-sdk-go-v2/aws/retry"
+	supporttypes "github.com/aws/aws-sdk-go-v2/service/support/types"
+	"golang.org/x/time/rate"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/support"
@@ -111,7 +114,9 @@ func scanAccount(ctx context.Context, opt options, target, _ string, logger *log
 		return checkstate.ErrAssetUnreachable
 	}
 
-	s := support.NewFromConfig(cfg)
+	s := support.NewFromConfig(cfg, func(o *support.Options) {
+		o.Retryer = awsRetry.AddWithMaxAttempts(o.Retryer, 5)
+	})
 	// Retrieve checks list
 	checks, err := s.DescribeTrustedAdvisorChecks(
 		ctx,
@@ -123,76 +128,18 @@ func scanAccount(ctx context.Context, opt options, target, _ string, logger *log
 	}
 
 	// Refresh checks
-	checkIds := []*string{}
-	enqueued := 0
-	for _, check := range checks.Checks {
-		// Ignore results if we can't know the category
-		if check.Category == nil {
-			continue
-		}
-
-		// Ignore results that does are not security
-		if *check.Category != "security" {
-			continue
-		}
-		checkIds = append(checkIds, check.Id)
-		refreshed, err := s.RefreshTrustedAdvisorCheck(ctx, &support.RefreshTrustedAdvisorCheckInput{CheckId: check.Id})
-		if err != nil {
-			// Haven't found a more elegant way to check for an
-			// InvalidParameterValueException. This error type is not defined in the
-			// support/types package as it is for other services.
-			if strings.Contains(err.Error(), "InvalidParameterValueException") {
-				logger.Printf("check '%s' is not refreshable\n", *check.Name)
-				continue
-			}
-			return err
-		}
-
-		logger.Printf("check '%s' is refreshed with status: '%s'\n", *check.Name, *refreshed.Status.Status)
-		if *refreshed.Status.Status == "enqueued" {
-			enqueued++
-		}
+	limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 1)
+	toPoll, err := refreshSecurityChecks(ctx, s, checks.Checks, limiter, logger)
+	if err != nil {
+		return err
 	}
 
-	// If some check was enqueued for refreshing
-	// poll it's status and wait up until opt.RefreshTimeout
-	if enqueued > 0 {
-		t := time.NewTicker(time.Duration(opt.RefreshTimeout) * time.Second)
-		defer t.Stop()
+	// Poll refresh statuses with a timeout
+	if len(toPoll) > 0 {
+		ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(opt.RefreshTimeout)*time.Second)
+		defer cancel()
 
-	LOOP:
-		for {
-			select {
-			case <-t.C:
-				break LOOP
-			default:
-				checkStatus, err := s.DescribeTrustedAdvisorCheckRefreshStatuses(
-					ctx,
-					&support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
-						CheckIds: checkIds,
-					},
-				)
-				// Haven't found a more elegant way to check for an
-				// InvalidParameterValueException. This error type is not
-				// defined in the support/types package as it is for other
-				// services.
-				if err != nil && !strings.Contains(err.Error(), "InvalidParameterValueException") {
-					return fmt.Errorf("unable to check the refresh statuses: %w", err)
-				}
-				var pending bool
-				for _, cs := range checkStatus.Statuses {
-					if *cs.Status == "enqueued" || *cs.Status == "processing" {
-						pending = true
-						break
-					}
-				}
-				if !pending {
-					break LOOP
-				}
-				logger.Infof("Waiting for checks to be refreshed. Sleeping for %v...", rfrshInterval)
-				time.Sleep(rfrshInterval)
-			}
-		}
+		pollRefreshStatuses(ctxTimeout, s, toPoll, rfrshInterval, logger)
 	}
 
 	// Retrieve checks summaries
@@ -362,4 +309,84 @@ func scanAccount(ctx context.Context, opt options, target, _ string, logger *log
 		}
 	}
 	return err
+}
+
+func refreshSecurityChecks(ctx context.Context, svc *support.Client, checks []supporttypes.TrustedAdvisorCheckDescription, limiter *rate.Limiter, logger *logrus.Entry) ([]*string, error) {
+	var enqueuedIDs []*string
+
+	for _, chk := range checks {
+		if chk.Category == nil || *chk.Category != "security" {
+			continue
+		}
+
+		if err := limiter.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("rate limiter interrupted: %w", err)
+		}
+
+		out, err := svc.RefreshTrustedAdvisorCheck(ctx, &support.RefreshTrustedAdvisorCheckInput{
+			CheckId: chk.Id,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "InvalidParameterValueException") {
+				logger.Warnf("check %q is not refreshable, ignoring", *chk.Name)
+				continue
+			}
+			return nil, fmt.Errorf("refresh %s: %w", *chk.Id, err)
+		}
+		status := aws.ToString(out.Status.Status)
+		logger.Infof("refresh of %q check with status %s", *chk.Name, status)
+		if status == "enqueued" {
+			enqueuedIDs = append(enqueuedIDs, chk.Id)
+		}
+	}
+
+	return enqueuedIDs, nil
+}
+
+func pollRefreshStatuses(ctx context.Context, svc *support.Client, ids []*string, maxRefreshWaitInterval time.Duration, logger *logrus.Entry) {
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Warnf("maxRefreshWaitInterval reached, stop polling")
+			return
+		default:
+			out, err := svc.DescribeTrustedAdvisorCheckRefreshStatuses(ctx, &support.DescribeTrustedAdvisorCheckRefreshStatusesInput{
+				CheckIds: ids,
+			})
+			if err != nil {
+				logger.Errorf("DescribeTrustedAdvisorCheckRefreshStatuses failed: %v", err)
+				return
+			}
+
+			var maxSleep time.Duration
+			var pending bool
+
+			for _, st := range out.Statuses {
+				s := aws.ToString(st.Status)
+				if s == "enqueued" || s == "processing" {
+					pending = true
+
+					if st.MillisUntilNextRefreshable != 0 {
+						d := time.Duration(st.MillisUntilNextRefreshable) * time.Millisecond
+						if d > maxSleep {
+							maxSleep = d
+						}
+					}
+				}
+			}
+
+			if !pending {
+				return
+			}
+
+			if maxSleep <= 0 {
+				maxSleep = maxRefreshWaitInterval
+			}
+			logger.Infof("waiting %s until next check", maxSleep)
+			select {
+			case <-time.After(maxSleep):
+			case <-ctx.Done():
+			}
+		}
+	}
 }

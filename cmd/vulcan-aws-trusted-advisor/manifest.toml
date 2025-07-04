@@ -1,4 +1,5 @@
 Description = "Runs an AWS Trusted Advisor check against an AWS account"
 AssetTypes = ["AWSAccount"]
+Timeout = 900 # 15 minutes.
 RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME"]
-Options = '{"refresh_timeout": 60}'
+Options = '{"refresh_timeout": 600}'
