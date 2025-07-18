@@ -1,0 +1,3 @@
+Description = "Report AWS resources WAF integration status"
+AssetTypes = ["AWSAccount"]
+RequiredVars = ["VULCAN_ASSUME_ROLE_ENDPOINT", "ROLE_NAME"]
