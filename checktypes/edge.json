@@ -46,6 +46,19 @@
 			]
 		},
 		{
+			"name": "vulcan-aws-waf",
+			"description": "Report AWS resources WAF integration status",
+			"image": "vulcansec/vulcan-aws-waf:edge",
+			"timeout": 0,
+			"required_vars": [
+				"VULCAN_ASSUME_ROLE_ENDPOINT",
+				"ROLE_NAME"
+			],
+			"assets": [
+				"AWSAccount"
+			]
+		},
+		{
 			"name": "vulcan-blast-radius",
 			"description": "Calculates the blast radius of an asset.",
 			"image": "vulcansec/vulcan-blast-radius:edge",
