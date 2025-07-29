@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.46.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.99.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.54.0
-	github.com/aws/aws-sdk-go-v2/service/support v1.27.0
+	github.com/aws/aws-sdk-go-v2/service/support v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.63.1
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/go-cmp v0.7.0
