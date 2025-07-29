@@ -11,7 +11,7 @@ require (
 	github.com/adevinta/vulcan-check-sdk v1.4.1
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
-	github.com/aws/aws-sdk-go-v2 v1.36.6
+	github.com/aws/aws-sdk-go-v2 v1.37.0
 	github.com/aws/aws-sdk-go-v2/service/apigateway v1.31.4
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.28.4
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.47.0
@@ -57,7 +57,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.14 // indirect
-	github.com/aws/smithy-go v1.22.4 // indirect
+	github.com/aws/smithy-go v1.22.5 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
