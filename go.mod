@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.28.4
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.47.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.237.0
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.46.0
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.99.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.54.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.28.0
