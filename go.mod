@@ -13,7 +13,7 @@ require (
 	github.com/adevinta/vulcan-types v1.2.21
 	github.com/aws/aws-sdk-go-v2 v1.37.0
 	github.com/aws/aws-sdk-go-v2/service/apigateway v1.31.4
-	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.28.4
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.29.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.237.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.47.0
