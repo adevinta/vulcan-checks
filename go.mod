@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.102.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.54.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.28.0
-	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.64.0
+	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.65.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-version v1.7.0
