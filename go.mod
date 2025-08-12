@@ -11,7 +11,7 @@ require (
 	github.com/adevinta/vulcan-check-sdk v1.4.1
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
-	github.com/aws/aws-sdk-go-v2 v1.37.2
+	github.com/aws/aws-sdk-go-v2 v1.38.0
 	github.com/aws/aws-sdk-go-v2/service/apigateway v1.33.0
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.30.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.51.0
