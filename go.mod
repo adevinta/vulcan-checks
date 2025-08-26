@@ -12,7 +12,7 @@ require (
 	github.com/adevinta/vulcan-report v1.0.0
 	github.com/adevinta/vulcan-types v1.2.21
 	github.com/aws/aws-sdk-go-v2 v1.38.1
-	github.com/aws/aws-sdk-go-v2/service/apigateway v1.34.1
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.35.0
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.32.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.53.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.245.2
