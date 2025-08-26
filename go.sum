@@ -45,8 +45,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.4 h1:j7vjtr1YIssWQOMeOWR
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.4/go.mod h1:yDmJgqOiH4EA8Hndnv4KwAo8jCGTSnM5ASG1nBI+toA=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.2 h1:Pg9URiobXy85kgFev3og2CuOZ8JZUBENF+dcgWBaYNk=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.2/go.mod h1:FbtygfRFze9usAadmnGJNc8KsP346kEe+y2/oyhGAGc=
-github.com/aws/aws-sdk-go-v2/service/apigateway v1.34.1 h1:t9ybZKqU8xrc0fkalJoxVHiboQcDD5dcRPjvTaO7EgA=
-github.com/aws/aws-sdk-go-v2/service/apigateway v1.34.1/go.mod h1:WuGmD7SWYen7UZcDGptMvzl6bN5OZ1x+Io1eI5XN7kU=
+github.com/aws/aws-sdk-go-v2/service/apigateway v1.35.0 h1:G+hNuI0r+sJOx7xC4kJh3XMA6l2E/6AjeZs7Os/+8Ts=
+github.com/aws/aws-sdk-go-v2/service/apigateway v1.35.0/go.mod h1:+MyhM888//jV3o1UG4vt38MdjqAcUicXvHHw/JfcRik=
 github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.32.0 h1:/hN/xkajYsY/GDZ2l6C27JnnI/FgcFI7VsiVL9RIbbQ=
 github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.32.0/go.mod h1:4U8RYnlnrhq3UaJx/O2pD2rvBPNmLSNFl1iVgK4dh/k=
 github.com/aws/aws-sdk-go-v2/service/cloudfront v1.53.0 h1:fdPi8+XO2X3h+Z5fTArTVeThFOqf+8LBu+dxjXDx9dc=
