@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.53.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.250.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.50.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.105.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.57.1
 	github.com/aws/aws-sdk-go-v2/service/support v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.67.0
