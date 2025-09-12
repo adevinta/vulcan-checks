@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.54.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.251.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.50.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.106.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.107.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.67.0
@@ -48,12 +48,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.6 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.59 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.28 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.6 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.6 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.7 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.39.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.14 // indirect
