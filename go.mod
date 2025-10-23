@@ -18,7 +18,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.258.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.51.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.108.0
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.58.0
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/support v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.68.0
 	github.com/cenkalti/backoff/v4 v4.3.0
