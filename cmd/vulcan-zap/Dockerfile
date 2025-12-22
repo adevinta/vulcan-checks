@@ -1,6 +1,6 @@
 # Copyright 2019 Adevinta
 
-FROM zaproxy/zap-bare:2.16.1
+FROM zaproxy/zap-bare:2.17.0
 
 USER root
 RUN chown -R zap /zap/
