@@ -1,6 +1,6 @@
 # Copyright 2019 Adevinta
 
-FROM zricethezav/gitleaks:v8.30.0
+FROM zricethezav/gitleaks:v8.30.1
 
 # Override base label with 🔑 not supported by artifactory.
 LABEL org.opencontainers.image.description="Protect and discover secrets using Gitleaks"
